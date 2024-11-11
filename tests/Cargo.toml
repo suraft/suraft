@@ -18,7 +18,7 @@ repository    = { workspace = true }
 [dependencies]
 
 [dev-dependencies]
-suraft           = { path="../suraft", version = "0.10.0", features=["type-alias"] }
+suraft           = { path="../suraft", version = "0.1.0", features=["type-alias"] }
 suraft-memstore  = { path= "../stores/memstore" }
 
 anyerror           = { workspace = true }

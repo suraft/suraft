@@ -5,9 +5,6 @@ In this chapter, we will build a key-value store cluster using Openraft.
 1. [examples/raft-kv-memstore](https://github.com/suraft/suraft/tree/main/examples/raft-kv-memstore)
    is a complete example application that includes the server, client, and a demo cluster. This example uses an in-memory store for data storage.
 
-1. [examples/raft-kv-rocksdb](https://github.com/suraft/suraft/tree/main/examples/raft-kv-rocksdb)
-   is another complete example application that includes the server, client, and a demo cluster. This example uses RocksDB for persistent storage.
-
 You can use these examples as a starting point for building your own key-value
 store cluster with Openraft.
 
@@ -115,7 +112,6 @@ A [`RaftTypeConfig`] is also used by other components such as [`RaftLogStorage`]
 ## 3. Implement [`RaftLogStorage`] and [`RaftStateMachine`]
 
 The trait [`RaftLogStorage`] defines how log data is stored and consumed.
-It could be a wrapper for a local key-value store like [RocksDB](https://docs.rs/rocksdb/latest/rocksdb/).
 
 The trait [`RaftStateMachine`] defines how log is interpreted. Usually it is an in memory state machine with or without on-disk data backed.
 
@@ -178,8 +174,7 @@ Most of the APIs are quite straightforward, except two indirect APIs:
 
 There is a [Test suite for RaftLogStorage and RaftStateMachine][`LogSuite`] available in Openraft.
 If your implementation passes the tests, Openraft should work well with it.
-To test your implementation, run `Suite::test_all()` with a [`StoreBuilder`] implementation,
-as shown in the [`RocksStore` test](https://github.com/suraft/suraft/blob/main/stores/rocksstore/src/test.rs).
+To test your implementation, run `Suite::test_all()` with a [`StoreBuilder`] implementation.
 
 Once all tests pass, you can ensure that your custom storage implementation can work correctly in a distributed system.
 

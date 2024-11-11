@@ -60,8 +60,6 @@ members = [
     "macros",
     "tests",
     "stores/memstore",
-    "stores/rocksstore",
-    "stores/sledstore",
 ]
 exclude = [
 ]

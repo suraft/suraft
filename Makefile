@@ -14,7 +14,6 @@ test:
 	cargo test --features serde
 	cargo test --features single-term-leader
 	cargo test --manifest-path examples/raft-kv-memstore/Cargo.toml
-	cargo test --manifest-path examples/raft-kv-rocksdb/Cargo.toml
 
 bench:
 	cargo bench --features bench
@@ -55,14 +54,12 @@ lint:
 	cargo fmt --manifest-path examples/raft-kv-memstore-opendal-snapshot-data/Cargo.toml
 	cargo fmt --manifest-path examples/raft-kv-memstore-singlethreaded/Cargo.toml
 	cargo fmt --manifest-path examples/raft-kv-memstore/Cargo.toml
-	cargo fmt --manifest-path examples/raft-kv-rocksdb/Cargo.toml
 	cargo clippy --no-deps --all-targets -- -D warnings
 	cargo clippy --no-deps --manifest-path examples/memstore/Cargo.toml                               --all-targets -- -D warnings
 	cargo clippy --no-deps --manifest-path examples/raft-kv-memstore-network-v2/Cargo.toml            --all-targets -- -D warnings
 	cargo clippy --no-deps --manifest-path examples/raft-kv-memstore-opendal-snapshot-data/Cargo.toml --all-targets -- -D warnings
 	cargo clippy --no-deps --manifest-path examples/raft-kv-memstore-singlethreaded/Cargo.toml        --all-targets -- -D warnings
 	cargo clippy --no-deps --manifest-path examples/raft-kv-memstore/Cargo.toml                       --all-targets -- -D warnings
-	cargo clippy --no-deps --manifest-path examples/raft-kv-rocksdb/Cargo.toml                        --all-targets -- -D warnings
 	# Bug: clippy --all-targets reports false warning about unused dep in
 	# `[dev-dependencies]`:
 	# https://github.com/rust-lang/rust/issues/72686#issuecomment-635539688
@@ -74,7 +71,7 @@ unused_dep:
 
 typos:
 	# cargo install typos-cli
-	typos --write-changes suraft/ tests/ stores/memstore/ stores/rocksstore stores/sledstore examples/raft-kv-memstore/ examples/raft-kv-rocksdb/
+	typos --write-changes suraft/ tests/ stores/memstore/
 	#typos --write-changes --exclude change-log/ --exclude change-log.md --exclude derived-from-async-raft.md
 	# typos
 
