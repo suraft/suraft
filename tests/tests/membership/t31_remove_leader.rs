@@ -35,7 +35,7 @@ async fn remove_leader() -> Result<()> {
     );
     let mut router = RaftRouter::new(config.clone());
 
-    let mut log_index = router.new_cluster(btreeset! {0,1}, btreeset! {2,3}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0),s(1)}, btreeset! {s(2), s(3)}).await?;
 
     // Submit a config change which adds two new nodes and removes the current leader.
     let orig_leader = router.leader().expect("expected the cluster to have a leader");
@@ -100,9 +100,9 @@ async fn remove_leader() -> Result<()> {
 
         assert_eq!(metrics.current_term, 1);
         assert_eq!(metrics.last_log_index, Some(8));
-        assert_eq!(metrics.last_applied, Some(LogId::new(CommittedLeaderId::new(1, 0), 8)));
+        assert_eq!(metrics.last_applied, Some(LogId::new(1, 8)));
         assert_eq!(metrics.membership_config.membership().get_joint_config().clone(), vec![
-            btreeset![1, 2, 3]
+            btreeset! {s(1),s(2),s(3)}
         ]);
         assert_eq!(1, cfg.get_joint_config().len());
     }
@@ -128,7 +128,7 @@ async fn remove_leader_and_convert_to_learner() -> Result<()> {
     );
     let mut router = RaftRouter::new(config.clone());
 
-    let mut log_index = router.new_cluster(btreeset! {0,1}, btreeset! {2,3}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0),s(1)}, btreeset! {s(2), s(3)}).await?;
 
     let old_leader = 0;
 
@@ -191,7 +191,7 @@ async fn remove_leader_access_new_cluster() -> Result<()> {
     );
     let mut router = RaftRouter::new(config.clone());
 
-    let mut log_index = router.new_cluster(btreeset! {0,1,2}, btreeset! {}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {}).await?;
 
     let orig_leader = 0;
 
@@ -240,7 +240,7 @@ async fn remove_leader_access_new_cluster() -> Result<()> {
 
     tracing::info!(log_index, "--- elect node-2, handle write");
     {
-        let n2 = router.get_raft_handle(&2)?;
+        let n2 = router.get_raft_handle(&s(2))?;
         n2.runtime_config().elect(true);
         n2.wait(timeout()).state(ServerState::Leader, "node-2 elect itself").await?;
         log_index += 1;

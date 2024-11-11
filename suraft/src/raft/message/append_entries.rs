@@ -16,9 +16,9 @@ use crate::Vote;
 #[derive(Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize), serde(bound = ""))]
 pub struct AppendEntriesRequest<C: RaftTypeConfig> {
-    pub vote: Vote<C::NodeId>,
+    pub vote: Vote,
 
-    pub prev_log_id: Option<LogId<C::NodeId>>,
+    pub prev_log_id: Option<LogId>,
 
     /// The new log entries to store.
     ///
@@ -27,7 +27,7 @@ pub struct AppendEntriesRequest<C: RaftTypeConfig> {
     pub entries: Vec<C::Entry>,
 
     /// The leader's committed log id.
-    pub leader_commit: Option<LogId<C::NodeId>>,
+    pub leader_commit: Option<LogId>,
 }
 
 impl<C: RaftTypeConfig> fmt::Debug for AppendEntriesRequest<C> {
@@ -66,7 +66,7 @@ where C: RaftTypeConfig
 #[derive(Debug)]
 #[derive(PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize), serde(bound = ""))]
-pub enum AppendEntriesResponse<C: RaftTypeConfig> {
+pub enum AppendEntriesResponse {
     /// Successfully replicated all log entries to the target node.
     Success,
 
@@ -86,7 +86,7 @@ pub enum AppendEntriesResponse<C: RaftTypeConfig> {
     ///
     /// [`RPCError`]: crate::error::RPCError
     /// [`RaftNetwork::append_entries`]: crate::network::RaftNetwork::append_entries
-    PartialSuccess(Option<LogId<C::NodeId>>),
+    PartialSuccess(Option<LogId>),
 
     /// The first log id([`AppendEntriesRequest::prev_log_id`]) of the entries to send does not
     /// match on the remote target node.
@@ -95,12 +95,10 @@ pub enum AppendEntriesResponse<C: RaftTypeConfig> {
     /// Seen a vote `v` that does not hold `mine_vote >= v`.
     /// And a leader's vote(committed vote) must be total order with other vote.
     /// Therefore it has to be a higher vote: `mine_vote < v`
-    HigherVote(Vote<C::NodeId>),
+    HigherVote(Vote),
 }
 
-impl<C> AppendEntriesResponse<C>
-where C: RaftTypeConfig
-{
+impl AppendEntriesResponse {
     pub fn is_success(&self) -> bool {
         matches!(*self, AppendEntriesResponse::Success)
     }
@@ -110,9 +108,7 @@ where C: RaftTypeConfig
     }
 }
 
-impl<C> fmt::Display for AppendEntriesResponse<C>
-where C: RaftTypeConfig
-{
+impl fmt::Display for AppendEntriesResponse {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             AppendEntriesResponse::Success => write!(f, "Success"),

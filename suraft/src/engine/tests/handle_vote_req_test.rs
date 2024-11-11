@@ -5,6 +5,7 @@ use maplit::btreeset;
 use pretty_assertions::assert_eq;
 
 use crate::core::ServerState;
+use crate::engine::testing::s;
 use crate::engine::testing::UTConfig;
 use crate::engine::Command;
 use crate::engine::Engine;
@@ -19,20 +20,20 @@ use crate::Membership;
 use crate::Vote;
 
 fn m01() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {0,1}], None)
+    Membership::<UTConfig>::new(vec![btreeset! {s(0),s(1)}], None)
 }
 
 fn eng() -> Engine<UTConfig> {
-    let mut eng = Engine::testing_default(0);
+    let mut eng = Engine::testing_default(s(0));
     eng.state.enable_validation(false); // Disable validation for incomplete state
 
     eng.config.id = 1;
     // By default expire the leader lease so that the vote can be overridden in these tests.
-    eng.state.vote = Leased::new(UTConfig::<()>::now(), Duration::from_millis(0), Vote::new(2, 1));
+    eng.state.vote = Leased::new(UTConfig::<()>::now(), Duration::from_millis(0), Vote::new(2, s(1)));
     eng.state.server_state = ServerState::Candidate;
     eng.state
         .membership_state
-        .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(1, 1, 1)), m01())));
+        .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(1, s(1), 1)), m01())));
     eng.new_candidate(*eng.state.vote_ref());
     eng.output.take_commands();
 
@@ -45,19 +46,19 @@ fn test_handle_vote_req_rejected_by_leader_lease() -> anyhow::Result<()> {
     eng.state.vote.update(
         UTConfig::<()>::now(),
         Duration::from_millis(500),
-        Vote::new_committed(2, 1),
+        Vote::new_committed(2, s(1)),
     );
 
     let resp = eng.handle_vote_req(VoteRequest {
-        vote: Vote::new(3, 2),
-        last_log_id: Some(log_id(2, 1, 3)),
+        vote: Vote::new(3, s(2)),
+        last_log_id: Some(log_id(2, s(1), 3)),
     });
 
-    assert_eq!(VoteResponse::new(Vote::new_committed(2, 1), None, false), resp);
+    assert_eq!(VoteResponse::new(Vote::new_committed(2, s(1)), None, false), resp);
 
-    assert_eq!(Vote::new_committed(2, 1), *eng.state.vote_ref());
+    assert_eq!(Vote::new_committed(2, s(1)), *eng.state.vote_ref());
     assert!(eng.leader.is_none());
-    assert_eq!(eng.candidate_ref().unwrap().vote_ref(), &Vote::new(2, 1));
+    assert_eq!(eng.candidate_ref().unwrap().vote_ref(), &Vote::new(2, s(1)));
 
     assert_eq!(ServerState::Candidate, eng.state.server_state);
     assert_eq!(0, eng.output.take_commands().len());
@@ -70,15 +71,15 @@ fn test_handle_vote_req_reject_smaller_vote() -> anyhow::Result<()> {
     let mut eng = eng();
 
     let resp = eng.handle_vote_req(VoteRequest {
-        vote: Vote::new(1, 2),
+        vote: Vote::new(1, s(2)),
         last_log_id: None,
     });
 
-    assert_eq!(VoteResponse::new(Vote::new(2, 1), None, false), resp);
+    assert_eq!(VoteResponse::new(Vote::new(2, s(1)), None, false), resp);
 
-    assert_eq!(Vote::new(2, 1), *eng.state.vote_ref());
+    assert_eq!(Vote::new(2, s(1)), *eng.state.vote_ref());
     assert!(eng.leader.is_none());
-    assert_eq!(eng.candidate_ref().unwrap().vote_ref(), &Vote::new(2, 1));
+    assert_eq!(eng.candidate_ref().unwrap().vote_ref(), &Vote::new(2, s(1)));
 
     assert_eq!(ServerState::Candidate, eng.state.server_state);
     assert_eq!(0, eng.output.take_commands().len());
@@ -89,18 +90,21 @@ fn test_handle_vote_req_reject_smaller_vote() -> anyhow::Result<()> {
 #[test]
 fn test_handle_vote_req_reject_smaller_last_log_id() -> anyhow::Result<()> {
     let mut eng = eng();
-    eng.state.log_ids = LogIdList::new(vec![log_id(2, 1, 3)]);
+    eng.state.log_ids = LogIdList::new(vec![log_id(2, s(1), 3)]);
 
     let resp = eng.handle_vote_req(VoteRequest {
-        vote: Vote::new(3, 2),
-        last_log_id: Some(log_id(1, 1, 3)),
+        vote: Vote::new(3, s(2)),
+        last_log_id: Some(log_id(1, s(1), 3)),
     });
 
-    assert_eq!(VoteResponse::new(Vote::new(2, 1), Some(log_id(2, 1, 3)), false), resp);
+    assert_eq!(
+        VoteResponse::new(Vote::new(2, s(1)), Some(log_id(2, s(1), 3)), false),
+        resp
+    );
 
-    assert_eq!(Vote::new(2, 1), *eng.state.vote_ref());
+    assert_eq!(Vote::new(2, s(1)), *eng.state.vote_ref());
     assert!(eng.leader.is_none());
-    assert_eq!(eng.candidate_ref().unwrap().vote_ref(), &Vote::new(2, 1));
+    assert_eq!(eng.candidate_ref().unwrap().vote_ref(), &Vote::new(2, s(1)));
 
     assert_eq!(ServerState::Candidate, eng.state.server_state);
     assert_eq!(0, eng.output.take_commands().len());
@@ -114,18 +118,21 @@ fn test_handle_vote_req_granted_equal_vote_and_last_log_id() -> anyhow::Result<(
     let mut eng = eng();
     eng.config.id = 0;
     eng.vote_handler().update_internal_server_state();
-    eng.state.log_ids = LogIdList::new(vec![log_id(2, 1, 3)]);
+    eng.state.log_ids = LogIdList::new(vec![log_id(2, s(1), 3)]);
 
     eng.output.clear_commands();
 
     let resp = eng.handle_vote_req(VoteRequest {
-        vote: Vote::new(2, 1),
-        last_log_id: Some(log_id(2, 1, 3)),
+        vote: Vote::new(2, s(1)),
+        last_log_id: Some(log_id(2, s(1), 3)),
     });
 
-    assert_eq!(VoteResponse::new(Vote::new(2, 1), Some(log_id(2, 1, 3)), true), resp);
+    assert_eq!(
+        VoteResponse::new(Vote::new(2, s(1)), Some(log_id(2, s(1), 3)), true),
+        resp
+    );
 
-    assert_eq!(Vote::new(2, 1), *eng.state.vote_ref());
+    assert_eq!(Vote::new(2, s(1)), *eng.state.vote_ref());
     assert!(eng.leader.is_none());
 
     assert_eq!(ServerState::Follower, eng.state.server_state);
@@ -140,24 +147,29 @@ fn test_handle_vote_req_granted_greater_vote() -> anyhow::Result<()> {
     let mut eng = eng();
     eng.config.id = 0;
     eng.vote_handler().update_internal_server_state();
-    eng.state.log_ids = LogIdList::new(vec![log_id(2, 1, 3)]);
+    eng.state.log_ids = LogIdList::new(vec![log_id(2, s(1), 3)]);
 
     eng.output.clear_commands();
 
     let resp = eng.handle_vote_req(VoteRequest {
-        vote: Vote::new(3, 1),
-        last_log_id: Some(log_id(2, 1, 3)),
+        vote: Vote::new(3, s(1)),
+        last_log_id: Some(log_id(2, s(1), 3)),
     });
 
     // respond the updated vote.
-    assert_eq!(VoteResponse::new(Vote::new(3, 1), Some(log_id(2, 1, 3)), true), resp);
+    assert_eq!(
+        VoteResponse::new(Vote::new(3, s(1)), Some(log_id(2, s(1), 3)), true),
+        resp
+    );
 
-    assert_eq!(Vote::new(3, 1), *eng.state.vote_ref());
+    assert_eq!(Vote::new(3, s(1)), *eng.state.vote_ref());
     assert!(eng.leader.is_none());
 
     assert_eq!(ServerState::Follower, eng.state.server_state);
     assert_eq!(
-        vec![Command::SaveVote { vote: Vote::new(3, 1) },],
+        vec![Command::SaveVote {
+            vote: Vote::new(3, s(1))
+        },],
         eng.output.take_commands()
     );
     Ok(())
@@ -178,15 +190,17 @@ fn test_handle_vote_req_granted_follower_learner_does_not_emit_update_server_sta
         eng.output.clear_commands();
 
         eng.handle_vote_req(VoteRequest {
-            vote: Vote::new(3, 1),
-            last_log_id: Some(log_id(2, 1, 3)),
+            vote: Vote::new(3, s(1)),
+            last_log_id: Some(log_id(2, s(1), 3)),
         });
 
         assert_eq!(st, eng.state.server_state);
         assert_eq!(
             vec![
                 //
-                Command::SaveVote { vote: Vote::new(3, 1) },
+                Command::SaveVote {
+                    vote: Vote::new(3, s(1))
+                },
             ],
             eng.output.take_commands()
         );
@@ -202,15 +216,17 @@ fn test_handle_vote_req_granted_follower_learner_does_not_emit_update_server_sta
         eng.output.clear_commands();
 
         eng.handle_vote_req(VoteRequest {
-            vote: Vote::new(3, 1),
-            last_log_id: Some(log_id(2, 1, 3)),
+            vote: Vote::new(3, s(1)),
+            last_log_id: Some(log_id(2, s(1), 3)),
         });
 
         assert_eq!(st, eng.state.server_state);
         assert_eq!(
             vec![
                 //
-                Command::SaveVote { vote: Vote::new(3, 1) },
+                Command::SaveVote {
+                    vote: Vote::new(3, s(1))
+                },
             ],
             eng.output.take_commands()
         );

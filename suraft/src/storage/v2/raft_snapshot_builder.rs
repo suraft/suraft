@@ -28,7 +28,7 @@ where C: RaftTypeConfig
     /// - Performing log compaction, e.g. merge log entries that operates on the same key, like a
     ///   LSM-tree does,
     /// - or by fetching a snapshot from the state machine.
-    async fn build_snapshot(&mut self) -> Result<Snapshot<C>, StorageError<C>>;
+    async fn build_snapshot(&mut self) -> Result<Snapshot<C>, StorageError>;
 
     // NOTES:
     // This interface is geared toward small file-based snapshots. However, not all snapshots can

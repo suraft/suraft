@@ -29,11 +29,11 @@ pub enum StreamingError<C: RaftTypeConfig, E: Error = Infallible> {
 
     /// Storage error occurs when reading local data.
     #[error(transparent)]
-    StorageError(#[from] StorageError<C>),
+    StorageError(#[from] StorageError),
 
     /// Timeout when streaming data to remote node.
     #[error(transparent)]
-    Timeout(#[from] Timeout<C>),
+    Timeout(#[from] Timeout),
 
     /// The node is temporarily unreachable and should backoff before retrying.
     #[error(transparent)]
@@ -48,8 +48,8 @@ pub enum StreamingError<C: RaftTypeConfig, E: Error = Infallible> {
     RemoteError(#[from] RemoteError<C, E>),
 }
 
-impl<C: RaftTypeConfig> From<StreamingError<C, Fatal<C>>> for ReplicationError<C> {
-    fn from(e: StreamingError<C, Fatal<C>>) -> Self {
+impl<C: RaftTypeConfig> From<StreamingError<C, Fatal>> for ReplicationError<C> {
+    fn from(e: StreamingError<C, Fatal>) -> Self {
         match e {
             StreamingError::Closed(e) => ReplicationError::Closed(e),
             StreamingError::StorageError(e) => ReplicationError::StorageError(e),

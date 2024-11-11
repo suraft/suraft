@@ -23,7 +23,7 @@ async fn stop_replication_to_removed_follower() -> Result<()> {
     let mut router = RaftRouter::new(config.clone());
     router.new_raft_node(0).await;
 
-    let mut log_index = router.new_cluster(btreeset! {0,1,2}, btreeset! {}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {}).await?;
 
     tracing::info!(log_index, "--- add node 3,4");
 
@@ -37,7 +37,7 @@ async fn stop_replication_to_removed_follower() -> Result<()> {
 
     tracing::info!(log_index, "--- changing config to 0,3,4");
     {
-        let node = router.get_raft_handle(&0)?;
+        let node = router.get_raft_handle(&s(0))?;
         node.change_membership([0, 3, 4], false).await?;
         log_index += 2;
 
@@ -79,7 +79,7 @@ async fn stop_replication_to_removed_follower() -> Result<()> {
     tracing::info!(log_index, "--- write to new cluster, current log={}", log_index);
     {
         let n = 10;
-        router.client_request_many(0, "after_change", n).await?;
+        router.client_request_many(s(0), "after_change", n).await?;
         log_index += n as u64;
 
         for i in &[0, 3, 4] {

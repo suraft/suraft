@@ -12,50 +12,51 @@ use crate::vote::NonCommittedVote;
 use crate::RaftTypeConfig;
 use crate::StorageError;
 use crate::Vote;
+use crate::NID;
 
 /// A message coming from the internal components.
 pub(crate) enum Notification<C>
 where C: RaftTypeConfig
 {
     VoteResponse {
-        target: C::NodeId,
-        resp: VoteResponse<C>,
+        target: NID,
+        resp: VoteResponse,
 
         /// The candidate that sent the vote request.
         ///
         /// A vote identifies a unique server state.
-        candidate_vote: NonCommittedVote<C>,
+        candidate_vote: NonCommittedVote,
     },
 
     /// A Leader sees a higher `vote` when replicating.
     HigherVote {
         /// The ID of the target node from which the new term was observed.
-        target: C::NodeId,
+        target: NID,
 
         /// The higher vote observed.
-        higher: Vote<C::NodeId>,
+        higher: Vote,
 
         /// The Leader that sent replication request.
-        leader_vote: CommittedVote<C>,
+        leader_vote: CommittedVote,
         // TODO: need this?
         // /// The cluster this replication works for.
-        // membership_log_id: Option<LogId<C::NodeId>>,
+        // membership_log_id: Option<LogId>,
     },
 
     /// [`StorageError`] error has taken place locally(not on remote node),
     /// and [`RaftCore`](`crate::core::RaftCore`) needs to shutdown.
-    StorageError { error: StorageError<C> },
+    StorageError { error: StorageError },
 
     /// Completion of an IO operation to local store.
-    LocalIO { io_id: IOId<C> },
+    LocalIO { io_id: IOId },
 
     /// Result of executing a command sent from network worker.
-    ReplicationProgress { progress: replication::Progress<C> },
+    ReplicationProgress { progress: replication::Progress },
 
     HeartbeatProgress {
-        session_id: ReplicationSessionId<C>,
+        session_id: ReplicationSessionId,
         sending_time: InstantOf<C>,
-        target: C::NodeId,
+        target: NID,
     },
 
     /// Result of executing a command sent from state machine worker.

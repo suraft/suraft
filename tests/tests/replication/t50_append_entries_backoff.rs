@@ -9,6 +9,7 @@ use suraft::error::Unreachable;
 use suraft::Config;
 use suraft::RPCTypes;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -29,7 +30,7 @@ async fn append_entries_backoff() -> Result<()> {
     let mut router = RaftRouter::new(config.clone());
 
     tracing::info!("--- initializing cluster");
-    let mut log_index = router.new_cluster(btreeset! {0,1,2}, btreeset! {}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {}).await?;
 
     let counts0 = router.get_rpc_count();
     let n = 10u64;
@@ -47,7 +48,7 @@ async fn append_entries_backoff() -> Result<()> {
         // The above is equivalent to the following:
         // router.set_unreachable(2, true);
 
-        router.client_request_many(0, "0", n as usize).await?;
+        router.client_request_many(s(0), "0", n as usize).await?;
         log_index += n;
 
         router.wait(&0, timeout()).applied_index(Some(log_index), format!("{} writes", n)).await?;

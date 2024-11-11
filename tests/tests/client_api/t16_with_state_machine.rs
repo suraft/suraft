@@ -39,9 +39,9 @@ async fn with_state_machine() -> Result<()> {
     let mut router = RaftRouter::new(config.clone());
 
     tracing::info!("--- initializing cluster");
-    let log_index = router.new_cluster(btreeset! {0,1,2}, btreeset! {}).await?;
+    let log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {}).await?;
 
-    let n0 = router.get_raft_handle(&0)?;
+    let n0 = router.get_raft_handle(&s(0))?;
 
     tracing::info!("--- get last applied from SM");
     {
@@ -54,7 +54,7 @@ async fn with_state_machine() -> Result<()> {
             })
             .await?
             .unwrap();
-        assert_eq!(applied, Some(log_id(1, 0, log_index)));
+        assert_eq!(applied, Some(log_id(1, log_index)));
     }
 
     tracing::info!("--- shutting down node 0");
@@ -82,9 +82,9 @@ async fn with_state_machine_wrong_sm_type() -> Result<()> {
     let mut router = RaftRouter::new(config.clone());
 
     tracing::info!("--- initializing cluster");
-    router.new_cluster(btreeset! {0}, btreeset! {}).await?;
+    router.new_cluster(btreeset! {s(0)}, btreeset! {}).await?;
 
-    let n0 = router.get_raft_handle(&0)?;
+    let n0 = router.get_raft_handle(&s(0))?;
 
     tracing::info!("--- use wrong type SM");
     {
@@ -99,7 +99,7 @@ async fn with_state_machine_wrong_sm_type() -> Result<()> {
         impl RaftStateMachine<TC> for FooSM {
             type SnapshotBuilder = Self;
 
-            async fn applied_state(&mut self) -> Result<(Option<LogId<MemNodeId>>, StoredMembership<TC>), Err> {
+            async fn applied_state(&mut self) -> Result<(Option<LogId>, StoredMembership<TC>), Err> {
                 todo!()
             }
 

@@ -52,7 +52,7 @@ async fn snapshot_chunk_size() -> Result<()> {
 
     tracing::info!(log_index, "--- send just enough logs to trigger snapshot");
     {
-        router.client_request_many(0, "0", (snapshot_threshold - 1 - log_index) as usize).await?;
+        router.client_request_many(s(0), "0", (snapshot_threshold - 1 - log_index) as usize).await?;
         log_index = snapshot_threshold - 1;
 
         let want_snap = Some((log_index.into(), 1));
@@ -65,14 +65,14 @@ async fn snapshot_chunk_size() -> Result<()> {
                 "send log to trigger snapshot",
             )
             .await?;
-        router.wait_for_snapshot(&btreeset![0], log_id(1, 0, log_index), timeout(), "snapshot").await?;
-        router.assert_storage_state(1, log_index, Some(0), log_id(1, 0, log_index), want_snap).await?;
+        router.wait_for_snapshot(&btreeset![0], log_id(1, log_index), timeout(), "snapshot").await?;
+        router.assert_storage_state(1, log_index, Some(0), log_id(1, log_index), want_snap).await?;
 
-        let n0 = router.get_raft_handle(&0)?;
+        let n0 = router.get_raft_handle(&s(0))?;
         n0.trigger().purge_log(log_index).await?;
         router
             .wait(&0, timeout())
-            .purged(Some(log_id(1, 0, 9)), "purge Leader-0 all in snapshot logs")
+            .purged(Some(log_id(1, s(0), 9)), "purge Leader-0 all in snapshot logs")
             .await?;
     }
 
@@ -97,7 +97,7 @@ async fn snapshot_chunk_size() -> Result<()> {
                 1,
                 log_index,
                 Some(0),
-                log_id(1, 0, log_index),
+                log_id(1, log_index),
                 &Some(((log_index - 1).into(), 1)),
             )
             .await?;
@@ -111,7 +111,7 @@ async fn snapshot_chunk_size() -> Result<()> {
                 1,
                 log_index,
                 Some(0),
-                log_id(1, 0, log_index),
+                log_id(1, log_index),
                 &Some(((log_index - 1).into(), 1)),
             )
             .await?;

@@ -13,6 +13,7 @@ use suraft::Config;
 use suraft::Vote;
 use suraft_memstore::BlockOperation;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -31,9 +32,9 @@ async fn building_snapshot_does_not_block_apply() -> Result<()> {
     );
 
     let mut router = RaftRouter::new(config.clone());
-    let mut log_index = router.new_cluster(btreeset! {0,1}, btreeset! {}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0),s(1)}, btreeset! {}).await?;
 
-    let follower = router.get_raft_handle(&1)?;
+    let follower = router.get_raft_handle(&s(1))?;
 
     tracing::info!(log_index, "--- set flag to delay snapshot building");
     {
@@ -43,7 +44,7 @@ async fn building_snapshot_does_not_block_apply() -> Result<()> {
 
     tracing::info!(log_index, "--- build snapshot on follower, it should block");
     {
-        log_index += router.client_request_many(0, "0", 10).await?;
+        log_index += router.client_request_many(s(0), "0", 10).await?;
         router.wait(&1, timeout()).applied_index(Some(log_index), "written 10 logs").await?;
 
         follower.trigger().snapshot().await?;
@@ -53,7 +54,7 @@ async fn building_snapshot_does_not_block_apply() -> Result<()> {
 
         let res = router
             .wait(&1, Some(Duration::from_millis(500)))
-            .snapshot(log_id(1, 0, log_index), "building snapshot is blocked")
+            .snapshot(log_id(1, log_index), "building snapshot is blocked")
             .await;
         assert!(res.is_err(), "snapshot should be blocked and can not finish");
     }
@@ -66,8 +67,8 @@ async fn building_snapshot_does_not_block_apply() -> Result<()> {
         let next = log_index + 1;
 
         let rpc = AppendEntriesRequest::<suraft_memstore::TypeConfig> {
-            vote: Vote::new_committed(1, 0),
-            prev_log_id: Some(log_id(1, 0, log_index)),
+            vote: Vote::new_committed(1, s(0)),
+            prev_log_id: Some(log_id(1, log_index)),
             entries: vec![blank_ent(1, 0, next)],
             // Append and commit this entry
             leader_commit: Some(log_id(1, 0, next)),

@@ -5,6 +5,7 @@ use maplit::btreeset;
 use pretty_assertions::assert_eq;
 
 use crate::core::ServerState;
+use crate::engine::testing::s;
 use crate::engine::testing::UTConfig;
 use crate::engine::Command;
 use crate::engine::Condition;
@@ -21,24 +22,24 @@ use crate::Membership;
 use crate::Vote;
 
 fn m01() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {0,1}], None)
+    Membership::<UTConfig>::new(vec![btreeset! {s(0),s(1)}], None)
 }
 
 /// Make a sample VoteResponse
-fn mk_res(granted: bool) -> Result<VoteResponse<UTConfig>, Infallible> {
-    Ok::<VoteResponse<UTConfig>, Infallible>(VoteResponse::new(Vote::new(2, 1), None, granted))
+fn mk_res(granted: bool) -> Result<VoteResponse, Infallible> {
+    Ok::<VoteResponse, Infallible>(VoteResponse::new(Vote::new(2, s(1)), None, granted))
 }
 
 fn eng() -> Engine<UTConfig> {
-    let mut eng = Engine::testing_default(0);
+    let mut eng = Engine::testing_default(s(0));
     eng.state.enable_validation(false); // Disable validation for incomplete state
 
     eng.config.id = 0;
-    eng.state.vote = Leased::new(UTConfig::<()>::now(), Duration::from_millis(500), Vote::new(2, 1));
+    eng.state.vote = Leased::new(UTConfig::<()>::now(), Duration::from_millis(500), Vote::new(2, s(1)));
     eng.state.server_state = ServerState::Candidate;
     eng.state
         .membership_state
-        .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(1, 1, 1)), m01())));
+        .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(1, s(1), 1)), m01())));
 
     eng
 }
@@ -50,7 +51,7 @@ fn test_accept_vote_reject_smaller_vote() -> anyhow::Result<()> {
     eng.output.take_commands();
 
     let (tx, _rx) = UTConfig::<()>::oneshot();
-    let resp = eng.vote_handler().accept_vote(&Vote::new(1, 2), tx, |_state, _err| mk_res(false));
+    let resp = eng.vote_handler().accept_vote(&Vote::new(1, s(2)), tx, |_state, _err| mk_res(false));
 
     assert!(resp.is_none());
 
@@ -60,7 +61,7 @@ fn test_accept_vote_reject_smaller_vote() -> anyhow::Result<()> {
             //
             Command::Respond {
                 when: Some(Condition::IOFlushed {
-                    io_id: IOId::new(&Vote::new(2, 1))
+                    io_id: IOId::new(&Vote::new(2, s(1)))
                 }),
                 resp: Respond::new(mk_res(false), tx)
             },
@@ -78,12 +79,14 @@ fn test_accept_vote_granted_greater_vote() -> anyhow::Result<()> {
     eng.output.take_commands();
 
     let (tx, _rx) = UTConfig::<()>::oneshot();
-    let resp = eng.vote_handler().accept_vote(&Vote::new(3, 3), tx, |_state, _err| mk_res(true));
+    let resp = eng.vote_handler().accept_vote(&Vote::new(3, s(3)), tx, |_state, _err| mk_res(true));
 
     assert!(resp.is_some());
 
     assert_eq!(
-        vec![Command::SaveVote { vote: Vote::new(3, 3) },],
+        vec![Command::SaveVote {
+            vote: Vote::new(3, s(3))
+        },],
         eng.output.take_commands()
     );
 

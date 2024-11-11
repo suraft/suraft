@@ -7,13 +7,13 @@ use crate::progress::Progress;
 use crate::progress::VecProgress;
 use crate::quorum::QuorumSet;
 use crate::type_config::alias::InstantOf;
-use crate::type_config::alias::LogIdOf;
 use crate::type_config::TypeConfigExt;
 use crate::vote::CommittedVote;
 use crate::LogId;
 use crate::LogIdOptionExt;
 use crate::RaftLogId;
 use crate::RaftTypeConfig;
+use crate::NID;
 
 /// Leading state data.
 ///
@@ -31,7 +31,7 @@ use crate::RaftTypeConfig;
 /// But instead it will be able to upgrade its `leader_id` without losing leadership.
 #[derive(Clone, Debug)]
 #[derive(PartialEq, Eq)]
-pub(crate) struct Leader<C, QS: QuorumSet<C::NodeId>>
+pub(crate) struct Leader<C, QS: QuorumSet<NID>>
 where C: RaftTypeConfig
 {
     /// Whether this Leader is marked as transferring to another node.
@@ -41,57 +41,57 @@ where C: RaftTypeConfig
     /// node.
     ///
     /// Leadership transfers disable proposing new logs.
-    pub(crate) transfer_to: Option<C::NodeId>,
+    pub(crate) transfer_to: Option<NID>,
 
     /// The vote this leader works in.
     ///
     /// `self.voting` may be in progress requesting vote for a higher vote.
-    pub(crate) committed_vote: CommittedVote<C>,
+    pub(crate) committed_vote: CommittedVote,
 
     /// The time to send next heartbeat.
     pub(crate) next_heartbeat: InstantOf<C>,
 
-    last_log_id: Option<LogIdOf<C>>,
+    last_log_id: Option<LogId>,
 
     /// The log id of the first log entry proposed by this leader,
     /// i.e., the `noop` log(AKA blank log) after leader established.
     ///
     /// It is set when leader established.
-    pub(crate) noop_log_id: Option<LogIdOf<C>>,
+    pub(crate) noop_log_id: Option<LogId>,
 
     /// Tracks the replication progress and committed index
-    pub(crate) progress: VecProgress<C::NodeId, ProgressEntry<C>, Option<LogIdOf<C>>, QS>,
+    pub(crate) progress: VecProgress<NID, ProgressEntry, Option<LogId>, QS>,
 
     /// Tracks the clock time acknowledged by other nodes.
     ///
     /// See [`docs::leader_lease`] for more details.
     ///
     /// [`docs::leader_lease`]: `crate::docs::protocol::replication::leader_lease`
-    pub(crate) clock_progress: VecProgress<C::NodeId, Option<InstantOf<C>>, Option<InstantOf<C>>, QS>,
+    pub(crate) clock_progress: VecProgress<NID, Option<InstantOf<C>>, Option<InstantOf<C>>, QS>,
 }
 
 impl<C, QS> Leader<C, QS>
 where
     C: RaftTypeConfig,
-    QS: QuorumSet<C::NodeId> + Clone + fmt::Debug + 'static,
+    QS: QuorumSet<NID> + Clone + fmt::Debug + 'static,
 {
     /// Create a new Leader.
     ///
     /// `last_leader_log_id` is the first and last log id proposed by the last leader.
     pub(crate) fn new(
-        vote: CommittedVote<C>,
+        vote: CommittedVote,
         quorum_set: QS,
-        learner_ids: impl IntoIterator<Item = C::NodeId>,
-        last_leader_log_id: LeaderLogIds<C>,
+        learner_ids: impl IntoIterator<Item = NID>,
+        last_leader_log_id: LeaderLogIds,
     ) -> Self {
         debug_assert!(
-            Some(vote.committed_leader_id()) >= last_leader_log_id.last().map(|x| x.committed_leader_id().clone()),
+            Some(vote.term()) >= last_leader_log_id.last().map(|x| x.term()),
             "vote {} must GE last_leader_log_id.last() {}",
             vote,
             last_leader_log_id
         );
         debug_assert!(
-            Some(vote.committed_leader_id()) >= last_leader_log_id.first().map(|x| x.committed_leader_id().clone()),
+            Some(vote.term()) >= last_leader_log_id.first().map(|x| x.term()),
             "vote {} must GE last_leader_log_id.first() {}",
             vote,
             last_leader_log_id
@@ -99,10 +99,10 @@ where
 
         let learner_ids = learner_ids.into_iter().collect::<Vec<_>>();
 
-        let vote_leader_id = vote.committed_leader_id();
+        let vote_term = vote.term();
         let first = last_leader_log_id.first();
 
-        let noop_log_id = if first.map(|x| x.committed_leader_id()) == Some(&vote_leader_id) {
+        let noop_log_id = if first.map(|x| x.term()) == Some(vote_term) {
             // There is already log id proposed by the this leader.
             // E.g. the Leader is restarted without losing leadership.
             //
@@ -110,10 +110,7 @@ where
             first.cloned()
         } else {
             // Set to a log id that will be proposed.
-            Some(LogId::new(
-                vote.committed_leader_id(),
-                last_leader_log_id.last().next_index(),
-            ))
+            Some(LogId::new(vote.term(), last_leader_log_id.last().next_index()))
         };
 
         let last_log_id = last_leader_log_id.last().cloned();
@@ -133,7 +130,7 @@ where
         leader
     }
 
-    pub(crate) fn noop_log_id(&self) -> Option<&LogIdOf<C>> {
+    pub(crate) fn noop_log_id(&self) -> Option<&LogId> {
         self.noop_log_id.as_ref()
     }
 
@@ -141,32 +138,29 @@ where
     ///
     /// The leader's last log id may be different from the local RaftState.last_log_id.
     /// The later is used by the `Acceptor` part of a Raft node.
-    pub(crate) fn last_log_id(&self) -> Option<&LogIdOf<C>> {
+    pub(crate) fn last_log_id(&self) -> Option<&LogId> {
         self.last_log_id.as_ref()
     }
 
-    pub(crate) fn committed_vote_ref(&self) -> &CommittedVote<C> {
+    pub(crate) fn committed_vote_ref(&self) -> &CommittedVote {
         &self.committed_vote
     }
 
-    pub(crate) fn mark_transfer(&mut self, to: C::NodeId) {
+    pub(crate) fn mark_transfer(&mut self, to: NID) {
         self.transfer_to = Some(to);
     }
 
-    pub(crate) fn get_transfer_to(&self) -> Option<&C::NodeId> {
+    pub(crate) fn get_transfer_to(&self) -> Option<&NID> {
         self.transfer_to.as_ref()
     }
 
     /// Assign log ids to the entries.
     ///
     /// This method update the `self.last_log_id`.
-    pub(crate) fn assign_log_ids<'a, LID: RaftLogId<C::NodeId> + 'a>(
-        &mut self,
-        entries: impl IntoIterator<Item = &'a mut LID>,
-    ) {
+    pub(crate) fn assign_log_ids<'a, LID: RaftLogId + 'a>(&mut self, entries: impl IntoIterator<Item = &'a mut LID>) {
         debug_assert!(self.transfer_to.is_none(), "leader is disabled to propose new log");
 
-        let committed_leader_id = self.committed_vote.committed_leader_id();
+        let committed_leader_id = self.committed_vote.term();
 
         let first = LogId::new(committed_leader_id, self.last_log_id().next_index());
         let mut last = first.clone();
@@ -223,6 +217,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::engine::leader_log_ids::LeaderLogIds;
+    use crate::engine::testing::s;
     use crate::engine::testing::UTConfig;
     use crate::entry::RaftEntry;
     use crate::progress::Progress;
@@ -238,102 +233,114 @@ mod tests {
     fn test_leader_new_with_proposed_log_id() {
         tracing::info!("--- vote greater than last log id, create new noop_log_id");
         {
-            let vote = Vote::new(2, 2).into_committed();
+            let vote = Vote::new(2, s(2)).into_committed();
             let leader = Leader::<UTConfig, _>::new(
                 vote,
                 vec![1, 2, 3],
                 vec![],
-                LeaderLogIds::new_start_end(log_id(1, 2, 1), log_id(1, 2, 3)),
+                LeaderLogIds::new_start_end(log_id(1, s(2), 1), log_id(1, s(2), 3)),
             );
 
-            assert_eq!(leader.noop_log_id(), Some(&log_id(2, 2, 4)));
-            assert_eq!(leader.last_log_id(), Some(&log_id(1, 2, 3)));
+            assert_eq!(leader.noop_log_id(), Some(&log_id(2, s(2), 4)));
+            assert_eq!(leader.last_log_id(), Some(&log_id(1, s(2), 3)));
         }
 
         tracing::info!("--- vote equals last log id, reuse noop_log_id");
         {
-            let vote = Vote::new(1, 2).into_committed();
+            let vote = Vote::new(1, s(2)).into_committed();
             let leader = Leader::<UTConfig, _>::new(
                 vote,
                 vec![1, 2, 3],
                 vec![],
-                LeaderLogIds::new_start_end(log_id(1, 2, 1), log_id(1, 2, 3)),
+                LeaderLogIds::new_start_end(log_id(1, s(2), 1), log_id(1, s(2), 3)),
             );
 
-            assert_eq!(leader.noop_log_id(), Some(&log_id(1, 2, 1)));
-            assert_eq!(leader.last_log_id(), Some(&log_id(1, 2, 3)));
+            assert_eq!(leader.noop_log_id(), Some(&log_id(1, s(2), 1)));
+            assert_eq!(leader.last_log_id(), Some(&log_id(1, s(2), 3)));
         }
 
         tracing::info!("--- vote equals last log id, reuse noop_log_id, last_leader_log_id.len()==1");
         {
-            let vote = Vote::new(1, 2).into_committed();
-            let leader =
-                Leader::<UTConfig, _>::new(vote, vec![1, 2, 3], vec![], LeaderLogIds::new_single(log_id(1, 2, 3)));
+            let vote = Vote::new(1, s(2)).into_committed();
+            let leader = Leader::<UTConfig, _>::new(
+                vote,
+                vec![1, 2, 3],
+                vec![],
+                LeaderLogIds::new_single(log_id(1, s(2), 3)),
+            );
 
-            assert_eq!(leader.noop_log_id(), Some(&log_id(1, 2, 3)));
-            assert_eq!(leader.last_log_id(), Some(&log_id(1, 2, 3)));
+            assert_eq!(leader.noop_log_id(), Some(&log_id(1, s(2), 3)));
+            assert_eq!(leader.last_log_id(), Some(&log_id(1, s(2), 3)));
         }
 
         tracing::info!("--- no last log ids, create new noop_log_id, last_leader_log_id.len()==0");
         {
-            let vote = Vote::new(1, 2).into_committed();
+            let vote = Vote::new(1, s(2)).into_committed();
             let leader = Leader::<UTConfig, _>::new(vote, vec![1, 2, 3], vec![], LeaderLogIds::new(None));
 
-            assert_eq!(leader.noop_log_id(), Some(&log_id(1, 2, 0)));
+            assert_eq!(leader.noop_log_id(), Some(&log_id(1, s(2), 0)));
             assert_eq!(leader.last_log_id(), None);
         }
     }
 
     #[test]
     fn test_leader_established() {
-        let vote = Vote::new(2, 2).into_committed();
-        let mut leader =
-            Leader::<UTConfig, _>::new(vote, vec![1, 2, 3], vec![], LeaderLogIds::new_single(log_id(1, 2, 3)));
+        let vote = Vote::new(2, s(2)).into_committed();
+        let mut leader = Leader::<UTConfig, _>::new(
+            vote,
+            vec![1, 2, 3],
+            vec![],
+            LeaderLogIds::new_single(log_id(1, s(2), 3)),
+        );
 
-        let mut entries = vec![Entry::<UTConfig>::new_blank(log_id(5, 5, 2))];
+        let mut entries = vec![Entry::<UTConfig>::new_blank(log_id(5, s(5), 2))];
         leader.assign_log_ids(&mut entries);
 
         assert_eq!(
             entries[0].get_log_id(),
-            &log_id(2, 2, 4),
+            &log_id(2, s(2), 4),
             "entry log id assigned following last-log-id"
         );
-        assert_eq!(Some(log_id(2, 2, 4)), leader.last_log_id);
+        assert_eq!(Some(log_id(2, s(2), 4)), leader.last_log_id);
     }
 
     #[test]
     fn test_1_entry_none_last_log_id() {
-        let vote = Vote::new(0, 0).into_committed();
+        let vote = Vote::new(0, s(0)).into_committed();
         let mut leading = Leader::<UTConfig, _>::new(vote, vec![1, 2, 3], vec![], LeaderLogIds::new(None));
 
-        let mut entries: Vec<Entry<UTConfig>> = vec![blank_ent(1, 1, 1)];
+        let mut entries: Vec<Entry<UTConfig>> = vec![blank_ent(1, 1)];
         leading.assign_log_ids(&mut entries);
 
-        assert_eq!(entries[0].get_log_id(), &log_id(0, 0, 0),);
-        assert_eq!(Some(log_id(0, 0, 0)), leading.last_log_id);
+        assert_eq!(entries[0].get_log_id(), &log_id(0, s(0), 0),);
+        assert_eq!(Some(log_id(0, s(0), 0)), leading.last_log_id);
     }
 
     #[test]
     fn test_no_entries_provided() {
-        let vote = Vote::new(2, 2).into_committed();
-        let mut leading =
-            Leader::<UTConfig, _>::new(vote, vec![1, 2, 3], vec![], LeaderLogIds::new_single(log_id(1, 1, 8)));
+        let vote = Vote::new(2, s(2)).into_committed();
+        let mut leading = Leader::<UTConfig, _>::new(
+            vote,
+            vec![1, 2, 3],
+            vec![],
+            LeaderLogIds::new_single(log_id(1, s(1), 8)),
+        );
 
         let mut entries: Vec<Entry<UTConfig>> = vec![];
         leading.assign_log_ids(&mut entries);
-        assert_eq!(Some(log_id(1, 1, 8)), leading.last_log_id);
+        assert_eq!(Some(log_id(1, s(1), 8)), leading.last_log_id);
     }
 
     #[test]
     fn test_multiple_entries() {
-        let vote = Vote::new(2, 2).into_committed();
+        let vote = Vote::new(2, s(2)).into_committed();
         let mut leading =
-            Leader::<UTConfig, _>::new(vote, vec![1, 2, 3], [], LeaderLogIds::new_single(log_id(1, 1, 8)));
+            Leader::<UTConfig, _>::new(vote, vec![1, 2, 3], [], LeaderLogIds::new_single(log_id(1, s(1), 8)));
 
-        let mut entries: Vec<Entry<UTConfig>> = vec![blank_ent(1, 1, 1), blank_ent(1, 1, 1), blank_ent(1, 1, 1)];
+        let mut entries: Vec<Entry<UTConfig>> = vec![blank_ent(1, 1), blank_ent(1, 1), blank_ent(1, 1)];
 
         leading.assign_log_ids(&mut entries);
-        assert_eq!(entries[0].get_log_id(), &log_id(2, 2, 9));
+        assert_eq!(entries[0].get_log_id(), &log_id(2, s(2), 9));
         assert_eq!(entries[1].get_log_id(), &log_id(2, 2, 10));
         assert_eq!(entries[2].get_log_id(), &log_id(2, 2, 11));
         assert_eq!(Some(log_id(2, 2, 11)), leading.last_log_id);
@@ -342,7 +349,7 @@ mod tests {
     #[test]
     fn test_leading_last_quorum_acked_time_leader_is_voter() {
         let mut leading = Leader::<UTConfig, Vec<u64>>::new(
-            Vote::new(2, 1).into_committed(),
+            Vote::new(2, s(1)).into_committed(),
             vec![1, 2, 3],
             [4],
             LeaderLogIds::new(None),
@@ -358,7 +365,7 @@ mod tests {
     #[test]
     fn test_leading_last_quorum_acked_time_leader_is_learner() {
         let mut leading = Leader::<UTConfig, Vec<u64>>::new(
-            Vote::new(2, 4).into_committed(),
+            Vote::new(2, s(4)).into_committed(),
             vec![1, 2, 3],
             [4],
             LeaderLogIds::new(None),
@@ -378,7 +385,7 @@ mod tests {
     #[test]
     fn test_leading_last_quorum_acked_time_leader_is_not_member() {
         let mut leading = Leader::<UTConfig, Vec<u64>>::new(
-            Vote::new(2, 5).into_committed(),
+            Vote::new(2, s(5)).into_committed(),
             vec![1, 2, 3],
             [4],
             LeaderLogIds::new(None),

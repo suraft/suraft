@@ -16,25 +16,25 @@ use crate::fixtures::RaftRouter;
 #[tracing::instrument]
 #[test_harness::test(harness = ut_harness)]
 async fn m0_change_m12() -> anyhow::Result<()> {
-    change_from_to(btreeset! {0}, btreeset! {1,2}).await
+    change_from_to(btreeset! {s(0)}, btreeset! {s(1),s(2)}).await
 }
 
 #[tracing::instrument]
 #[test_harness::test(harness = ut_harness)]
 async fn m0_change_m123() -> anyhow::Result<()> {
-    change_from_to(btreeset! {0}, btreeset! {1,2,3}).await
+    change_from_to(btreeset! {s(0)}, btreeset! {s(1), s(2), s(3)}).await
 }
 
 #[tracing::instrument]
 #[test_harness::test(harness = ut_harness)]
 async fn m01_change_m12() -> anyhow::Result<()> {
-    change_from_to(btreeset! {0, 1}, btreeset! {1,2}).await
+    change_from_to(btreeset! {0, 1}, btreeset! {s(1),s(2)}).await
 }
 
 #[tracing::instrument]
 #[test_harness::test(harness = ut_harness)]
 async fn m01_change_m1() -> anyhow::Result<()> {
-    change_from_to(btreeset! {0, 1}, btreeset! {1}).await
+    change_from_to(btreeset! {0, 1}, btreeset! {s(1)}).await
 }
 
 #[tracing::instrument]
@@ -72,19 +72,19 @@ async fn m01234_change_m0123() -> anyhow::Result<()> {
 #[tracing::instrument]
 #[test_harness::test(harness = ut_harness)]
 async fn m0_add_m01() -> anyhow::Result<()> {
-    change_by_add(btreeset! {0}, &[0, 1]).await
+    change_by_add(btreeset! {s(0)}, &[0, 1]).await
 }
 
 #[tracing::instrument]
 #[test_harness::test(harness = ut_harness)]
 async fn m0_add_m12() -> anyhow::Result<()> {
-    change_by_add(btreeset! {0}, &[1, 2]).await
+    change_by_add(btreeset! {s(0)}, &[1, 2]).await
 }
 
 #[tracing::instrument]
 #[test_harness::test(harness = ut_harness)]
 async fn m01_add_m() -> anyhow::Result<()> {
-    change_by_add(btreeset! {0,1}, &[]).await
+    change_by_add(btreeset! {s(0),s(1)}, &[]).await
 }
 
 // --- remove ---
@@ -92,25 +92,25 @@ async fn m01_add_m() -> anyhow::Result<()> {
 #[tracing::instrument]
 #[test_harness::test(harness = ut_harness)]
 async fn m012_remove_m01() -> anyhow::Result<()> {
-    change_by_remove(btreeset! {0,1,2}, &[0, 1]).await
+    change_by_remove(btreeset! {s(0),s(1),s(2)}, &[0, 1]).await
 }
 
 #[tracing::instrument]
 #[test_harness::test(harness = ut_harness)]
 async fn m012_remove_m3() -> anyhow::Result<()> {
-    change_by_remove(btreeset! {0,1,2}, &[3]).await
+    change_by_remove(btreeset! {s(0),s(1),s(2)}, &[3]).await
 }
 
 #[tracing::instrument]
 #[test_harness::test(harness = ut_harness)]
 async fn m012_remove_m() -> anyhow::Result<()> {
-    change_by_remove(btreeset! {0,1,2}, &[]).await
+    change_by_remove(btreeset! {s(0),s(1),s(2)}, &[]).await
 }
 
 #[tracing::instrument]
 #[test_harness::test(harness = ut_harness)]
 async fn m012_remove_m13() -> anyhow::Result<()> {
-    change_by_remove(btreeset! {0,1,2}, &[1, 3]).await
+    change_by_remove(btreeset! {s(0),s(1),s(2)}, &[1, 3]).await
 }
 
 #[tracing::instrument(level = "debug")]
@@ -136,7 +136,7 @@ async fn change_from_to(old: BTreeSet<MemNodeId>, change_members: BTreeSet<MemNo
 
     tracing::info!(log_index, "--- write 10 logs");
     {
-        router.client_request_many(0, "client", 10).await?;
+        router.client_request_many(s(0), "client", 10).await?;
         log_index += 10;
 
         router.wait_for_log(&old, Some(log_index), timeout(), &format!("write 10 logs, {}", mes)).await?;
@@ -153,7 +153,7 @@ async fn change_from_to(old: BTreeSet<MemNodeId>, change_members: BTreeSet<MemNo
             router.wait_for_log(&old, Some(log_index), timeout(), &format!("add learner, {}", mes)).await?;
         }
 
-        let node = router.get_raft_handle(&0)?;
+        let node = router.get_raft_handle(&s(0))?;
         node.change_membership(new.clone(), false).await?;
         log_index += 1;
         if new != old {
@@ -283,7 +283,7 @@ async fn change_by_add(old: BTreeSet<MemNodeId>, add: &[MemNodeId]) -> anyhow::R
 
     tracing::info!(log_index, "--- write 10 logs");
     {
-        log_index += router.client_request_many(0, "client", 10).await?;
+        log_index += router.client_request_many(s(0), "client", 10).await?;
         for id in old.iter() {
             router.wait(id, timeout()).applied_index(Some(log_index), format!("write 10 logs, {}", mes)).await?;
         }
@@ -303,7 +303,7 @@ async fn change_by_add(old: BTreeSet<MemNodeId>, add: &[MemNodeId]) -> anyhow::R
 
     tracing::info!(log_index, "--- change: {:?}", change);
     {
-        let node = router.get_raft_handle(&0)?;
+        let node = router.get_raft_handle(&s(0))?;
         node.change_membership(change, false).await?;
         log_index += 1;
         if new != old {
@@ -355,7 +355,7 @@ async fn change_by_remove(old: BTreeSet<MemNodeId>, remove: &[MemNodeId]) -> any
 
     tracing::info!(log_index, "--- write 10 logs");
     {
-        log_index += router.client_request_many(0, "client", 10).await?;
+        log_index += router.client_request_many(s(0), "client", 10).await?;
         for id in old.iter() {
             router.wait(id, timeout()).applied_index(Some(log_index), format!("write 10 logs, {}", mes)).await?;
         }
@@ -365,7 +365,7 @@ async fn change_by_remove(old: BTreeSet<MemNodeId>, remove: &[MemNodeId]) -> any
 
     tracing::info!(log_index, "--- change {:?}", &change);
     {
-        let node = router.get_raft_handle(&0)?;
+        let node = router.get_raft_handle(&s(0))?;
         node.change_membership(change.clone(), false).await?;
         log_index += 1;
         if new != old {

@@ -60,10 +60,10 @@ async fn snapshot_delete_conflicting_logs() -> Result<()> {
         let (mut sto0, sm0) = router.new_store();
 
         // When the node starts, it will become candidate and increment its vote to (5,0)
-        sto0.save_vote(&Vote::new(4, 0)).await?;
+        sto0.save_vote(&Vote::new(4, s(0))).await?;
         sto0.blocking_append([
             // manually insert the initializing log
-            membership_ent(0, 0, 0, vec![btreeset! {0}]),
+            membership_ent(0, 0, 0, vec![btreeset! {s(0)}]),
         ])
         .await?;
         log_index = 1;
@@ -76,14 +76,11 @@ async fn snapshot_delete_conflicting_logs() -> Result<()> {
 
     tracing::info!(log_index, "--- send just enough logs to trigger snapshot");
     {
-        router.client_request_many(0, "0", (snapshot_threshold - 1 - log_index) as usize).await?;
+        router.client_request_many(s(0), "0", (snapshot_threshold - 1 - log_index) as usize).await?;
         log_index = snapshot_threshold - 1;
 
         router.wait(&0, timeout()).applied_index(Some(log_index), "trigger snapshot").await?;
-        router
-            .wait(&0, timeout())
-            .snapshot(LogId::new(CommittedLeaderId::new(5, 0), log_index), "build snapshot")
-            .await?;
+        router.wait(&0, timeout()).snapshot(LogId::new(5, log_index), "build snapshot").await?;
     }
 
     tracing::info!(log_index, "--- create node-1 and add conflicting logs");
@@ -91,31 +88,31 @@ async fn snapshot_delete_conflicting_logs() -> Result<()> {
         router.new_raft_node(1).await;
 
         let req = AppendEntriesRequest {
-            vote: Vote::new_committed(1, 0),
+            vote: Vote::new_committed(1, s(0)),
             prev_log_id: None,
             entries: vec![
-                blank_ent(0, 0, 0),
-                blank_ent(1, 0, 1),
+                blank_ent(0, 0),
+                blank_ent(1, 1),
                 // conflict membership will be replaced with membership in snapshot
                 Entry {
-                    log_id: LogId::new(CommittedLeaderId::new(1, 0), 2),
-                    payload: EntryPayload::Membership(Membership::new(vec![btreeset! {2,3}], None)),
+                    log_id: LogId::new(1, 2),
+                    payload: EntryPayload::Membership(Membership::new(vec![btreeset! {s(2), s(3)}], None)),
                 },
-                blank_ent(1, 0, 3),
-                blank_ent(1, 0, 4),
-                blank_ent(1, 0, 5),
-                blank_ent(1, 0, 6),
-                blank_ent(1, 0, 7),
-                blank_ent(1, 0, 8),
-                blank_ent(1, 0, 9),
+                blank_ent(1, 3),
+                blank_ent(1, 4),
+                blank_ent(1, 5),
+                blank_ent(1, 6),
+                blank_ent(1, 7),
+                blank_ent(1, 8),
+                blank_ent(1, 9),
                 blank_ent(1, 0, 10),
                 // another conflict membership, will be removed
                 Entry {
-                    log_id: LogId::new(CommittedLeaderId::new(1, 0), 11),
+                    log_id: LogId::new(1, 11),
                     payload: EntryPayload::Membership(Membership::new(vec![btreeset! {4,5}], None)),
                 },
             ],
-            leader_commit: Some(LogId::new(CommittedLeaderId::new(1, 0), 2)),
+            leader_commit: Some(LogId::new(1, 2)),
         };
         let option = RPCOption::new(Duration::from_millis(1_000));
 
@@ -128,7 +125,7 @@ async fn snapshot_delete_conflicting_logs() -> Result<()> {
 
             tracing::info!("got membership of node-1: {:?}", m);
             assert_eq!(
-                &Membership::new(vec![btreeset! {2,3}], None),
+                &Membership::new(vec![btreeset! {s(2), s(3)}], None),
                 m.committed().membership()
             );
             assert_eq!(
@@ -173,24 +170,24 @@ async fn snapshot_delete_conflicting_logs() -> Result<()> {
 
         tracing::info!("got membership of node-1: {:?}", m);
         assert_eq!(
-            &Membership::new(vec![btreeset! {0}], None),
+            &Membership::new(vec![btreeset! {s(0)}], None),
             m.committed().membership(),
             "membership should be overridden by the snapshot"
         );
         assert_eq!(
-            &Membership::new(vec![btreeset! {0}], None),
+            &Membership::new(vec![btreeset! {s(0)}], None),
             m.effective().membership(),
             "conflicting effective membership does not have to be clear"
         );
 
         let log_st = sto1.get_log_state().await?;
         assert_eq!(
-            Some(LogId::new(CommittedLeaderId::new(5, 0), snapshot_threshold - 1)),
+            Some(LogId::new(5, snapshot_threshold - 1)),
             log_st.last_purged_log_id,
             "purge up to last log id in snapshot"
         );
         assert_eq!(
-            Some(LogId::new(CommittedLeaderId::new(5, 0), snapshot_threshold - 1)),
+            Some(LogId::new(5, snapshot_threshold - 1)),
             log_st.last_log_id,
             "reverted to last log id in snapshot"
         );

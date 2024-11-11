@@ -4,23 +4,19 @@ use crate::engine::testing::UTConfig;
 use crate::progress::entry::ProgressEntry;
 use crate::progress::inflight::Inflight;
 use crate::raft_state::LogStateReader;
-use crate::CommittedLeaderId;
 use crate::LogId;
 
-fn log_id(index: u64) -> LogId<u64> {
-    LogId {
-        leader_id: CommittedLeaderId::new(1, 1),
-        index,
-    }
+fn log_id(index: u64) -> LogId {
+    LogId { term: 1, index }
 }
 
-fn inflight_logs(prev_index: u64, last_index: u64) -> Inflight<UTConfig> {
+fn inflight_logs(prev_index: u64, last_index: u64) -> Inflight {
     Inflight::logs(Some(log_id(prev_index)), Some(log_id(last_index)))
 }
 
 #[test]
 fn test_is_log_range_inflight() -> anyhow::Result<()> {
-    let mut pe = ProgressEntry::<UTConfig>::empty(20);
+    let mut pe = ProgressEntry::empty(20);
     assert_eq!(false, pe.is_log_range_inflight(&log_id(2)));
 
     pe.inflight = inflight_logs(2, 4);
@@ -81,10 +77,10 @@ fn test_update_conflicting() -> anyhow::Result<()> {
 
 /// LogStateReader impl for testing
 struct LogState {
-    last: Option<LogId<u64>>,
-    snap_last: Option<LogId<u64>>,
-    purge_upto: Option<LogId<u64>>,
-    purged: Option<LogId<u64>>,
+    last: Option<LogId>,
+    snap_last: Option<LogId>,
+    purge_upto: Option<LogId>,
+    purged: Option<LogId>,
 }
 
 impl LogState {
@@ -100,8 +96,8 @@ impl LogState {
     }
 }
 
-impl LogStateReader<UTConfig> for LogState {
-    fn get_log_id(&self, index: u64) -> Option<LogId<u64>> {
+impl LogStateReader for LogState {
+    fn get_log_id(&self, index: u64) -> Option<LogId> {
         let x = Some(log_id(index));
         if x >= self.purged && x <= self.last {
             x
@@ -110,35 +106,35 @@ impl LogStateReader<UTConfig> for LogState {
         }
     }
 
-    fn last_log_id(&self) -> Option<&LogId<u64>> {
+    fn last_log_id(&self) -> Option<&LogId> {
         self.last.as_ref()
     }
 
-    fn committed(&self) -> Option<&LogId<u64>> {
+    fn committed(&self) -> Option<&LogId> {
         unimplemented!("testing")
     }
 
-    fn io_applied(&self) -> Option<&LogId<u64>> {
+    fn io_applied(&self) -> Option<&LogId> {
         todo!()
     }
 
-    fn io_snapshot_last_log_id(&self) -> Option<&LogId<u64>> {
+    fn io_snapshot_last_log_id(&self) -> Option<&LogId> {
         todo!()
     }
 
-    fn io_purged(&self) -> Option<&LogId<u64>> {
+    fn io_purged(&self) -> Option<&LogId> {
         todo!()
     }
 
-    fn snapshot_last_log_id(&self) -> Option<&LogId<u64>> {
+    fn snapshot_last_log_id(&self) -> Option<&LogId> {
         self.snap_last.as_ref()
     }
 
-    fn purge_upto(&self) -> Option<&LogId<u64>> {
+    fn purge_upto(&self) -> Option<&LogId> {
         self.purge_upto.as_ref()
     }
 
-    fn last_purged_log_id(&self) -> Option<&LogId<u64>> {
+    fn last_purged_log_id(&self) -> Option<&LogId> {
         self.purged.as_ref()
     }
 }

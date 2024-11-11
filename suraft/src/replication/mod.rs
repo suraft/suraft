@@ -47,7 +47,6 @@ use crate::storage::RaftLogStorage;
 use crate::storage::Snapshot;
 use crate::type_config::alias::InstantOf;
 use crate::type_config::alias::JoinHandleOf;
-use crate::type_config::alias::LogIdOf;
 use crate::type_config::alias::MpscUnboundedReceiverOf;
 use crate::type_config::alias::MpscUnboundedSenderOf;
 use crate::type_config::alias::MpscUnboundedWeakSenderOf;
@@ -62,6 +61,7 @@ use crate::RaftNetworkFactory;
 use crate::RaftTypeConfig;
 use crate::StorageError;
 use crate::Vote;
+use crate::NID;
 
 /// The handle to a spawned replication stream.
 pub(crate) struct ReplicationHandle<C>
@@ -86,10 +86,10 @@ where
     LS: RaftLogStorage<C>,
 {
     /// The ID of the target Raft node which replication events are to be sent to.
-    target: C::NodeId,
+    target: NID,
 
     /// Identifies which session this replication belongs to.
-    session_id: ReplicationSessionId<C>,
+    session_id: ReplicationSessionId,
 
     /// A channel for sending events to the RaftCore.
     #[allow(clippy::type_complexity)]
@@ -134,10 +134,10 @@ where
     config: Arc<Config>,
 
     /// The log id of the highest log entry which is known to be committed in the cluster.
-    committed: Option<LogId<C::NodeId>>,
+    committed: Option<LogId>,
 
     /// Last matching log id on a follower/learner
-    matching: Option<LogId<C::NodeId>>,
+    matching: Option<LogId>,
 
     /// Next replication action to run.
     next_action: Option<Data<C>>,
@@ -158,11 +158,11 @@ where
     #[allow(clippy::type_complexity)]
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn spawn(
-        target: C::NodeId,
-        session_id: ReplicationSessionId<C>,
+        target: NID,
+        session_id: ReplicationSessionId,
         config: Arc<Config>,
-        committed: Option<LogId<C::NodeId>>,
-        matching: Option<LogId<C::NodeId>>,
+        committed: Option<LogId>,
+        matching: Option<LogId>,
         network: N::Network,
         snapshot_network: N::Network,
         log_reader: LS::LogReader,
@@ -367,7 +367,7 @@ where
     #[tracing::instrument(level = "debug", skip_all)]
     async fn send_log_entries(
         &mut self,
-        log_ids: LogIdRange<C>,
+        log_ids: LogIdRange,
         has_payload: bool,
     ) -> Result<Option<Data<C>>, ReplicationError<C>> {
         tracing::debug!(log_id_range = display(&log_ids), "send_log_entries",);
@@ -539,7 +539,7 @@ where
     }
 
     /// Notify RaftCore with the success replication result(log matching or conflict).
-    fn notify_progress(&mut self, replication_result: ReplicationResult<C>) {
+    fn notify_progress(&mut self, replication_result: ReplicationResult) {
         tracing::debug!(
             target = display(self.target.clone()),
             curr_matching = display(self.matching.display()),
@@ -699,10 +699,7 @@ where
     }
 
     #[tracing::instrument(level = "info", skip_all)]
-    async fn stream_snapshot(
-        &mut self,
-        _snapshot_req: Option<LogIdOf<C>>,
-    ) -> Result<Option<Data<C>>, ReplicationError<C>> {
+    async fn stream_snapshot(&mut self, _snapshot_req: Option<LogId>) -> Result<Option<Data<C>>, ReplicationError<C>> {
         tracing::info!("{}", func_name!());
 
         let snapshot = self.snapshot_reader.get_snapshot().await.map_err(|reason| {
@@ -747,7 +744,7 @@ where
 
     async fn send_snapshot(
         network: Arc<MutexOf<C, N::Network>>,
-        vote: Vote<C::NodeId>,
+        vote: Vote,
         snapshot: Snapshot<C>,
         option: RPCOption,
         cancel: OneshotReceiverOf<C, ()>,
@@ -816,7 +813,7 @@ where
     }
 
     /// If there are more logs to send, it returns a new `Some(Data::Logs)` to send.
-    fn next_action_to_send(&mut self, matching: Option<LogId<C::NodeId>>, log_ids: LogIdRange<C>) -> Option<Data<C>> {
+    fn next_action_to_send(&mut self, matching: Option<LogId>, log_ids: LogIdRange) -> Option<Data<C>> {
         if matching < log_ids.last {
             Some(Data::new_logs(LogIdRange::new(matching, log_ids.last)))
         } else {
@@ -825,7 +822,7 @@ where
     }
 
     /// Check if partial success result(`matching`) is valid for a given log range to send.
-    fn debug_assert_partial_success(to_send: &LogIdRange<C>, matching: &Option<LogId<C::NodeId>>) {
+    fn debug_assert_partial_success(to_send: &LogIdRange, matching: &Option<LogId>) {
         debug_assert!(
             matching <= &to_send.last,
             "matching ({}) should be <= last_log_id ({})",

@@ -19,10 +19,10 @@ use crate::entry::RaftPayload;
 use crate::storage::RaftStateMachine;
 use crate::storage::Snapshot;
 use crate::type_config::alias::JoinHandleOf;
-use crate::type_config::alias::LogIdOf;
 use crate::type_config::alias::MpscUnboundedReceiverOf;
 use crate::type_config::alias::MpscUnboundedSenderOf;
 use crate::type_config::TypeConfigExt;
+use crate::LogId;
 use crate::RaftLogId;
 use crate::RaftLogReader;
 use crate::RaftSnapshotBuilder;
@@ -93,7 +93,7 @@ where
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    async fn worker_loop(&mut self) -> Result<(), StorageError<C>> {
+    async fn worker_loop(&mut self) -> Result<(), StorageError> {
         loop {
             let cmd = self.cmd_rx.recv().await;
             let cmd = match cmd {
@@ -161,7 +161,7 @@ where
         }
     }
     #[tracing::instrument(level = "debug", skip_all)]
-    async fn apply(&mut self, first: LogIdOf<C>, last: LogIdOf<C>) -> Result<ApplyResult<C>, StorageError<C>> {
+    async fn apply(&mut self, first: LogId, last: LogId) -> Result<ApplyResult<C>, StorageError> {
         // TODO: prepare response before apply,
         //       so that an Entry does not need to be Clone,
         //       and no references will be used by apply
@@ -240,7 +240,7 @@ where
     }
 
     #[tracing::instrument(level = "info", skip_all)]
-    async fn get_snapshot(&mut self, tx: ResultSender<C, Option<Snapshot<C>>>) -> Result<(), StorageError<C>> {
+    async fn get_snapshot(&mut self, tx: ResultSender<C, Option<Snapshot<C>>>) -> Result<(), StorageError> {
         tracing::info!("{}", func_name!());
 
         let snapshot = self.state_machine.get_current_snapshot().await?;

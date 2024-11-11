@@ -31,12 +31,12 @@ async fn after_snapshot_add_learner_and_request_a_log() -> Result<()> {
     );
     let mut router = RaftRouter::new(config.clone());
 
-    let mut log_index = router.new_cluster(btreeset! {0}, btreeset! {}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0)}, btreeset! {}).await?;
     let snapshot_index;
 
     tracing::info!(log_index, "--- send just enough logs to trigger snapshot");
     {
-        router.client_request_many(0, "0", (snapshot_threshold - 1 - log_index) as usize).await?;
+        router.client_request_many(s(0), "0", (snapshot_threshold - 1 - log_index) as usize).await?;
         log_index = snapshot_threshold - 1;
         snapshot_index = log_index;
 
@@ -55,13 +55,7 @@ async fn after_snapshot_add_learner_and_request_a_log() -> Result<()> {
             .await?;
 
         router
-            .assert_storage_state(
-                1,
-                log_index,
-                Some(0),
-                log_id(1, 0, log_index),
-                Some((log_index.into(), 1)),
-            )
+            .assert_storage_state(1, log_index, Some(0), log_id(1, log_index), Some((log_index.into(), 1)))
             .await?;
     }
 
@@ -78,13 +72,10 @@ async fn after_snapshot_add_learner_and_request_a_log() -> Result<()> {
 
         router
             .wait(&1, timeout())
-            .snapshot(
-                LogId::new(CommittedLeaderId::new(1, 0), snapshot_index),
-                "learner-1 receives snapshot",
-            )
+            .snapshot(LogId::new(1, snapshot_index), "learner-1 receives snapshot")
             .await?;
 
-        log_index += router.client_request_many(0, "0", 1).await?;
+        log_index += router.client_request_many(s(0), "0", 1).await?;
         tracing::info!(log_index, "--- after request a log");
 
         router
@@ -103,7 +94,7 @@ async fn after_snapshot_add_learner_and_request_a_log() -> Result<()> {
                 1,
                 log_index,
                 None, /* learner does not vote */
-                LogId::new(CommittedLeaderId::new(1, 0), log_index),
+                LogId::new(1, log_index),
                 expected_snap,
             )
             .await?;

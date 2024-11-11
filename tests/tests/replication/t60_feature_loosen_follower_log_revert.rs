@@ -27,11 +27,11 @@ async fn feature_loosen_follower_log_revert() -> Result<()> {
     let mut router = RaftRouter::new(config.clone());
 
     tracing::info!("--- initializing cluster");
-    let mut log_index = router.new_cluster(btreeset! {0,1,2}, btreeset! {3}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {3}).await?;
 
     tracing::info!(log_index, "--- write 10 logs");
     {
-        log_index += router.client_request_many(0, "0", 10).await?;
+        log_index += router.client_request_many(s(0), "0", 10).await?;
         for i in [0, 1, 2, 3] {
             router.wait(&i, timeout()).applied_index(Some(log_index), format!("{} writes", 10)).await?;
         }
@@ -49,7 +49,7 @@ async fn feature_loosen_follower_log_revert() -> Result<()> {
 
     tracing::info!(log_index, "--- write another 10 logs, leader should not panic");
     {
-        log_index += router.client_request_many(0, "0", 10).await?;
+        log_index += router.client_request_many(s(0), "0", 10).await?;
         for i in [0, 1, 2, 3] {
             router.wait(&i, timeout()).applied_index(Some(log_index), format!("{} writes", 10)).await?;
         }

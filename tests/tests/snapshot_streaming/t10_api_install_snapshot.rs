@@ -34,15 +34,15 @@ async fn snapshot_arguments() -> Result<()> {
     let mut log_index = 0;
 
     tracing::info!(log_index, "--- initializing cluster");
-    log_index = router.new_cluster(btreeset! {0}, btreeset! {}).await?;
+    log_index = router.new_cluster(btreeset! {s(0)}, btreeset! {}).await?;
 
     let n = router.remove_node(0).unwrap();
     let make_req = || InstallSnapshotRequest {
         // force it to be a follower
-        vote: Vote::new_committed(2, 1),
+        vote: Vote::new_committed(2, s(1)),
         meta: SnapshotMeta {
             snapshot_id: "ss1".into(),
-            last_log_id: Some(log_id(1, 0, 0)),
+            last_log_id: Some(log_id(1, s(0), 0)),
             last_membership: Default::default(),
         },
         offset: 0,

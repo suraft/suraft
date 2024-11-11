@@ -27,12 +27,12 @@ async fn t99_issue_584_replication_state_reverted() -> Result<()> {
     );
     let mut router = RaftRouter::new(config.clone());
 
-    let mut log_index = router.new_cluster(btreeset! {0}, btreeset! {1}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0)}, btreeset! {s(1)}).await?;
 
     let n = 500u64;
     tracing::info!(log_index, "--- write up to {} logs", n);
     {
-        router.client_request_many(0, "foo", (n - log_index) as usize).await?;
+        router.client_request_many(s(0), "foo", (n - log_index) as usize).await?;
         log_index = n;
 
         router.wait(&1, timeout()).applied_index(Some(log_index), "replicate all logs to learner").await?;
@@ -43,7 +43,7 @@ async fn t99_issue_584_replication_state_reverted() -> Result<()> {
         "--- change-membership: make learner node-1 a voter. This should not panic"
     );
     {
-        let leader = router.get_raft_handle(&0)?;
+        let leader = router.get_raft_handle(&s(0))?;
         leader.change_membership([0, 1], false).await?;
         log_index += 2; // 2 change_membership log
 

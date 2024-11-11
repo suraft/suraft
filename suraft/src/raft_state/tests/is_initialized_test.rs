@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use crate::engine::testing::s;
 use crate::engine::testing::UTConfig;
 use crate::engine::LogIdList;
 use crate::testing::log_id;
@@ -30,7 +31,7 @@ fn test_is_initialized() {
     // Vote is non-default value
     {
         let rs = RaftState::<UTConfig> {
-            vote: Leased::new(UTConfig::<()>::now(), Duration::from_millis(500), Vote::new(1, 2)),
+            vote: Leased::new(UTConfig::<()>::now(), Duration::from_millis(500), Vote::new(1, s(2))),
             ..Default::default()
         };
 
@@ -40,7 +41,7 @@ fn test_is_initialized() {
     // Logs are non-empty
     {
         let rs = RaftState::<UTConfig> {
-            log_ids: LogIdList::new([log_id(0, 0, 0)]),
+            log_ids: LogIdList::new([log_id(0, s(0), 0)]),
             ..Default::default()
         };
 

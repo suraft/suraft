@@ -28,11 +28,7 @@ where C: RaftTypeConfig
     ///
     /// This function ensures that the cluster will have at least one voter in the new membership
     /// configuration.
-    pub(crate) fn apply(
-        &self,
-        change: ChangeMembers<C>,
-        retain: bool,
-    ) -> Result<Membership<C>, ChangeMembershipError<C>> {
+    pub(crate) fn apply(&self, change: ChangeMembers<C>, retain: bool) -> Result<Membership<C>, ChangeMembershipError> {
         self.ensure_committed()?;
 
         let new_membership = self.state.effective().membership().clone().change(change, retain)?;
@@ -43,7 +39,7 @@ where C: RaftTypeConfig
     ///
     /// Returns Ok if the last membership is committed, or an InProgress error
     /// otherwise, to indicate a change-membership request should be rejected.
-    pub(crate) fn ensure_committed(&self) -> Result<(), InProgress<C>> {
+    pub(crate) fn ensure_committed(&self) -> Result<(), InProgress> {
         let effective = self.state.effective();
         let committed = self.state.committed();
 

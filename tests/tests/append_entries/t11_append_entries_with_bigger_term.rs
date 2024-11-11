@@ -8,11 +8,11 @@ use suraft::network::RPCOption;
 use suraft::network::RaftNetworkFactory;
 use suraft::raft::AppendEntriesRequest;
 use suraft::testing::log_id;
-use suraft::CommittedLeaderId;
 use suraft::Config;
 use suraft::LogId;
 use suraft::Vote;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -34,30 +34,22 @@ async fn append_entries_with_bigger_term() -> Result<()> {
         .validate()?,
     );
     let mut router = RaftRouter::new(config.clone());
-    let log_index = router.new_cluster(btreeset! {0}, btreeset! {1}).await?;
+    let log_index = router.new_cluster(btreeset! {s(0)}, btreeset! {s(1)}).await?;
 
     // before append entries, check hard state in term 1 and vote for node 0
-    router
-        .assert_storage_state(
-            1,
-            log_index,
-            Some(0),
-            LogId::new(CommittedLeaderId::new(1, 0), log_index),
-            None,
-        )
-        .await?;
+    router.assert_storage_state(1, log_index, Some(0), LogId::new(1, log_index), None).await?;
 
     // append entries with term 2 and leader_id, this MUST cause hard state changed in node 0
     let req = AppendEntriesRequest::<suraft_memstore::TypeConfig> {
-        vote: Vote::new_committed(2, 1),
-        prev_log_id: Some(log_id(1, 0, log_index)),
+        vote: Vote::new_committed(2, s(1)),
+        prev_log_id: Some(log_id(1, log_index)),
         entries: vec![],
-        leader_commit: Some(log_id(1, 0, log_index)),
+        leader_commit: Some(log_id(1, log_index)),
     };
 
     let option = RPCOption::new(Duration::from_millis(1_000));
 
-    let resp = router.new_client(0, &()).await.append_entries(req, option).await?;
+    let resp = router.new_client(s(0), &()).await.append_entries(req, option).await?;
     assert!(resp.is_success());
 
     // after append entries, check hard state in term 2 and vote for node 1
@@ -71,7 +63,7 @@ async fn append_entries_with_bigger_term() -> Result<()> {
             2,
             log_index,
             Some(1),
-            LogId::new(CommittedLeaderId::new(1, 0), log_index),
+            LogId::new(1, log_index),
             &None,
         )
         .await?;

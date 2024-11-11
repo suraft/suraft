@@ -25,11 +25,11 @@ async fn update_membership_state() -> anyhow::Result<()> {
     );
     let mut router = RaftRouter::new(config.clone());
 
-    let mut log_index = router.new_cluster(btreeset! {0,1,2}, btreeset! {3,4}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {s(3),s(4)}).await?;
 
     tracing::info!(log_index, "--- change membership from 012 to 01234");
     {
-        let leader = router.get_raft_handle(&0)?;
+        let leader = router.get_raft_handle(&s(0))?;
         let res = leader.change_membership([0, 1, 2, 3, 4], false).await?;
         log_index += 2;
 
@@ -68,11 +68,11 @@ async fn change_with_new_learner_blocking() -> anyhow::Result<()> {
     );
     let mut router = RaftRouter::new(config.clone());
 
-    let mut log_index = router.new_cluster(btreeset! {0}, btreeset! {}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0)}, btreeset! {}).await?;
 
     tracing::info!(log_index, "--- write up to 100 logs");
     {
-        router.client_request_many(0, "non_voter_add", 100 - log_index as usize).await?;
+        router.client_request_many(s(0), "non_voter_add", 100 - log_index as usize).await?;
         log_index = 100;
 
         router.wait(&0, timeout()).applied_index(Some(log_index), "received 100 logs").await?;
@@ -85,7 +85,7 @@ async fn change_with_new_learner_blocking() -> anyhow::Result<()> {
         log_index += 1;
         router.wait_for_log(&btreeset![0], Some(log_index), timeout(), "add learner").await?;
 
-        let node = router.get_raft_handle(&0)?;
+        let node = router.get_raft_handle(&s(0))?;
         let res = node.change_membership([0, 1], false).await?;
         log_index += 2;
         tracing::info!(log_index, "--- change_membership blocks until success: {:?}", res);
@@ -108,11 +108,11 @@ async fn change_without_adding_learner() -> anyhow::Result<()> {
     let config = Arc::new(Config { ..Default::default() }.validate()?);
     let mut router = RaftRouter::new(config.clone());
 
-    let log_index = router.new_cluster(btreeset! {0}, btreeset! {}).await?;
+    let log_index = router.new_cluster(btreeset! {s(0)}, btreeset! {}).await?;
     router.wait(&0, timeout()).applied_index(Some(log_index), "received 100 logs").await?;
 
     router.new_raft_node(1).await;
-    let leader = router.get_raft_handle(&0)?;
+    let leader = router.get_raft_handle(&s(0))?;
 
     tracing::info!(
         log_index,
@@ -164,11 +164,11 @@ async fn change_with_turn_removed_voter_to_learner() -> anyhow::Result<()> {
     );
     let mut router = RaftRouter::new(config.clone());
     let timeout = Some(Duration::from_millis(1000));
-    let mut log_index = router.new_cluster(btreeset! {0,1,2}, btreeset! {}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {}).await?;
 
     tracing::info!(log_index, "--- write up to 1 logs");
     {
-        router.client_request_many(0, "non_voter_add", 1).await?;
+        router.client_request_many(s(0), "non_voter_add", 1).await?;
         log_index += 1;
 
         // all the nodes MUST recv the log
@@ -176,7 +176,7 @@ async fn change_with_turn_removed_voter_to_learner() -> anyhow::Result<()> {
     }
 
     {
-        let node = router.get_raft_handle(&0)?;
+        let node = router.get_raft_handle(&s(0))?;
         node.change_membership([0, 1], true).await?;
         // 2 for change_membership
         log_index += 2;
@@ -187,7 +187,7 @@ async fn change_with_turn_removed_voter_to_learner() -> anyhow::Result<()> {
 
     tracing::info!(log_index, "--- write up to 1 logs");
     {
-        router.client_request_many(0, "non_voter_add", 1).await?;
+        router.client_request_many(s(0), "non_voter_add", 1).await?;
         log_index += 1;
 
         // node [0,1] MUST recv the log

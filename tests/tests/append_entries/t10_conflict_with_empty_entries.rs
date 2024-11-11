@@ -7,7 +7,6 @@ use suraft::network::RPCOption;
 use suraft::network::RaftNetworkFactory;
 use suraft::raft::AppendEntriesRequest;
 use suraft::testing::blank_ent;
-use suraft::CommittedLeaderId;
 use suraft::Config;
 use suraft::Entry;
 use suraft::EntryPayload;
@@ -15,6 +14,7 @@ use suraft::LogId;
 use suraft::Vote;
 use suraft_memstore::ClientRequest;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -49,56 +49,56 @@ async fn conflict_with_empty_entries() -> Result<()> {
 
     let mut router = RaftRouter::new(config.clone());
 
-    router.new_raft_node(0).await;
+    router.new_raft_node(s(0)).await;
 
     // Expect conflict even if the message contains no entries.
 
     let rpc = AppendEntriesRequest::<suraft_memstore::TypeConfig> {
-        vote: Vote::new_committed(1, 1),
-        prev_log_id: Some(LogId::new(CommittedLeaderId::new(1, 0), 5)),
+        vote: Vote::new_committed(1, s(1)),
+        prev_log_id: Some(LogId::new(1, 5)),
         entries: vec![],
-        leader_commit: Some(LogId::new(CommittedLeaderId::new(1, 0), 5)),
+        leader_commit: Some(LogId::new(1, 5)),
     };
 
     let option = RPCOption::new(Duration::from_millis(1_000));
-    let resp = router.new_client(0, &()).await.append_entries(rpc, option).await?;
+    let resp = router.new_client(s(0), &()).await.append_entries(rpc, option).await?;
     assert!(!resp.is_success());
     assert!(resp.is_conflict());
 
     // Feed logs
 
     let rpc = AppendEntriesRequest::<suraft_memstore::TypeConfig> {
-        vote: Vote::new_committed(1, 1),
+        vote: Vote::new_committed(1, s(1)),
         prev_log_id: None,
-        entries: vec![blank_ent(0, 0, 0), blank_ent(1, 0, 1), Entry {
-            log_id: LogId::new(CommittedLeaderId::new(1, 0), 2),
+        entries: vec![blank_ent(0, 0), blank_ent(1, 1), Entry {
+            log_id: LogId::new(1, 2),
             payload: EntryPayload::Normal(ClientRequest {
                 client: "foo".to_string(),
                 serial: 1,
                 status: "bar".to_string(),
             }),
         }],
-        leader_commit: Some(LogId::new(CommittedLeaderId::new(1, 0), 5)),
+        leader_commit: Some(LogId::new(1, 5)),
     };
 
     let option = RPCOption::new(Duration::from_millis(1_000));
 
-    let resp = router.new_client(0, &()).await.append_entries(rpc, option).await?;
+    let resp = router.new_client(s(0), &()).await.append_entries(rpc, option).await?;
     assert!(resp.is_success());
     assert!(!resp.is_conflict());
 
     // Expect a conflict with prev_log_index == 3
 
     let rpc = AppendEntriesRequest::<suraft_memstore::TypeConfig> {
-        vote: Vote::new_committed(1, 1),
-        prev_log_id: Some(LogId::new(CommittedLeaderId::new(1, 0), 3)),
+        vote: Vote::new_committed(1, s(1)),
+        prev_log_id: Some(LogId::new(1, 3)),
         entries: vec![],
-        leader_commit: Some(LogId::new(CommittedLeaderId::new(1, 0), 5)),
+        leader_commit: Some(LogId::new(1, 5)),
     };
 
     let option = RPCOption::new(Duration::from_millis(1_000));
 
-    let resp = router.new_client(0, &()).await.append_entries(rpc, option).await?;
+    let resp = router.new_client(s(0), &()).await.append_entries(rpc, option).await?;
     assert!(!resp.is_success());
     assert!(resp.is_conflict());
 

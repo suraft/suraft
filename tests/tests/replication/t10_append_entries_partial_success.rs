@@ -5,6 +5,7 @@ use anyhow::Result;
 use maplit::btreeset;
 use suraft::Config;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -19,7 +20,7 @@ async fn append_entries_partial_success() -> Result<()> {
     let mut router = RaftRouter::new(config.clone());
 
     tracing::info!("--- initializing cluster");
-    let mut log_index = router.new_cluster(btreeset! {0,1}, btreeset! {}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0),s(1)}, btreeset! {}).await?;
 
     let quota = 2;
     let n = 5;

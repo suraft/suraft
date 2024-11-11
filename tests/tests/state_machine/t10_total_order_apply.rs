@@ -9,6 +9,7 @@ use suraft::LogIdOptionExt;
 use suraft::ServerState;
 use tokio::sync::watch;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -32,8 +33,8 @@ async fn total_order_apply() -> Result<()> {
 
     tracing::info!("--- initializing single node cluster");
     {
-        let n0 = router.get_raft_handle(&0)?;
-        n0.initialize(btreeset! {0}).await?;
+        let n0 = router.get_raft_handle(&s(0))?;
+        n0.initialize(btreeset! {s(0)}).await?;
 
         router.wait(&0, timeout()).state(ServerState::Leader, "n0 -> leader").await?;
     }
@@ -62,7 +63,7 @@ async fn total_order_apply() -> Result<()> {
     });
 
     let n = 10_000;
-    router.client_request_many(0, "foo", n).await?;
+    router.client_request_many(s(0), "foo", n).await?;
 
     // stop the log checking task.
     tx.send(true)?;

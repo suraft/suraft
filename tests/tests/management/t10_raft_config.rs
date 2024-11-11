@@ -4,6 +4,7 @@ use anyhow::Result;
 use maplit::btreeset;
 use suraft::Config;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -24,11 +25,11 @@ async fn raft_config() -> Result<()> {
     let mut router = RaftRouter::new(config.clone());
 
     tracing::info!("--- initializing cluster");
-    let log_index = router.new_cluster(btreeset! {0}, btreeset! {}).await?;
+    let log_index = router.new_cluster(btreeset! {s(0)}, btreeset! {}).await?;
 
     tracing::info!(log_index, "--- get config");
     {
-        let n0 = router.get_raft_handle(&0)?;
+        let n0 = router.get_raft_handle(&s(0))?;
         let c = n0.config();
 
         #[allow(clippy::bool_assert_comparison)]

@@ -6,6 +6,7 @@ This ensures that committed logs are always visible to the next leader.
 
 However, in practice, it's unfeasible to send all the logs in a single RPC.
 Therefore, the receiving end in the algorithm is modified as follows:
+
 - Proceed only when `prev_log_id` matches the local log id at the same `index`.
 - Save every log entry into the local store if:
     - the entry at the target index is empty.
@@ -19,26 +20,27 @@ In Raft, it is crucial to ensure that all nodes have a consistent state.
 When conflicting logs are present, it can lead to data loss issues.
 Because **that the next leader always chooses committed logs**:
 
--   When a leader is elected, it is essential that it has the most up-to-date log entries,
-    i.e., the committed logs from previous leader.
+- When a leader is elected, it is essential that it has the most up-to-date log entries,
+  i.e., the committed logs from previous leader.
 
--   The conflicting logs on a follower `A` may have a smaller log ID than the last log ID on the leader.
-    Therefore,
-    the next leader may choose another node `B` that has a **greater** log than node
-    `A` but has a **smaller** log than the previous leader.
-  
-    This can lead to data loss.
+- The conflicting logs on a follower `A` may have a smaller log ID than the last log ID on the leader.
+  Therefore,
+  the next leader may choose another node `B` that has a **greater** log than node
+  `A` but has a **smaller** log than the previous leader.
+
+  This can lead to data loss.
 
 By deleting conflicting logs, it ensures that the next leader will have the most up-to-date and committed logs.
 The following diagram shows only the log terms, `*` indicates modified states.
 In this example:
+
 - (1) Initially, R3 and R5 have conflicting logs, `3-0, 3-1, 3-2` vs `2-0, 2-1, 2-2`;
-- (2) If R1, the current leader in term 5, replicates logs to R3 but R3 does not delete conflicting logs `3-1, 3-2`, R1 believes `5-0` is committed;
+- (2) If R1, the current leader in term 5, replicates logs to R3 but R3 does not delete conflicting logs `3-1, 3-2`, R1
+  believes `5-0` is committed;
 - (3) When R5 becomes the leader (max last-log-id wins), it will override the **committed** log entry `5-0` on R3.
 
 To prevent this, deleting the conflicting logs and replicating the leader's logs
 is required to ensure consistency across all nodes.
-
 
 In this scenario,
 it is essential for R3 to delete the conflicting logs `3-1, 3-2`
@@ -126,7 +128,6 @@ R2 | 1-1  1-2  3-3
   inconsistent with the leader. Then it updates `commit_index` to `3` and
   applies `2-3`.
 
-
 ## Algorithm to find the last matching log id on a Follower
 
 When a Leader is established, it does not know which log entries are present on
@@ -136,6 +137,7 @@ each Follower before sending append-entries.
 This process utilizes a binary search:
 
 The Leader uses a span `[matching_log_id, first_conflict_index]` to search:
+
 - The left bound is the last known matching log ID.
 - The right bound is the index of the first known log that the Follower does not have.
 
@@ -143,9 +145,9 @@ This span is defined in `ProgressEntry`, which the Leader uses to track
 replication progress for each Follower/Learner.
 
 ```rust,ignore
-pub(crate) struct ProgressEntry<C> {
+pub(crate) struct ProgressEntry {
     // Left bound
-    pub(crate) matching: Option<LogId<C::NodeId>>,
+    pub(crate) matching: Option<LogId>,
     // Right bound
     pub(crate) searching_end: u64,
 }
@@ -157,7 +159,8 @@ pub(crate) struct ProgressEntry<C> {
   Because the Leader is assumed to have all committed logs. Any logs after
   `leader_last_log_index` are uncommitted and can be safely deleted.
 
-- The Leader sends the log entry at the midpoint of `[ProgressEntry.matching.next_index(), ProgressEntry.searching_end]` to the Follower.
+- The Leader sends the log entry at the midpoint of `[ProgressEntry.matching.next_index(), ProgressEntry.searching_end]`
+  to the Follower.
 
 - If the log entry is accepted, update `ProgressEntry.matching` to the current log ID.
 
@@ -172,7 +175,6 @@ Notes:
 
 - `ProgressEntry.matching.next_index()` refers to the index right after the last
   known matching log ID.
-
 
 ## LogId Appended Multiple Times
 
@@ -223,9 +225,11 @@ As a result, N1's log will be truncated and appended multiple times:
     - N4 truncated all logs on N1 and replicated log `4-1` to N1 before crashing.
     - N1's term and log become `7; 4-1`.
 
-This scenario can repeat, where a log entry with the same `LogId` is truncated and appended multiple times if there are enough nodes in the cluster.
+This scenario can repeat, where a log entry with the same `LogId` is truncated and appended multiple times if there are
+enough nodes in the cluster.
 
-However, it's important to note that a specific `LogId` can only be truncated and appended by a leader with a higher term.
+However, it's important to note that a specific `LogId` can only be truncated and appended by a leader with a higher
+term.
 
 Therefore, the pointer for an IO operation must be represented as `term, LogId(term, index)`.
 In Openraft, the `LogIOId` is `(CommittedLeaderId, LogId)`.

@@ -9,10 +9,11 @@ use crate::raft::message::TransferLeaderRequest;
 use crate::raft_state::IOId;
 use crate::raft_state::LogStateReader;
 use crate::replication::ReplicationSessionId;
-use crate::type_config::alias::LogIdOf;
+use crate::LogId;
 use crate::RaftLogId;
 use crate::RaftState;
 use crate::RaftTypeConfig;
+use crate::NID;
 
 #[cfg(test)]
 mod append_entries_test;
@@ -31,8 +32,8 @@ mod transfer_leader_test;
 pub(crate) struct LeaderHandler<'x, C>
 where C: RaftTypeConfig
 {
-    pub(crate) config: &'x mut EngineConfig<C>,
-    pub(crate) leader: &'x mut Leader<C, LeaderQuorumSet<C>>,
+    pub(crate) config: &'x mut EngineConfig,
+    pub(crate) leader: &'x mut Leader<C, LeaderQuorumSet>,
     pub(crate) state: &'x mut RaftState<C>,
     pub(crate) output: &'x mut EngineOutput<C>,
 }
@@ -109,14 +110,14 @@ where C: RaftTypeConfig
     /// Get the log id for a linearizable read.
     ///
     /// See: [Read Operation](crate::docs::protocol::read)
-    pub(crate) fn get_read_log_id(&self) -> Option<LogIdOf<C>> {
+    pub(crate) fn get_read_log_id(&self) -> Option<LogId> {
         let committed = self.state.committed().cloned();
         // noop log id is the first log this leader proposed.
         std::cmp::max(self.leader.noop_log_id.clone(), committed)
     }
 
     /// Disable proposing new logs for this Leader, and transfer Leader to another node
-    pub(crate) fn transfer_leader(&mut self, to: C::NodeId) {
+    pub(crate) fn transfer_leader(&mut self, to: NID) {
         self.leader.mark_transfer(to.clone());
         self.state.vote.disable_lease();
 

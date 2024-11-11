@@ -175,9 +175,8 @@ mod tests {
     #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
     pub(crate) struct TickUTConfig {}
     impl RaftTypeConfig for TickUTConfig {
-        type D = ();
-        type R = ();
-        type NodeId = u64;
+        type AppData = ();
+        type AppResponse = ();
         type Node = ();
         type Entry = crate::Entry<TickUTConfig>;
         type SnapshotData = Cursor<Vec<u8>>;

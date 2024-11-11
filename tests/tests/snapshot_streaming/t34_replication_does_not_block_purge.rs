@@ -36,22 +36,19 @@ async fn replication_does_not_block_purge() -> Result<()> {
     );
 
     let mut router = RaftRouter::new(config.clone());
-    let mut log_index = router.new_cluster(btreeset! {0}, btreeset! {1,2}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0)}, btreeset! {s(1),s(2)}).await?;
 
-    let leader = router.get_raft_handle(&0)?;
+    let leader = router.get_raft_handle(&s(0))?;
 
     router.set_network_error(1, true);
     router.set_network_error(2, true);
 
     tracing::info!(log_index, "--- build snapshot on leader, check purged log");
     {
-        log_index += router.client_request_many(0, "0", 10).await?;
+        log_index += router.client_request_many(s(0), "0", 10).await?;
 
         leader.trigger().snapshot().await?;
-        leader
-            .wait(timeout())
-            .snapshot(LogId::new(CommittedLeaderId::new(1, 0), log_index), "built snapshot")
-            .await?;
+        leader.wait(timeout()).snapshot(LogId::new(1, log_index), "built snapshot").await?;
 
         sleep(Duration::from_millis(500)).await;
 

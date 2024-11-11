@@ -4,6 +4,7 @@ use maplit::btreeset;
 use pretty_assertions::assert_eq;
 
 use crate::core::ServerState;
+use crate::engine::testing::s;
 use crate::engine::testing::UTConfig;
 use crate::engine::Command;
 use crate::engine::Engine;
@@ -17,7 +18,6 @@ use crate::raft_state::LogStateReader;
 use crate::testing::log_id;
 use crate::type_config::TypeConfigExt;
 use crate::utime::Leased;
-use crate::vote::CommittedLeaderId;
 use crate::Entry;
 use crate::LogId;
 use crate::Membership;
@@ -34,11 +34,11 @@ fn test_initialize_single_node() -> anyhow::Result<()> {
     };
 
     let log_id0 = LogId {
-        leader_id: CommittedLeaderId::new(0, 0),
+        term: CommittedLeaderId::new(0, 0),
         index: 0,
     };
 
-    let m1 = || Membership::<UTConfig>::new(vec![btreeset! {1}], None);
+    let m1 = || Membership::<UTConfig>::new(vec![btreeset! {s(1)}], None);
     let entry = Entry::<UTConfig>::new_membership(LogId::default(), m1());
 
     tracing::info!("--- ok: init empty node 1 with membership(1,2)");
@@ -65,9 +65,11 @@ fn test_initialize_single_node() -> anyhow::Result<()> {
                 // When update the effective membership, the engine set it to Follower.
                 // But when initializing, it will switch to Candidate at once, in the last output
                 // command.
-                Command::SaveVote { vote: Vote::new(1, 1) },
+                Command::SaveVote {
+                    vote: Vote::new(1, s(1))
+                },
                 Command::SendVote {
-                    vote_req: VoteRequest::new(Vote::new(1, 1), Some(log_id(0, 0, 0)))
+                    vote_req: VoteRequest::new(Vote::new(1, s(1)), Some(log_id(0, s(0), 0)))
                 },
             ],
             eng.output.take_commands()
@@ -87,11 +89,11 @@ fn test_initialize() -> anyhow::Result<()> {
     };
 
     let log_id0 = LogId {
-        leader_id: CommittedLeaderId::new(0, 0),
+        term: CommittedLeaderId::new(0, 0),
         index: 0,
     };
 
-    let m12 = || Membership::<UTConfig>::new(vec![btreeset! {1,2}], None);
+    let m12 = || Membership::<UTConfig>::new(vec![btreeset! {s(1),s(2)}], None);
     let entry = || Entry::<UTConfig>::new_membership(LogId::default(), m12());
 
     tracing::info!("--- ok: init empty node 1 with membership(1,2)");
@@ -118,12 +120,14 @@ fn test_initialize() -> anyhow::Result<()> {
                 // When update the effective membership, the engine set it to Follower.
                 // But when initializing, it will switch to Candidate at once, in the last output
                 // command.
-                Command::SaveVote { vote: Vote::new(1, 1) },
+                Command::SaveVote {
+                    vote: Vote::new(1, s(1))
+                },
                 Command::SendVote {
                     vote_req: VoteRequest {
-                        vote: Vote::new(1, 1),
+                        vote: Vote::new(1, s(1)),
                         last_log_id: Some(LogId {
-                            leader_id: CommittedLeaderId::new(0, 0),
+                            term: CommittedLeaderId::new(0, 0),
                             index: 0,
                         },),
                     },
@@ -150,12 +154,12 @@ fn test_initialize() -> anyhow::Result<()> {
     tracing::info!("--- not allowed because of vote");
     {
         let mut eng = eng();
-        eng.state.vote = Leased::new(UTConfig::<()>::now(), Duration::from_millis(500), Vote::new(0, 1));
+        eng.state.vote = Leased::new(UTConfig::<()>::now(), Duration::from_millis(500), Vote::new(0, s(1)));
 
         assert_eq!(
             Err(InitializeError::NotAllowed(NotAllowed {
                 last_log_id: None,
-                vote: Vote::new(0, 1),
+                vote: Vote::new(0, s(1)),
             })),
             eng.initialize(entry())
         );

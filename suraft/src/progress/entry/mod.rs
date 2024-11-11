@@ -11,21 +11,18 @@ use crate::progress::inflight::Inflight;
 use crate::raft_state::LogStateReader;
 use crate::LogId;
 use crate::LogIdOptionExt;
-use crate::RaftTypeConfig;
 
 /// State of replication to a target node.
 #[derive(Clone, Debug)]
 #[derive(PartialEq, Eq)]
-pub(crate) struct ProgressEntry<C>
-where C: RaftTypeConfig
-{
+pub(crate) struct ProgressEntry {
     /// The id of the last matching log on the target following node.
-    pub(crate) matching: Option<LogId<C::NodeId>>,
+    pub(crate) matching: Option<LogId>,
 
     /// The data being transmitted in flight.
     ///
     /// A non-none inflight expects a response when the data was successfully sent or failed.
-    pub(crate) inflight: Inflight<C>,
+    pub(crate) inflight: Inflight,
 
     /// One plus the max log index on the following node that might match the leader log.
     pub(crate) searching_end: u64,
@@ -40,11 +37,9 @@ where C: RaftTypeConfig
     pub(crate) reset_on_reversion: bool,
 }
 
-impl<C> ProgressEntry<C>
-where C: RaftTypeConfig
-{
+impl ProgressEntry {
     #[allow(dead_code)]
-    pub(crate) fn new(matching: Option<LogId<C::NodeId>>) -> Self {
+    pub(crate) fn new(matching: Option<LogId>) -> Self {
         Self {
             matching: matching.clone(),
             inflight: Inflight::None,
@@ -67,7 +62,7 @@ where C: RaftTypeConfig
 
     // This method is only used by tests.
     #[allow(dead_code)]
-    pub(crate) fn with_inflight(mut self, inflight: Inflight<C>) -> Self {
+    pub(crate) fn with_inflight(mut self, inflight: Inflight) -> Self {
         debug_assert_eq!(self.inflight, Inflight::None);
 
         self.inflight = inflight;
@@ -77,7 +72,7 @@ where C: RaftTypeConfig
     /// Return if a range of log id `..=log_id` is inflight sending.
     ///
     /// `prev_log_id` is never inflight.
-    pub(crate) fn is_log_range_inflight(&self, upto: &LogId<C::NodeId>) -> bool {
+    pub(crate) fn is_log_range_inflight(&self, upto: &LogId) -> bool {
         match &self.inflight {
             Inflight::None => false,
             Inflight::Logs { log_id_range, .. } => {
@@ -88,7 +83,7 @@ where C: RaftTypeConfig
         }
     }
 
-    pub(crate) fn update_matching(&mut self, matching: Option<LogId<C::NodeId>>) {
+    pub(crate) fn update_matching(&mut self, matching: Option<LogId>) {
         tracing::debug!(
             self = display(&self),
             matching = display(matching.display()),
@@ -168,9 +163,9 @@ where C: RaftTypeConfig
     /// [algo]: crate::docs::protocol::replication::log_replication#algorithm-to-find-the-last-matching-log-id-on-a-follower
     pub(crate) fn next_send(
         &mut self,
-        log_state: &impl LogStateReader<C>,
+        log_state: &impl LogStateReader,
         max_entries: u64,
-    ) -> Result<&Inflight<C>, &Inflight<C>> {
+    ) -> Result<&Inflight, &Inflight> {
         if !self.inflight.is_none() {
             return Err(&self.inflight);
         }
@@ -237,17 +232,13 @@ where C: RaftTypeConfig
     }
 }
 
-impl<C> Borrow<Option<LogId<C::NodeId>>> for ProgressEntry<C>
-where C: RaftTypeConfig
-{
-    fn borrow(&self) -> &Option<LogId<C::NodeId>> {
+impl Borrow<Option<LogId>> for ProgressEntry {
+    fn borrow(&self) -> &Option<LogId> {
         &self.matching
     }
 }
 
-impl<C> Display for ProgressEntry<C>
-where C: RaftTypeConfig
-{
+impl Display for ProgressEntry {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -259,9 +250,7 @@ where C: RaftTypeConfig
     }
 }
 
-impl<C> Validate for ProgressEntry<C>
-where C: RaftTypeConfig
-{
+impl Validate for ProgressEntry {
     fn validate(&self) -> Result<(), Box<dyn Error>> {
         validit::less_equal!(self.matching.next_index(), self.searching_end);
 

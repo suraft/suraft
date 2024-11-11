@@ -17,6 +17,7 @@ use crate::type_config::alias::WatchReceiverOf;
 use crate::type_config::TypeConfigExt;
 use crate::Config;
 use crate::RaftTypeConfig;
+use crate::NID;
 
 /// A dedicate worker sending heartbeat to a specific follower.
 pub struct HeartbeatWorker<C, N>
@@ -24,14 +25,14 @@ where
     C: RaftTypeConfig,
     N: RaftNetworkV2<C>,
 {
-    pub(crate) id: C::NodeId,
+    pub(crate) id: NID,
 
     /// The receiver will be changed when a new heartbeat is needed to be sent.
     pub(crate) rx: WatchReceiverOf<C, Option<HeartbeatEvent<C>>>,
 
     pub(crate) network: N,
 
-    pub(crate) target: C::NodeId,
+    pub(crate) target: NID,
 
     #[allow(dead_code)]
     pub(crate) node: C::Node,

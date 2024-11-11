@@ -6,7 +6,7 @@ use crate::RaftTypeConfig;
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize), serde(bound = ""))]
 pub enum AllowNextRevertError<C: RaftTypeConfig> {
     #[error("Can not set allow_next_revert; error: {0}")]
-    NodeNotFound(#[from] NodeNotFound<C>),
+    NodeNotFound(#[from] NodeNotFound),
     #[error("Can not set allow_next_revert; error: {0}")]
     ForwardToLeader(#[from] ForwardToLeader<C>),
 }

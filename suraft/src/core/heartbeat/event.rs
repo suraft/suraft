@@ -24,23 +24,19 @@ where C: RaftTypeConfig
     /// The response that matches this session id is considered as a valid response.
     /// Otherwise, it is considered as an outdated response from older leader or older cluster
     /// membership config and will be ignored.
-    pub(crate) session_id: ReplicationSessionId<C>,
+    pub(crate) session_id: ReplicationSessionId,
 
     /// The last known committed log id of the Leader.
     ///
     /// When there are no new logs to replicate, the Leader sends a heartbeat to replicate committed
     /// log id to followers to update their committed log id.
-    pub(crate) committed: Option<LogId<C::NodeId>>,
+    pub(crate) committed: Option<LogId>,
 }
 
 impl<C> HeartbeatEvent<C>
 where C: RaftTypeConfig
 {
-    pub(crate) fn new(
-        time: InstantOf<C>,
-        session_id: ReplicationSessionId<C>,
-        committed: Option<LogId<C::NodeId>>,
-    ) -> Self {
+    pub(crate) fn new(time: InstantOf<C>, session_id: ReplicationSessionId, committed: Option<LogId>) -> Self {
         Self {
             time,
             session_id,

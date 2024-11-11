@@ -77,7 +77,7 @@ where C: RaftTypeConfig
     }
 
     /// Figure out the error subject and verb from the kind of response `Notification`.
-    fn make_storage_error(&self, e: io::Error) -> StorageError<C> {
+    fn make_storage_error(&self, e: io::Error) -> StorageError {
         match &self.notification {
             Notification::VoteResponse { .. } => StorageError::from_io_error(ErrorSubject::Vote, ErrorVerb::Write, e),
             Notification::LocalIO { io_id } => {
@@ -101,8 +101,8 @@ where C: RaftTypeConfig
 pub struct LogApplied<C>
 where C: RaftTypeConfig
 {
-    last_log_id: LogId<C::NodeId>,
-    tx: OneshotSenderOf<C, Result<(LogId<C::NodeId>, Vec<C::R>), StorageError<C>>>,
+    last_log_id: LogId,
+    tx: OneshotSenderOf<C, Result<(LogId, Vec<C::AppResponse>), StorageError>>,
 }
 
 impl<C> LogApplied<C>
@@ -110,8 +110,8 @@ where C: RaftTypeConfig
 {
     #[allow(dead_code)]
     pub(crate) fn new(
-        last_log_id: LogId<C::NodeId>,
-        tx: OneshotSenderOf<C, Result<(LogId<C::NodeId>, Vec<C::R>), StorageError<C>>>,
+        last_log_id: LogId,
+        tx: OneshotSenderOf<C, Result<(LogId, Vec<C::AppResponse>), StorageError>>,
     ) -> Self {
         Self { last_log_id, tx }
     }
@@ -120,7 +120,7 @@ where C: RaftTypeConfig
     ///
     /// It will be called when the log is successfully applied to the state machine or an error
     /// occurs.
-    pub fn completed(self, result: Result<Vec<C::R>, StorageError<C>>) {
+    pub fn completed(self, result: Result<Vec<C::AppResponse>, StorageError>) {
         let res = match result {
             Ok(x) => {
                 tracing::debug!("LogApplied upto {}", self.last_log_id);

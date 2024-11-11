@@ -2,27 +2,22 @@ use std::fmt;
 
 use crate::metrics::metric_display::MetricDisplay;
 use crate::metrics::Metric;
-use crate::RaftTypeConfig;
 
 /// A condition that the application wait for.
 #[derive(Debug)]
-pub(crate) enum Condition<C>
-where C: RaftTypeConfig
-{
-    GE(Metric<C>),
-    EQ(Metric<C>),
+pub(crate) enum Condition {
+    GE(Metric),
+    EQ(Metric),
 }
 
-impl<C> Condition<C>
-where C: RaftTypeConfig
-{
+impl Condition {
     /// Build a new condition which the application will await to meet or exceed.
-    pub(crate) fn ge(v: Metric<C>) -> Self {
+    pub(crate) fn ge(v: Metric) -> Self {
         Self::GE(v)
     }
 
     /// Build a new condition which the application will await to meet.
-    pub(crate) fn eq(v: Metric<C>) -> Self {
+    pub(crate) fn eq(v: Metric) -> Self {
         Self::EQ(v)
     }
 
@@ -40,7 +35,7 @@ where C: RaftTypeConfig
         }
     }
 
-    pub(crate) fn value(&self) -> MetricDisplay<'_, C> {
+    pub(crate) fn value(&self) -> MetricDisplay<'_> {
         match self {
             Condition::GE(v) => v.value(),
             Condition::EQ(v) => v.value(),
@@ -48,9 +43,7 @@ where C: RaftTypeConfig
     }
 }
 
-impl<C> fmt::Display for Condition<C>
-where C: RaftTypeConfig
-{
+impl fmt::Display for Condition {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}{}{}", self.name(), self.op(), self.value())
     }

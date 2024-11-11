@@ -38,7 +38,7 @@ mod handle_message_vote_test;
 pub(crate) struct VoteHandler<'st, C>
 where C: RaftTypeConfig
 {
-    pub(crate) config: &'st mut EngineConfig<C>,
+    pub(crate) config: &'st mut EngineConfig,
     pub(crate) state: &'st mut RaftState<C>,
     pub(crate) output: &'st mut EngineOutput<C>,
     pub(crate) leader: &'st mut LeaderState<C>,
@@ -59,7 +59,7 @@ where C: RaftTypeConfig
     #[tracing::instrument(level = "debug", skip_all)]
     pub(crate) fn accept_vote<T, E, F>(
         &mut self,
-        vote: &Vote<C::NodeId>,
+        vote: &Vote,
         tx: ResultSender<C, T, E>,
         f: F,
     ) -> Option<ResultSender<C, T, E>>
@@ -67,7 +67,7 @@ where C: RaftTypeConfig
         T: Debug + Eq + OptionalSend,
         E: Debug + Eq + OptionalSend,
         Respond<C>: From<ValueSender<C, Result<T, E>>>,
-        F: Fn(&RaftState<C>, RejectVoteRequest<C>) -> Result<T, E>,
+        F: Fn(&RaftState<C>, RejectVoteRequest) -> Result<T, E>,
     {
         let vote_res = self.update_vote(vote);
 
@@ -98,7 +98,7 @@ where C: RaftTypeConfig
     /// Note: This method does not check last-log-id. handle-vote-request has to deal with
     /// last-log-id itself.
     #[tracing::instrument(level = "debug", skip_all)]
-    pub(crate) fn update_vote(&mut self, vote: &Vote<C::NodeId>) -> Result<(), RejectVoteRequest<C>> {
+    pub(crate) fn update_vote(&mut self, vote: &Vote) -> Result<(), RejectVoteRequest> {
         // Partial ord compare:
         // Vote does not have to be total ord.
         // `!(a >= b)` does not imply `a < b`.
@@ -209,8 +209,7 @@ where C: RaftTypeConfig
         // If the leader has not yet proposed any log, propose a blank log and initiate replication;
         // Otherwise, just initiate replication.
         if last_log_id < noop_log_id {
-            self.leader_handler()
-                .leader_append_entries(vec![C::Entry::new_blank(LogId::<C::NodeId>::default())]);
+            self.leader_handler().leader_append_entries(vec![C::Entry::new_blank(LogId::default())]);
         } else {
             self.replication_handler().initiate_replication();
         }

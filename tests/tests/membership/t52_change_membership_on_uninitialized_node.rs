@@ -24,7 +24,7 @@ async fn change_membership_on_uninitialized_node() -> Result<()> {
     let mut router = RaftRouter::new(config.clone());
     router.new_raft_node(0).await;
 
-    let n0 = router.get_raft_handle(&0)?;
+    let n0 = router.get_raft_handle(&s(0))?;
     let res = n0.change_membership(ChangeMembers::AddVoters(btreemap! {0=>()}), false).await;
     tracing::info!("{:?}", res);
 

@@ -1,61 +1,9 @@
 use std::fmt::Debug;
 use std::fmt::Display;
 use std::fmt::Formatter;
-use std::hash::Hash;
 
 use crate::OptionalSend;
 use crate::OptionalSync;
-
-/// Essential trait bound for node-id, except serde.
-#[doc(hidden)]
-pub trait NodeIdEssential:
-    Sized
-    + OptionalSend
-    + OptionalSync
-    + Eq
-    + PartialEq
-    + Ord
-    + PartialOrd
-    + Debug
-    + Display
-    + Hash
-    + Clone
-    + Default
-    + 'static
-{
-}
-
-impl<T> NodeIdEssential for T where T: Sized
-        + OptionalSend
-        + OptionalSync
-        + Eq
-        + PartialEq
-        + Ord
-        + PartialOrd
-        + Debug
-        + Display
-        + Hash
-        + Copy
-        + Clone
-        + Default
-        + 'static
-{
-}
-
-/// A Raft node's ID.
-///
-/// A `NodeId` uniquely identifies a node in the Raft cluster.
-#[cfg(feature = "serde")]
-pub trait NodeId: NodeIdEssential + serde::Serialize + for<'a> serde::Deserialize<'a> {}
-
-#[cfg(feature = "serde")]
-impl<T> NodeId for T where T: NodeIdEssential + serde::Serialize + for<'a> serde::Deserialize<'a> {}
-
-#[cfg(not(feature = "serde"))]
-pub trait NodeId: NodeIdEssential {}
-
-#[cfg(not(feature = "serde"))]
-impl<T> NodeId for T where T: NodeIdEssential {}
 
 /// Essential trait bound for application level node-data, except serde.
 pub trait NodeEssential:
@@ -81,6 +29,9 @@ pub trait Node: NodeEssential {}
 
 #[cfg(not(feature = "serde"))]
 impl<T> Node for T where T: NodeEssential {}
+
+// TODO: rename it
+pub type NID = String;
 
 /// EmptyNode is an implementation of trait [`Node`] that contains nothing.
 ///

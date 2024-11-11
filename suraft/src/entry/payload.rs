@@ -12,7 +12,7 @@ pub enum EntryPayload<C: RaftTypeConfig> {
     /// An empty payload committed by a new cluster leader.
     Blank,
 
-    Normal(C::D),
+    Normal(C::AppData),
 
     /// A change-membership log entry.
     Membership(Membership<C>),
@@ -21,7 +21,7 @@ pub enum EntryPayload<C: RaftTypeConfig> {
 impl<C> Clone for EntryPayload<C>
 where
     C: RaftTypeConfig,
-    C::D: Clone,
+    C::AppData: Clone,
 {
     fn clone(&self) -> Self {
         match self {

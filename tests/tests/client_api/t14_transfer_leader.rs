@@ -28,11 +28,11 @@ async fn transfer_leader() -> anyhow::Result<()> {
     let mut router = RaftRouter::new(config.clone());
 
     tracing::info!("--- initializing cluster");
-    let _log_index = router.new_cluster(btreeset! {0,1,2}, btreeset! {}).await?;
+    let _log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {}).await?;
 
-    let n0 = router.get_raft_handle(&0)?;
-    let n1 = router.get_raft_handle(&1)?;
-    let n2 = router.get_raft_handle(&2)?;
+    let n0 = router.get_raft_handle(&s(0))?;
+    let n1 = router.get_raft_handle(&s(1))?;
+    let n2 = router.get_raft_handle(&s(2))?;
 
     let metrics = n0.metrics().borrow().clone();
     let leader_vote = metrics.vote;
@@ -86,11 +86,11 @@ async fn trigger_transfer_leader() -> anyhow::Result<()> {
     let mut router = RaftRouter::new(config.clone());
 
     tracing::info!("--- initializing cluster");
-    let _log_index = router.new_cluster(btreeset! {0,1,2}, btreeset! {}).await?;
+    let _log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {}).await?;
 
-    let n0 = router.get_raft_handle(&0)?;
-    let n1 = router.get_raft_handle(&1)?;
-    let n2 = router.get_raft_handle(&2)?;
+    let n0 = router.get_raft_handle(&s(0))?;
+    let n1 = router.get_raft_handle(&s(1))?;
+    let n2 = router.get_raft_handle(&s(2))?;
 
     tracing::info!("--- trigger transfer Leader from 0 to 2");
     {

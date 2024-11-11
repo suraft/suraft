@@ -1,8 +1,8 @@
 # Vote
 
 ```ignore
-struct Vote<NID: NodeId> {
-    leader_id: LeaderId<NID>,
+struct Vote {
+    leader_id: LeaderId,
     committed: bool,
 }
 ```
@@ -13,7 +13,8 @@ Essentially, each `vote` represents a distinct time point, similar to the concep
 In a standard Raft, the corresponding concept is `(term, voted_for: Option<NodeId>)`.
 
 The validity checking for RPCs in Openraft, such as when handling vote or append-entries requests,
-is straightforward. Essentially, **a node will grant a `Vote` only if it is greater than or equal to the last `Vote` it has seen**.
+is straightforward. Essentially, **a node will grant a `Vote` only if it is greater than or equal to the last `Vote` it
+has seen**.
 Refer to the `PartialOrd` implementation for [`Vote`]. The pseudocode about vote order checking is as follows:
 
 ```ignore
@@ -34,12 +35,12 @@ i.e., it is legal that `!(vote_a => vote_b) && !(vote_a <= vote_b)`.
 Because `Vote.leader_id` may be a partial order value:
 
 Openraft provides two election modes.
+
 - the default mode: every term may have more than one leader.
 - and the standard Raft mode: every term has only one leader(enabled by [`single-term-leader`]),
 
 The only difference between these two modes is the definition of `LeaderId`, and the `PartialOrd` implementation of it.
 See: [`leader-id`].
-
 
 ## Vote and Membership define the server state
 
@@ -56,16 +57,16 @@ new membership log is replicated to a follower or learner.
 E.g.:
 
 - Node-2 with vote `(term=1, node_id=2, committed=true)`:
-  - is a leader if it is **present** in config, either a voter or non-voter.
-  - is a learner if it is **absent** in config.
+    - is a leader if it is **present** in config, either a voter or non-voter.
+    - is a learner if it is **absent** in config.
 
 - Node-2 with vote `(term=1, node_id=2, committed=false)`:
-  - is a candidate if it is **present** in config, either a voter or non-voter.
-  - is a learner if it is **absent** in config.
+    - is a candidate if it is **present** in config, either a voter or non-voter.
+    - is a learner if it is **absent** in config.
 
 - Node-3 with vote `(term=1, node_id=99, committed=false|true)`:
-  - is a follower if it is a **voter** in config,
-  - is a learner if it is a **non-voter** or **absent** in config.
+    - is a follower if it is a **voter** in config,
+    - is a learner if it is a **non-voter** or **absent** in config.
 
 For node-2:
 
@@ -76,8 +77,8 @@ For node-2:
 | (term=1, node_id=99, committed=true)  | follower  | learner   | learner |
 | (term=1, node_id=99, committed=false) | follower  | learner   | learner |
 
-
-
 [`Vote`]: `crate::vote::Vote`
+
 [`single-term-leader`]: `crate::docs::feature_flags`
+
 [`leader-id`]: `crate::docs::data::leader_id`

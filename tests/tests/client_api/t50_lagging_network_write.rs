@@ -33,20 +33,20 @@ async fn lagging_network_write() -> Result<()> {
     let mut router = RaftRouter::builder(config).send_delay(50).build();
 
     tracing::info!("--- initializing cluster");
-    let mut log_index = router.new_cluster(btreeset! {0}, btreeset! {1,2}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0)}, btreeset! {s(1),s(2)}).await?;
 
-    router.client_request_many(0, "client", 1).await?;
+    router.client_request_many(s(0), "client", 1).await?;
     log_index += 1;
     router.wait_for_log(&btreeset![0, 1, 2], Some(log_index), timeout(), "write one log").await?;
 
-    let node = router.get_raft_handle(&0)?;
+    let node = router.get_raft_handle(&s(0))?;
     node.change_membership([0, 1, 2], false).await?;
     log_index += 2;
     router.wait_for_state(&btreeset![0], ServerState::Leader, None, "changed").await?;
     router.wait_for_state(&btreeset![1, 2], ServerState::Follower, None, "changed").await?;
     router.wait_for_log(&btreeset![0, 1, 2], Some(log_index), timeout(), "3 candidates").await?;
 
-    router.client_request_many(0, "client", 1).await?;
+    router.client_request_many(s(0), "client", 1).await?;
     log_index += 1;
     router.wait_for_log(&btreeset![0, 1, 2], Some(log_index), timeout(), "write 2nd log").await?;
 

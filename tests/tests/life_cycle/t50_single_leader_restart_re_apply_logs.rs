@@ -31,11 +31,11 @@ async fn single_leader_restart_re_apply_logs() -> anyhow::Result<()> {
     router.enable_saving_committed = false;
 
     tracing::info!("--- bring up cluster of 1 node");
-    let mut log_index = router.new_cluster(btreeset! {0}, btreeset! {}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0)}, btreeset! {}).await?;
 
     tracing::info!(log_index, "--- write to 1 log");
     {
-        log_index += router.client_request_many(0, "foo", 1).await?;
+        log_index += router.client_request_many(s(0), "foo", 1).await?;
     }
 
     tracing::info!(log_index, "--- stop and restart node-0");

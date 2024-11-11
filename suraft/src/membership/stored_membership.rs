@@ -4,6 +4,7 @@ use crate::display_ext::DisplayOption;
 use crate::LogId;
 use crate::Membership;
 use crate::RaftTypeConfig;
+use crate::NID;
 
 /// This struct represents information about a membership config that has already been stored in the
 /// raft logs.
@@ -21,7 +22,7 @@ pub struct StoredMembership<C>
 where C: RaftTypeConfig
 {
     /// The id of the log that stores this membership config
-    log_id: Option<LogId<C::NodeId>>,
+    log_id: Option<LogId>,
 
     /// Membership config
     membership: Membership<C>,
@@ -30,11 +31,11 @@ where C: RaftTypeConfig
 impl<C> StoredMembership<C>
 where C: RaftTypeConfig
 {
-    pub fn new(log_id: Option<LogId<C::NodeId>>, membership: Membership<C>) -> Self {
+    pub fn new(log_id: Option<LogId>, membership: Membership<C>) -> Self {
         Self { log_id, membership }
     }
 
-    pub fn log_id(&self) -> &Option<LogId<C::NodeId>> {
+    pub fn log_id(&self) -> &Option<LogId> {
         &self.log_id
     }
 
@@ -42,11 +43,11 @@ where C: RaftTypeConfig
         &self.membership
     }
 
-    pub fn voter_ids(&self) -> impl Iterator<Item = C::NodeId> {
+    pub fn voter_ids(&self) -> impl Iterator<Item = NID> {
         self.membership.voter_ids()
     }
 
-    pub fn nodes(&self) -> impl Iterator<Item = (&C::NodeId, &C::Node)> {
+    pub fn nodes(&self) -> impl Iterator<Item = (&NID, &C::Node)> {
         self.membership.nodes()
     }
 }

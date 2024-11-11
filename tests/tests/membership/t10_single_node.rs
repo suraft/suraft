@@ -33,20 +33,12 @@ async fn single_node() -> Result<()> {
     let mut router = RaftRouter::new(config.clone());
 
     tracing::info!("--- initializing cluster");
-    let mut log_index = router.new_cluster(btreeset! {0}, btreeset! {}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0)}, btreeset! {}).await?;
 
     // Write some data to the single node cluster.
-    log_index += router.client_request_many(0, "0", 1000).await?;
+    log_index += router.client_request_many(s(0), "0", 1000).await?;
     router.wait_for_log(&btreeset![0], Some(log_index), timeout(), "client_request_many").await?;
-    router
-        .assert_storage_state(
-            1,
-            log_index,
-            Some(0),
-            LogId::new(CommittedLeaderId::new(1, 0), log_index),
-            None,
-        )
-        .await?;
+    router.assert_storage_state(1, log_index, Some(0), LogId::new(1, log_index), None).await?;
 
     // Read some data from the single node cluster.
     router.ensure_linearizable(0).await?;

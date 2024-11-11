@@ -8,10 +8,10 @@ use crate::progress::VecProgress;
 use crate::proposer::Leader;
 use crate::quorum::QuorumSet;
 use crate::type_config::alias::InstantOf;
-use crate::type_config::alias::LogIdOf;
 use crate::LogId;
 use crate::RaftTypeConfig;
 use crate::Vote;
+use crate::NID;
 
 /// Candidate: voting state.
 #[derive(Clone, Debug)]
@@ -19,28 +19,28 @@ use crate::Vote;
 pub(crate) struct Candidate<C, QS>
 where
     C: RaftTypeConfig,
-    QS: QuorumSet<C::NodeId>,
+    QS: QuorumSet<NID>,
 {
     /// When the voting is started.
     starting_time: InstantOf<C>,
 
     /// The vote.
-    vote: Vote<C::NodeId>,
+    vote: Vote,
 
-    last_log_id: Option<LogIdOf<C>>,
+    last_log_id: Option<LogId>,
 
     /// Which nodes have granted the the vote at certain time point.
-    progress: VecProgress<C::NodeId, bool, bool, QS>,
+    progress: VecProgress<NID, bool, bool, QS>,
 
     quorum_set: QS,
 
-    learner_ids: Vec<C::NodeId>,
+    learner_ids: Vec<NID>,
 }
 
 impl<C, QS> fmt::Display for Candidate<C, QS>
 where
     C: RaftTypeConfig,
-    QS: QuorumSet<C::NodeId> + fmt::Debug + 'static,
+    QS: QuorumSet<NID> + fmt::Debug + 'static,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
@@ -57,14 +57,14 @@ where
 impl<C, QS> Candidate<C, QS>
 where
     C: RaftTypeConfig,
-    QS: QuorumSet<C::NodeId> + fmt::Debug + Clone + 'static,
+    QS: QuorumSet<NID> + fmt::Debug + Clone + 'static,
 {
     pub(crate) fn new(
         starting_time: InstantOf<C>,
-        vote: Vote<C::NodeId>,
-        last_log_id: Option<LogIdOf<C>>,
+        vote: Vote,
+        last_log_id: Option<LogId>,
         quorum_set: QS,
-        learner_ids: impl IntoIterator<Item = C::NodeId>,
+        learner_ids: impl IntoIterator<Item = NID>,
     ) -> Self {
         Self {
             starting_time,
@@ -76,20 +76,20 @@ where
         }
     }
 
-    pub(crate) fn vote_ref(&self) -> &Vote<C::NodeId> {
+    pub(crate) fn vote_ref(&self) -> &Vote {
         &self.vote
     }
 
-    pub(crate) fn last_log_id(&self) -> Option<&LogId<C::NodeId>> {
+    pub(crate) fn last_log_id(&self) -> Option<&LogId> {
         self.last_log_id.as_ref()
     }
 
-    pub(crate) fn progress(&self) -> &VecProgress<C::NodeId, bool, bool, QS> {
+    pub(crate) fn progress(&self) -> &VecProgress<NID, bool, bool, QS> {
         &self.progress
     }
 
     /// Grant the vote by a node.
-    pub(crate) fn grant_by(&mut self, target: &C::NodeId) -> bool {
+    pub(crate) fn grant_by(&mut self, target: &NID) -> bool {
         let granted = *self.progress.update(target, true).expect("target not in quorum set");
 
         tracing::info!(voting = display(&self), "{}", func_name!());
@@ -99,7 +99,7 @@ where
 
     /// Return the node ids that has granted this vote.
     #[allow(dead_code)]
-    pub(crate) fn granters(&self) -> impl Iterator<Item = C::NodeId> + '_ {
+    pub(crate) fn granters(&self) -> impl Iterator<Item = NID> + '_ {
         self.progress().iter().filter(|(_, granted)| *granted).map(|(target, _)| target.clone())
     }
 

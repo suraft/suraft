@@ -11,21 +11,17 @@ use crate::Vote;
 ///
 /// This is used to specify which metric to observe.
 #[derive(Debug)]
-pub enum Metric<C>
-where C: RaftTypeConfig
-{
+pub enum Metric {
     Term(u64),
-    Vote(Vote<C::NodeId>),
+    Vote(Vote),
     LastLogIndex(Option<u64>),
-    Applied(Option<LogId<C::NodeId>>),
+    Applied(Option<LogId>),
     AppliedIndex(Option<u64>),
-    Snapshot(Option<LogId<C::NodeId>>),
-    Purged(Option<LogId<C::NodeId>>),
+    Snapshot(Option<LogId>),
+    Purged(Option<LogId>),
 }
 
-impl<C> Metric<C>
-where C: RaftTypeConfig
-{
+impl Metric {
     pub(crate) fn name(&self) -> &'static str {
         match self {
             Metric::Term(_) => "term",
@@ -38,16 +34,16 @@ where C: RaftTypeConfig
         }
     }
 
-    pub(crate) fn value(&self) -> MetricDisplay<'_, C> {
+    pub(crate) fn value(&self) -> MetricDisplay<'_> {
         MetricDisplay { metric: self }
     }
 }
 
 /// Metric can be compared with RaftMetrics by comparing the corresponding field of RaftMetrics.
-impl<C> PartialEq<Metric<C>> for RaftMetrics<C>
+impl<C> PartialEq<Metric> for RaftMetrics<C>
 where C: RaftTypeConfig
 {
-    fn eq(&self, other: &Metric<C>) -> bool {
+    fn eq(&self, other: &Metric) -> bool {
         match other {
             Metric::Term(v) => self.current_term == *v,
             Metric::Vote(v) => &self.vote == v,
@@ -61,10 +57,10 @@ where C: RaftTypeConfig
 }
 
 /// Metric can be compared with RaftMetrics by comparing the corresponding field of RaftMetrics.
-impl<C> PartialOrd<Metric<C>> for RaftMetrics<C>
+impl<C> PartialOrd<Metric> for RaftMetrics<C>
 where C: RaftTypeConfig
 {
-    fn partial_cmp(&self, other: &Metric<C>) -> Option<Ordering> {
+    fn partial_cmp(&self, other: &Metric) -> Option<Ordering> {
         match other {
             Metric::Term(v) => Some(self.current_term.cmp(v)),
             Metric::Vote(v) => self.vote.partial_cmp(v),

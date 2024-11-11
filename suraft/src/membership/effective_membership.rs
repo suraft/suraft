@@ -11,6 +11,7 @@ use crate::LogId;
 use crate::Membership;
 use crate::RaftTypeConfig;
 use crate::StoredMembership;
+use crate::NID;
 
 /// The currently active membership config.
 ///
@@ -26,10 +27,10 @@ where C: RaftTypeConfig
     stored_membership: Arc<StoredMembership<C>>,
 
     /// The quorum set built from `membership`.
-    quorum_set: Joint<C::NodeId, Vec<C::NodeId>, Vec<Vec<C::NodeId>>>,
+    quorum_set: Joint<NID, Vec<NID>, Vec<Vec<NID>>>,
 
     /// Cache of union of all members
-    voter_ids: BTreeSet<C::NodeId>,
+    voter_ids: BTreeSet<NID>,
 }
 
 impl<C> Debug for EffectiveMembership<C>
@@ -55,7 +56,7 @@ where C: RaftTypeConfig
 impl<C, LID> From<(&LID, Membership<C>)> for EffectiveMembership<C>
 where
     C: RaftTypeConfig,
-    LID: RaftLogId<C::NodeId>,
+    LID: RaftLogId,
 {
     fn from(v: (&LID, Membership<C>)) -> Self {
         EffectiveMembership::new(Some(v.0.get_log_id().clone()), v.1)
@@ -65,11 +66,11 @@ where
 impl<C> EffectiveMembership<C>
 where C: RaftTypeConfig
 {
-    pub(crate) fn new_arc(log_id: Option<LogId<C::NodeId>>, membership: Membership<C>) -> Arc<Self> {
+    pub(crate) fn new_arc(log_id: Option<LogId>, membership: Membership<C>) -> Arc<Self> {
         Arc::new(Self::new(log_id, membership))
     }
 
-    pub fn new(log_id: Option<LogId<C::NodeId>>, membership: Membership<C>) -> Self {
+    pub fn new(log_id: Option<LogId>, membership: Membership<C>) -> Self {
         let voter_ids = membership.voter_ids().collect();
 
         let configs = membership.get_joint_config();
@@ -95,7 +96,7 @@ where C: RaftTypeConfig
         &self.stored_membership
     }
 
-    pub fn log_id(&self) -> &Option<LogId<C::NodeId>> {
+    pub fn log_id(&self) -> &Option<LogId> {
         self.stored_membership.log_id()
     }
 
@@ -109,27 +110,27 @@ impl<C> EffectiveMembership<C>
 where C: RaftTypeConfig
 {
     #[allow(dead_code)]
-    pub(crate) fn is_voter(&self, nid: &C::NodeId) -> bool {
+    pub(crate) fn is_voter(&self, nid: &NID) -> bool {
         self.membership().is_voter(nid)
     }
 
     /// Returns an Iterator of all voter node ids. Learners are not included.
-    pub fn voter_ids(&self) -> impl Iterator<Item = C::NodeId> + '_ {
+    pub fn voter_ids(&self) -> impl Iterator<Item = NID> + '_ {
         self.voter_ids.iter().cloned()
     }
 
     /// Returns an Iterator of all learner node ids. Voters are not included.
-    pub(crate) fn learner_ids(&self) -> impl Iterator<Item = C::NodeId> + '_ {
+    pub(crate) fn learner_ids(&self) -> impl Iterator<Item = NID> + '_ {
         self.membership().learner_ids()
     }
 
     /// Get a the node(either voter or learner) by node id.
-    pub fn get_node(&self, node_id: &C::NodeId) -> Option<&C::Node> {
+    pub fn get_node(&self, node_id: &NID) -> Option<&C::Node> {
         self.membership().get_node(node_id)
     }
 
     /// Returns an Iterator of all nodes(voters and learners).
-    pub fn nodes(&self) -> impl Iterator<Item = (&C::NodeId, &C::Node)> {
+    pub fn nodes(&self) -> impl Iterator<Item = (&NID, &C::Node)> {
         self.membership().nodes()
     }
 
@@ -137,7 +138,7 @@ where C: RaftTypeConfig
     ///
     /// Membership is defined by a joint of multiple configs.
     /// Each config is a vec of node-id.
-    pub fn get_joint_config(&self) -> &Vec<Vec<C::NodeId>> {
+    pub fn get_joint_config(&self) -> &Vec<Vec<NID>> {
         self.quorum_set.children()
     }
 }
@@ -156,12 +157,12 @@ where C: RaftTypeConfig
 }
 
 /// Implement node-id joint quorum set.
-impl<C> QuorumSet<C::NodeId> for EffectiveMembership<C>
+impl<C> QuorumSet<NID> for EffectiveMembership<C>
 where C: RaftTypeConfig
 {
-    type Iter = std::collections::btree_set::IntoIter<C::NodeId>;
+    type Iter = std::collections::btree_set::IntoIter<NID>;
 
-    fn is_quorum<'a, I: Iterator<Item = &'a C::NodeId> + Clone>(&self, ids: I) -> bool {
+    fn is_quorum<'a, I: Iterator<Item = &'a NID> + Clone>(&self, ids: I) -> bool {
         self.quorum_set.is_quorum(ids)
     }
 

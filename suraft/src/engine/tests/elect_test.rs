@@ -6,6 +6,7 @@ use maplit::btreeset;
 use pretty_assertions::assert_eq;
 
 use crate::core::ServerState;
+use crate::engine::testing::s;
 use crate::engine::testing::UTConfig;
 use crate::engine::Command;
 use crate::engine::Engine;
@@ -14,23 +15,22 @@ use crate::raft::VoteRequest;
 use crate::testing::log_id;
 use crate::type_config::TypeConfigExt;
 use crate::utime::Leased;
-use crate::CommittedLeaderId;
 use crate::EffectiveMembership;
 use crate::LogId;
 use crate::Membership;
 use crate::Vote;
 
 fn m1() -> Membership<UTConfig> {
-    Membership::new(vec![btreeset! {1}], None)
+    Membership::new(vec![btreeset! {s(1)}], None)
 }
 
 fn m12() -> Membership<UTConfig> {
-    Membership::new(vec![btreeset! {1,2}], None)
+    Membership::new(vec![btreeset! {s(1),s(2)}], None)
 }
 
 fn eng() -> Engine<UTConfig> {
-    let mut eng = Engine::testing_default(0);
-    eng.state.log_ids = LogIdList::new([LogId::new(CommittedLeaderId::new(0, 0), 0)]);
+    let mut eng = Engine::testing_default(s(0));
+    eng.state.log_ids = LogIdList::new([LogId::new(0, 0)]);
     eng.state.enable_validation(false); // Disable validation for incomplete state
     eng
 }
@@ -43,11 +43,11 @@ fn test_elect_single_node() -> anyhow::Result<()> {
         eng.config.id = 1;
         eng.state
             .membership_state
-            .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(0, 1, 1)), m1())));
+            .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(0, s(1), 1)), m1())));
 
         eng.elect();
 
-        assert_eq!(Vote::new(1, 1), *eng.state.vote_ref());
+        assert_eq!(Vote::new(1, s(1)), *eng.state.vote_ref());
         assert!(eng.leader.is_none());
         assert!(eng.candidate_ref().is_some(), "candidate state is pending");
 
@@ -56,11 +56,13 @@ fn test_elect_single_node() -> anyhow::Result<()> {
         assert_eq!(
             vec![
                 //
-                Command::SaveVote { vote: Vote::new(1, 1) },
+                Command::SaveVote {
+                    vote: Vote::new(1, s(1))
+                },
                 Command::SendVote {
                     vote_req: VoteRequest {
-                        vote: Vote::new(1, 1),
-                        last_log_id: Some(log_id(0, 0, 0)),
+                        vote: Vote::new(1, s(1)),
+                        last_log_id: Some(log_id(0, s(0), 0)),
                     },
                 },
             ],
@@ -79,21 +81,21 @@ fn test_elect_single_node_elect_again() -> anyhow::Result<()> {
         eng.config.id = 1;
         eng.state
             .membership_state
-            .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(0, 1, 1)), m1())));
+            .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(0, s(1), 1)), m1())));
 
         // Build in-progress election state
         eng.state.vote = Leased::new(
             UTConfig::<()>::now(),
             Duration::from_millis(500),
-            Vote::new_committed(1, 2),
+            Vote::new_committed(1, s(2)),
         );
         eng.testing_new_leader();
         eng.candidate_mut().map(|candidate| candidate.grant_by(&1));
 
         eng.elect();
 
-        assert_eq!(Vote::new(2, 1), *eng.state.vote_ref());
-        assert_eq!(Vote::new(2, 1), *eng.candidate_ref().unwrap().vote_ref());
+        assert_eq!(Vote::new(2, s(1)), *eng.state.vote_ref());
+        assert_eq!(Vote::new(2, s(1)), *eng.candidate_ref().unwrap().vote_ref());
 
         assert!(eng.candidate_mut().is_some(), "candidate state is pending");
 
@@ -102,11 +104,13 @@ fn test_elect_single_node_elect_again() -> anyhow::Result<()> {
         assert_eq!(
             vec![
                 //
-                Command::SaveVote { vote: Vote::new(2, 1) },
+                Command::SaveVote {
+                    vote: Vote::new(2, s(1))
+                },
                 Command::SendVote {
                     vote_req: VoteRequest {
-                        vote: Vote::new(2, 1),
-                        last_log_id: Some(log_id(0, 0, 0)),
+                        vote: Vote::new(2, s(1)),
+                        last_log_id: Some(log_id(0, s(0), 0)),
                     },
                 },
             ],
@@ -124,14 +128,14 @@ fn test_elect_multi_node_enter_candidate() -> anyhow::Result<()> {
         eng.config.id = 1;
         eng.state
             .membership_state
-            .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(0, 1, 1)), m12())));
-        eng.state.log_ids = LogIdList::new(vec![log_id(1, 1, 1)]);
+            .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(0, s(1), 1)), m12())));
+        eng.state.log_ids = LogIdList::new(vec![log_id(1, s(1), 1)]);
 
         eng.elect();
 
-        assert_eq!(Vote::new(1, 1), *eng.state.vote_ref());
+        assert_eq!(Vote::new(1, s(1)), *eng.state.vote_ref());
         assert!(eng.leader.is_none());
-        assert_eq!(Vote::new(1, 1), *eng.candidate_ref().unwrap().vote_ref());
+        assert_eq!(Vote::new(1, s(1)), *eng.candidate_ref().unwrap().vote_ref());
 
         assert_eq!(
             Some(btreeset! {},),
@@ -143,9 +147,11 @@ fn test_elect_multi_node_enter_candidate() -> anyhow::Result<()> {
         assert_eq!(
             vec![
                 //
-                Command::SaveVote { vote: Vote::new(1, 1) },
+                Command::SaveVote {
+                    vote: Vote::new(1, s(1))
+                },
                 Command::SendVote {
-                    vote_req: VoteRequest::new(Vote::new(1, 1), Some(log_id(1, 1, 1)))
+                    vote_req: VoteRequest::new(Vote::new(1, s(1)), Some(log_id(1, s(1), 1)))
                 },
             ],
             eng.output.take_commands()

@@ -109,7 +109,7 @@ pub use crate::network::RaftNetworkFactory;
 pub use crate::node::BasicNode;
 pub use crate::node::EmptyNode;
 pub use crate::node::Node;
-pub use crate::node::NodeId;
+pub use crate::node::NID;
 pub use crate::raft::Raft;
 pub use crate::raft_state::MembershipState;
 pub use crate::raft_state::RaftState;
@@ -126,7 +126,6 @@ pub use crate::try_as_ref::TryAsRef;
 #[cfg(feature = "type-alias")]
 pub use crate::type_config::alias;
 pub use crate::type_config::RaftTypeConfig;
-pub use crate::vote::CommittedLeaderId;
 pub use crate::vote::LeaderId;
 pub use crate::vote::Vote;
 
@@ -163,6 +162,6 @@ impl<T> AppData for T where T: OptionalSend + OptionalSync + 'static + OptionalS
 /// ## Note
 ///
 /// The trait is automatically implemented for all types which satisfy its supertraits.
-pub trait AppDataResponse: OptionalSend + OptionalSync + 'static + OptionalSerde {}
+pub trait AppResponse: OptionalSend + OptionalSync + 'static + OptionalSerde {}
 
-impl<T> AppDataResponse for T where T: OptionalSend + OptionalSync + 'static + OptionalSerde {}
+impl<T> AppResponse for T where T: OptionalSend + OptionalSync + 'static + OptionalSerde {}

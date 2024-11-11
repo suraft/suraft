@@ -1,5 +1,6 @@
 use maplit::btreeset;
 
+use crate::engine::testing::s;
 use crate::quorum::coherent::Coherent;
 use crate::quorum::coherent::FindCoherent;
 use crate::quorum::joint::AsJoint;
@@ -7,9 +8,9 @@ use crate::quorum::Joint;
 
 #[test]
 fn test_is_coherent_vec() -> anyhow::Result<()> {
-    let s123 = || btreeset! {1,2,3};
-    let s345 = || btreeset! {3,4,5};
-    let s789 = || btreeset! {7,8,9};
+    let s123 = || btreeset! {s(1), s(2), s(3)};
+    let s345 = || btreeset! {s(3), s(4), s(5)};
+    let s789 = || btreeset! {s(7), s(8), s(9)};
 
     let j123 = Joint::from(vec![s123()]);
     let j345 = Joint::from(vec![s345()]);
@@ -41,9 +42,9 @@ fn test_is_coherent_vec() -> anyhow::Result<()> {
 
 #[test]
 fn test_is_coherent_slice() -> anyhow::Result<()> {
-    let s123 = || btreeset! {1,2,3};
-    let s345 = || btreeset! {3,4,5};
-    let s789 = || btreeset! {7,8,9};
+    let s123 = || btreeset! {s(1), s(2), s(3)};
+    let s345 = || btreeset! {s(3), s(4), s(5)};
+    let s789 = || btreeset! {s(7), s(8), s(9)};
 
     let v123 = vec![s123()];
     let v345 = vec![s345()];
@@ -80,9 +81,9 @@ fn test_is_coherent_slice() -> anyhow::Result<()> {
 
 #[test]
 fn test_find_coherent_joint() -> anyhow::Result<()> {
-    let s1 = || btreeset! {1,2,3};
-    let s2 = || btreeset! {3,4,5};
-    let s3 = || btreeset! {7,8,9};
+    let s1 = || btreeset! {s(1), s(2), s(3)};
+    let s2 = || btreeset! {s(3), s(4), s(5)};
+    let s3 = || btreeset! {s(7), s(8), s(9)};
 
     let j1 = Joint::from(vec![s1()]);
     let j2 = Joint::from(vec![s2()]);

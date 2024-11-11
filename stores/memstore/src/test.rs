@@ -11,14 +11,14 @@ use crate::TypeConfig;
 struct MemStoreBuilder {}
 
 impl StoreBuilder<TypeConfig, Arc<MemLogStore>, Arc<MemStateMachine>, ()> for MemStoreBuilder {
-    async fn build(&self) -> Result<((), Arc<MemLogStore>, Arc<MemStateMachine>), StorageError<TypeConfig>> {
+    async fn build(&self) -> Result<((), Arc<MemLogStore>, Arc<MemStateMachine>), StorageError> {
         let (log_store, sm) = crate::new_mem_store();
         Ok(((), log_store, sm))
     }
 }
 
 #[tokio::test]
-pub async fn test_mem_store() -> Result<(), StorageError<TypeConfig>> {
+pub async fn test_mem_store() -> Result<(), StorageError> {
     Suite::test_all(MemStoreBuilder {}).await?;
     Ok(())
 }

@@ -14,6 +14,7 @@ use crate::LogIdOptionExt;
 use crate::RaftTypeConfig;
 use crate::ServerState;
 use crate::Vote;
+use crate::NID;
 
 pub(crate) mod io_state;
 mod log_state_reader;
@@ -40,7 +41,6 @@ use crate::display_ext::DisplayOptionExt;
 use crate::proposer::Leader;
 use crate::proposer::LeaderQuorumSet;
 use crate::type_config::alias::InstantOf;
-use crate::type_config::alias::LogIdOf;
 
 /// A struct used to represent the raft state which a Raft node needs.
 #[derive(Clone, Debug)]
@@ -49,7 +49,7 @@ pub struct RaftState<C>
 where C: RaftTypeConfig
 {
     /// The vote state of this node.
-    pub(crate) vote: Leased<Vote<C::NodeId>, InstantOf<C>>,
+    pub(crate) vote: Leased<Vote, InstantOf<C>>,
 
     /// The LogId of the last log committed(AKA applied) to the state machine.
     ///
@@ -57,12 +57,12 @@ where C: RaftTypeConfig
     ///   of the leader.
     ///
     /// - A quorum could be a uniform quorum or joint quorum.
-    pub committed: Option<LogId<C::NodeId>>,
+    pub committed: Option<LogId>,
 
     pub(crate) purged_next: u64,
 
     /// All log ids this node has.
-    pub log_ids: LogIdList<C>,
+    pub log_ids: LogIdList,
 
     /// The latest cluster membership configuration found, in log or in state machine.
     pub membership_state: MembershipState<C>,
@@ -76,13 +76,13 @@ where C: RaftTypeConfig
     /// The state of a Raft node, such as Leader or Follower.
     pub server_state: ServerState,
 
-    pub(crate) io_state: Valid<IOState<C>>,
+    pub(crate) io_state: Valid<IOState>,
 
     /// The log id upto which the next time it purges.
     ///
     /// If a log is in use by a replication task, the purge is postponed and is stored in this
     /// field.
-    pub(crate) purge_upto: Option<LogId<C::NodeId>>,
+    pub(crate) purge_upto: Option<LogId>,
 }
 
 impl<C> Default for RaftState<C>
@@ -103,42 +103,42 @@ where C: RaftTypeConfig
     }
 }
 
-impl<C> LogStateReader<C> for RaftState<C>
+impl<C> LogStateReader for RaftState<C>
 where C: RaftTypeConfig
 {
-    fn get_log_id(&self, index: u64) -> Option<LogId<C::NodeId>> {
+    fn get_log_id(&self, index: u64) -> Option<LogId> {
         self.log_ids.get(index)
     }
 
-    fn last_log_id(&self) -> Option<&LogId<C::NodeId>> {
+    fn last_log_id(&self) -> Option<&LogId> {
         self.log_ids.last()
     }
 
-    fn committed(&self) -> Option<&LogId<C::NodeId>> {
+    fn committed(&self) -> Option<&LogId> {
         self.committed.as_ref()
     }
 
-    fn io_applied(&self) -> Option<&LogId<C::NodeId>> {
+    fn io_applied(&self) -> Option<&LogId> {
         self.io_state.applied()
     }
 
-    fn io_snapshot_last_log_id(&self) -> Option<&LogId<C::NodeId>> {
+    fn io_snapshot_last_log_id(&self) -> Option<&LogId> {
         self.io_state.snapshot()
     }
 
-    fn io_purged(&self) -> Option<&LogId<C::NodeId>> {
+    fn io_purged(&self) -> Option<&LogId> {
         self.io_state.purged()
     }
 
-    fn snapshot_last_log_id(&self) -> Option<&LogId<C::NodeId>> {
+    fn snapshot_last_log_id(&self) -> Option<&LogId> {
         self.snapshot_meta.last_log_id.as_ref()
     }
 
-    fn purge_upto(&self) -> Option<&LogId<C::NodeId>> {
+    fn purge_upto(&self) -> Option<&LogId> {
         self.purge_upto.as_ref()
     }
 
-    fn last_purged_log_id(&self) -> Option<&LogId<C::NodeId>> {
+    fn last_purged_log_id(&self) -> Option<&LogId> {
         if self.purged_next == 0 {
             return None;
         }
@@ -146,10 +146,10 @@ where C: RaftTypeConfig
     }
 }
 
-impl<C> VoteStateReader<C::NodeId> for RaftState<C>
+impl<C> VoteStateReader for RaftState<C>
 where C: RaftTypeConfig
 {
-    fn vote_ref(&self) -> &Vote<C::NodeId> {
+    fn vote_ref(&self) -> &Vote {
         self.vote.deref()
     }
 }
@@ -187,7 +187,7 @@ impl<C> RaftState<C>
 where C: RaftTypeConfig
 {
     /// Get a reference to the current vote.
-    pub fn vote_ref(&self) -> &Vote<C::NodeId> {
+    pub fn vote_ref(&self) -> &Vote {
         self.vote.deref()
     }
 
@@ -214,14 +214,14 @@ where C: RaftTypeConfig
     /// Return the accepted IO request(which are going to be submitted and flushed).
     ///
     /// Such as SaveVote or AppendEntries
-    pub(crate) fn accepted_io(&self) -> Option<&IOId<C>> {
+    pub(crate) fn accepted_io(&self) -> Option<&IOId> {
         self.io_state.io_progress.accepted()
     }
 
     /// Updates the accepted IO, including Vote change or AppendEntries IO.
     ///
     /// Returns the previously accepted value.
-    pub(crate) fn accept_io(&mut self, accepted: IOId<C>) -> Option<IOId<C>> {
+    pub(crate) fn accept_io(&mut self, accepted: IOId) -> Option<IOId> {
         let curr_accepted = self.io_state.io_progress.accepted().cloned();
 
         tracing::debug!(
@@ -252,18 +252,18 @@ where C: RaftTypeConfig
     /// Append a list of `log_id`.
     ///
     /// The log ids in the input has to be continuous.
-    pub(crate) fn extend_log_ids_from_same_leader<'a, LID: RaftLogId<C::NodeId> + 'a>(&mut self, new_log_ids: &[LID]) {
+    pub(crate) fn extend_log_ids_from_same_leader<'a, LID: RaftLogId + 'a>(&mut self, new_log_ids: &[LID]) {
         self.log_ids.extend_from_same_leader(new_log_ids)
     }
 
-    pub(crate) fn extend_log_ids<'a, LID: RaftLogId<C::NodeId> + 'a>(&mut self, new_log_id: &[LID]) {
+    pub(crate) fn extend_log_ids<'a, LID: RaftLogId + 'a>(&mut self, new_log_id: &[LID]) {
         self.log_ids.extend(new_log_id)
     }
 
     /// Update field `committed` if the input is greater.
     /// If updated, it returns the previous value in a `Some()`.
     #[tracing::instrument(level = "debug", skip_all)]
-    pub(crate) fn update_committed(&mut self, committed: &Option<LogIdOf<C>>) -> Option<Option<LogIdOf<C>>> {
+    pub(crate) fn update_committed(&mut self, committed: &Option<LogId>) -> Option<Option<LogId>> {
         if committed.as_ref() > self.committed() {
             let prev = self.committed().cloned();
 
@@ -276,7 +276,7 @@ where C: RaftTypeConfig
         }
     }
 
-    pub(crate) fn io_state_mut(&mut self) -> &mut IOState<C> {
+    pub(crate) fn io_state_mut(&mut self) -> &mut IOState {
         &mut self.io_state
     }
 
@@ -290,14 +290,14 @@ where C: RaftTypeConfig
     ///
     /// Usually, when a client request is handled, [`RaftState`] is updated and several IO command
     /// is enqueued. And when the IO commands are completed, [`IOState`] is updated.
-    pub(crate) fn io_state(&self) -> &IOState<C> {
+    pub(crate) fn io_state(&self) -> &IOState {
         &self.io_state
     }
 
     /// Find the first entry in the input that does not exist on local raft-log,
     /// by comparing the log id.
     pub(crate) fn first_conflicting_index<Ent>(&self, entries: &[Ent]) -> usize
-    where Ent: RaftLogId<C::NodeId> {
+    where Ent: RaftLogId {
         let l = entries.len();
 
         for (i, ent) in entries.iter().enumerate() {
@@ -318,7 +318,7 @@ where C: RaftTypeConfig
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    pub(crate) fn purge_log(&mut self, upto: &LogIdOf<C>) {
+    pub(crate) fn purge_log(&mut self, upto: &LogId) {
         self.purged_next = upto.index + 1;
         self.log_ids.purge(upto);
     }
@@ -329,7 +329,7 @@ where C: RaftTypeConfig
     ///
     /// [Determine Server State]: crate::docs::data::vote#vote-and-membership-define-the-server-state
     #[tracing::instrument(level = "debug", skip_all)]
-    pub(crate) fn calc_server_state(&self, id: &C::NodeId) -> ServerState {
+    pub(crate) fn calc_server_state(&self, id: &NID) -> ServerState {
         tracing::debug!(
             contains = display(self.membership_state.contains(id)),
             is_voter = display(self.is_voter(id)),
@@ -355,7 +355,7 @@ where C: RaftTypeConfig
         }
     }
 
-    pub(crate) fn is_voter(&self, id: &C::NodeId) -> bool {
+    pub(crate) fn is_voter(&self, id: &NID) -> bool {
         self.membership_state.is_voter(id)
     }
 
@@ -366,7 +366,7 @@ where C: RaftTypeConfig
     /// more details about determining the server state.
     ///
     /// [Determine Server State]: crate::docs::data::vote#vote-and-membership-define-the-server-state
-    pub(crate) fn is_leading(&self, id: &C::NodeId) -> bool {
+    pub(crate) fn is_leading(&self, id: &NID) -> bool {
         self.membership_state.contains(id) && self.vote.leader_id().voted_for().as_ref() == Some(id)
     }
 
@@ -378,7 +378,7 @@ where C: RaftTypeConfig
     /// more details about determining the server state.
     ///
     /// [Determine Server State]: crate::docs::data::vote#vote-and-membership-define-the-server-state
-    pub(crate) fn is_leader(&self, id: &C::NodeId) -> bool {
+    pub(crate) fn is_leader(&self, id: &NID) -> bool {
         self.is_leading(id) && self.vote.is_committed()
     }
 
@@ -388,7 +388,7 @@ where C: RaftTypeConfig
     /// for example, node-1 elects node-2 as a Leader, node-2 will become a Leader when receives the
     /// vote.
     /// A Leader established with election using the state in `Engine.candidate`.
-    pub(crate) fn new_leader(&mut self) -> Leader<C, LeaderQuorumSet<C>> {
+    pub(crate) fn new_leader(&mut self) -> Leader<C, LeaderQuorumSet> {
         let em = &self.membership_state.effective().membership();
 
         let last_leader_log_ids = self.log_ids.by_last_leader();
@@ -415,7 +415,7 @@ where C: RaftTypeConfig
         ForwardToLeader::empty()
     }
 
-    pub(crate) fn new_forward_to_leader(&self, to: C::NodeId) -> ForwardToLeader<C> {
+    pub(crate) fn new_forward_to_leader(&self, to: NID) -> ForwardToLeader<C> {
         // leader may not step down after being removed from `voters`.
         // It does not have to be a voter, being in membership is just enough
         let node = self.membership_state.effective().get_node(&to);

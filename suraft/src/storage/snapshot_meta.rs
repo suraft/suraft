@@ -18,7 +18,7 @@ pub struct SnapshotMeta<C>
 where C: RaftTypeConfig
 {
     /// Log entries upto which this snapshot includes, inclusive.
-    pub last_log_id: Option<LogId<C::NodeId>>,
+    pub last_log_id: Option<LogId>,
 
     /// The last applied membership config.
     pub last_membership: StoredMembership<C>,
@@ -46,7 +46,7 @@ where C: RaftTypeConfig
 impl<C> SnapshotMeta<C>
 where C: RaftTypeConfig
 {
-    pub fn signature(&self) -> SnapshotSignature<C> {
+    pub fn signature(&self) -> SnapshotSignature {
         SnapshotSignature {
             last_log_id: self.last_log_id.clone(),
             last_membership_log_id: self.last_membership.log_id().clone(),
@@ -55,7 +55,7 @@ where C: RaftTypeConfig
     }
 
     /// Returns a ref to the id of the last log that is included in this snapshot.
-    pub fn last_log_id(&self) -> Option<&LogId<C::NodeId>> {
+    pub fn last_log_id(&self) -> Option<&LogId> {
         self.last_log_id.as_ref()
     }
 }

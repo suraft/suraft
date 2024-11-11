@@ -11,22 +11,19 @@ use crate::display_ext::DisplayOptionExt;
 use crate::log_id_range::LogIdRange;
 use crate::LogId;
 use crate::LogIdOptionExt;
-use crate::RaftTypeConfig;
 
 /// The inflight data being transmitting from leader to a follower/learner.
 ///
 /// If inflight data is non-None, it's waiting for responses from a follower/learner.
 /// The follower/learner respond with `ack()` or `conflict()` to update the state of inflight data.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 #[derive(PartialEq, Eq)]
-pub(crate) enum Inflight<C>
-where C: RaftTypeConfig
-{
+pub(crate) enum Inflight {
     None,
 
     /// Being replicating a series of logs.
     Logs {
-        log_id_range: LogIdRange<C>,
+        log_id_range: LogIdRange,
     },
 
     /// Being replicating a snapshot.
@@ -34,13 +31,11 @@ where C: RaftTypeConfig
         /// The last log id snapshot includes.
         ///
         /// It is None, if the snapshot is empty.
-        last_log_id: Option<LogId<C::NodeId>>,
+        last_log_id: Option<LogId>,
     },
 }
 
-impl<C> Validate for Inflight<C>
-where C: RaftTypeConfig
-{
+impl Validate for Inflight {
     fn validate(&self) -> Result<(), Box<dyn Error>> {
         match self {
             Inflight::None => Ok(()),
@@ -50,9 +45,7 @@ where C: RaftTypeConfig
     }
 }
 
-impl<C> Display for Inflight<C>
-where C: RaftTypeConfig
-{
+impl Display for Inflight {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Inflight::None => write!(f, "None"),
@@ -64,11 +57,9 @@ where C: RaftTypeConfig
     }
 }
 
-impl<C> Inflight<C>
-where C: RaftTypeConfig
-{
+impl Inflight {
     /// Create inflight state for sending logs.
-    pub(crate) fn logs(prev: Option<LogId<C::NodeId>>, last: Option<LogId<C::NodeId>>) -> Self {
+    pub(crate) fn logs(prev: Option<LogId>, last: Option<LogId>) -> Self {
         #![allow(clippy::nonminimal_bool)]
         if !(prev < last) {
             Self::None
@@ -80,7 +71,7 @@ where C: RaftTypeConfig
     }
 
     /// Create inflight state for sending snapshot.
-    pub(crate) fn snapshot(snapshot_last_log_id: Option<LogId<C::NodeId>>) -> Self {
+    pub(crate) fn snapshot(snapshot_last_log_id: Option<LogId>) -> Self {
         Self::Snapshot {
             last_log_id: snapshot_last_log_id,
         }
@@ -103,7 +94,7 @@ where C: RaftTypeConfig
     }
 
     /// Update inflight state when log upto `upto` is acknowledged by a follower/learner.
-    pub(crate) fn ack(&mut self, upto: Option<LogId<C::NodeId>>) {
+    pub(crate) fn ack(&mut self, upto: Option<LogId>) {
         match self {
             Inflight::None => {
                 unreachable!("no inflight data")

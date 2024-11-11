@@ -8,7 +8,6 @@ use crate::display_ext::DisplayOption;
 use crate::raft_state::io_state::io_progress::IOProgress;
 use crate::raft_state::IOId;
 use crate::LogId;
-use crate::RaftTypeConfig;
 use crate::Vote;
 
 pub(crate) mod io_id;
@@ -59,32 +58,28 @@ pub(crate) mod log_io_id;
 #[derive(Debug, Clone)]
 #[derive(Default)]
 #[derive(PartialEq, Eq)]
-pub(crate) struct IOState<C>
-where C: RaftTypeConfig
-{
+pub(crate) struct IOState {
     /// Whether it is building a snapshot
     building_snapshot: bool,
 
     /// Tracks the accepted, submitted and flushed IO to local storage.
-    pub(crate) io_progress: Valid<IOProgress<IOId<C>>>,
+    pub(crate) io_progress: Valid<IOProgress<IOId>>,
 
     /// The last log id that has been applied to state machine.
-    pub(crate) applied: Option<LogId<C::NodeId>>,
+    pub(crate) applied: Option<LogId>,
 
     /// The last log id in the currently persisted snapshot.
-    pub(crate) snapshot: Option<LogId<C::NodeId>>,
+    pub(crate) snapshot: Option<LogId>,
 
     /// The last log id that has been purged from storage.
     ///
     /// `RaftState::last_purged_log_id()`
     /// is just the log id that is going to be purged, i.e., there is a `PurgeLog` command queued to
     /// be executed, and it may not be the actually purged log id.
-    pub(crate) purged: Option<LogId<C::NodeId>>,
+    pub(crate) purged: Option<LogId>,
 }
 
-impl<C> Validate for IOState<C>
-where C: RaftTypeConfig
-{
+impl Validate for IOState {
     fn validate(&self) -> Result<(), Box<dyn Error>> {
         self.io_progress.validate()?;
 
@@ -99,15 +94,8 @@ where C: RaftTypeConfig
     }
 }
 
-impl<C> IOState<C>
-where C: RaftTypeConfig
-{
-    pub(crate) fn new(
-        vote: &Vote<C::NodeId>,
-        applied: Option<LogId<C::NodeId>>,
-        snapshot: Option<LogId<C::NodeId>>,
-        purged: Option<LogId<C::NodeId>>,
-    ) -> Self {
+impl IOState {
+    pub(crate) fn new(vote: &Vote, applied: Option<LogId>, snapshot: Option<LogId>, purged: Option<LogId>) -> Self {
         let mut io_progress = Valid::new(IOProgress::default());
 
         io_progress.accept(IOId::new(vote));
@@ -123,7 +111,7 @@ where C: RaftTypeConfig
         }
     }
 
-    pub(crate) fn update_applied(&mut self, log_id: Option<LogId<C::NodeId>>) {
+    pub(crate) fn update_applied(&mut self, log_id: Option<LogId>) {
         tracing::debug!(applied = display(DisplayOption(&log_id)), "{}", func_name!());
 
         // TODO: should we update flushed if applied is newer?
@@ -137,11 +125,11 @@ where C: RaftTypeConfig
         self.applied = log_id;
     }
 
-    pub(crate) fn applied(&self) -> Option<&LogId<C::NodeId>> {
+    pub(crate) fn applied(&self) -> Option<&LogId> {
         self.applied.as_ref()
     }
 
-    pub(crate) fn update_snapshot(&mut self, log_id: Option<LogId<C::NodeId>>) {
+    pub(crate) fn update_snapshot(&mut self, log_id: Option<LogId>) {
         tracing::debug!(snapshot = display(DisplayOption(&log_id)), "{}", func_name!());
 
         debug_assert!(
@@ -154,7 +142,7 @@ where C: RaftTypeConfig
         self.snapshot = log_id;
     }
 
-    pub(crate) fn snapshot(&self) -> Option<&LogId<C::NodeId>> {
+    pub(crate) fn snapshot(&self) -> Option<&LogId> {
         self.snapshot.as_ref()
     }
 
@@ -166,11 +154,11 @@ where C: RaftTypeConfig
         self.building_snapshot
     }
 
-    pub(crate) fn update_purged(&mut self, log_id: Option<LogId<C::NodeId>>) {
+    pub(crate) fn update_purged(&mut self, log_id: Option<LogId>) {
         self.purged = log_id;
     }
 
-    pub(crate) fn purged(&self) -> Option<&LogId<C::NodeId>> {
+    pub(crate) fn purged(&self) -> Option<&LogId> {
         self.purged.as_ref()
     }
 }

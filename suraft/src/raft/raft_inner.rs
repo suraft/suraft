@@ -29,13 +29,14 @@ use crate::Config;
 use crate::OptionalSend;
 use crate::RaftMetrics;
 use crate::RaftTypeConfig;
+use crate::NID;
 
 /// RaftInner is the internal handle and provides internally used APIs to communicate with
 /// `RaftCore`.
 pub(in crate::raft) struct RaftInner<C>
 where C: RaftTypeConfig
 {
-    pub(in crate::raft) id: C::NodeId,
+    pub(in crate::raft) id: NID,
     pub(in crate::raft) config: Arc<Config>,
     pub(in crate::raft) runtime_config: Arc<RuntimeConfig>,
     pub(in crate::raft) tick_handle: TickHandle<C>,
@@ -57,7 +58,7 @@ impl<C> RaftInner<C>
 where C: RaftTypeConfig
 {
     /// Send a RaftMsg to RaftCore
-    pub(crate) async fn send_msg(&self, mes: RaftMsg<C>) -> Result<(), Fatal<C>> {
+    pub(crate) async fn send_msg(&self, mes: RaftMsg<C>) -> Result<(), Fatal> {
         let send_res = self.tx_api.send(mes);
 
         if let Err(e) = send_res {
@@ -68,7 +69,7 @@ where C: RaftTypeConfig
     }
 
     /// Receive a message from RaftCore, return error if RaftCore has stopped.
-    pub(crate) async fn recv_msg<T, E>(&self, rx: impl Future<Output = Result<T, E>>) -> Result<T, Fatal<C>>
+    pub(crate) async fn recv_msg<T, E>(&self, rx: impl Future<Output = Result<T, E>>) -> Result<T, Fatal>
     where
         T: OptionalSend,
         E: OptionalSend,
@@ -92,7 +93,7 @@ where C: RaftTypeConfig
         &self,
         mes: RaftMsg<C>,
         rx: OneshotReceiverOf<C, Result<T, E>>,
-    ) -> Result<T, RaftError<C, E>>
+    ) -> Result<T, RaftError<E>>
     where
         E: Debug + OptionalSend,
         T: OptionalSend,
@@ -125,7 +126,7 @@ where C: RaftTypeConfig
         &self,
         cmd: ExternalCommand<C>,
         cmd_desc: impl fmt::Display + Default,
-    ) -> Result<(), Fatal<C>> {
+    ) -> Result<(), Fatal> {
         let send_res = self.tx_api.send(RaftMsg::ExternalCommand { cmd });
 
         if send_res.is_err() {
@@ -145,7 +146,7 @@ where C: RaftTypeConfig
         &self,
         when: impl fmt::Display,
         message_summary: Option<impl fmt::Display + Default>,
-    ) -> Fatal<C> {
+    ) -> Fatal {
         // Wait for the core task to finish.
         self.join_core_task().await;
 

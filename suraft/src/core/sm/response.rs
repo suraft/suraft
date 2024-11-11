@@ -20,7 +20,7 @@ where C: RaftTypeConfig
     /// When finishing installing a snapshot.
     ///
     /// It does not return any value to RaftCore.
-    InstallSnapshot((IOId<C>, Option<SnapshotMeta<C>>)),
+    InstallSnapshot((IOId, Option<SnapshotMeta<C>>)),
 
     /// Send back applied result to RaftCore.
     Apply(ApplyResult<C>),
@@ -49,7 +49,7 @@ where C: RaftTypeConfig
 pub(crate) struct CommandResult<C>
 where C: RaftTypeConfig
 {
-    pub(crate) result: Result<Response<C>, StorageError<C>>,
+    pub(crate) result: Result<Response<C>, StorageError>,
 }
 
 impl<C> fmt::Display for CommandResult<C>
@@ -63,7 +63,7 @@ where C: RaftTypeConfig
 impl<C> CommandResult<C>
 where C: RaftTypeConfig
 {
-    pub(crate) fn new(result: Result<Response<C>, StorageError<C>>) -> Self {
+    pub(crate) fn new(result: Result<Response<C>, StorageError>) -> Self {
         Self { result }
     }
 }

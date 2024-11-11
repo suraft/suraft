@@ -15,15 +15,16 @@ use crate::LogId;
 use crate::RaftTypeConfig;
 use crate::StoredMembership;
 use crate::Vote;
+use crate::NID;
 
 /// A set of metrics describing the current state of a Raft node.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize), serde(bound = ""))]
 pub struct RaftMetrics<C: RaftTypeConfig> {
-    pub running_state: Result<(), Fatal<C>>,
+    pub running_state: Result<(), Fatal>,
 
     /// The ID of the Raft node.
-    pub id: C::NodeId,
+    pub id: NID,
 
     // ---
     // --- data ---
@@ -32,23 +33,23 @@ pub struct RaftMetrics<C: RaftTypeConfig> {
     pub current_term: u64,
 
     /// The last flushed vote.
-    pub vote: Vote<C::NodeId>,
+    pub vote: Vote,
 
     /// The last log index has been appended to this Raft node's log.
     pub last_log_index: Option<u64>,
 
     /// The last log index has been applied to this Raft node's state machine.
-    pub last_applied: Option<LogId<C::NodeId>>,
+    pub last_applied: Option<LogId>,
 
     /// The id of the last log included in snapshot.
     /// If there is no snapshot, it is (0,0).
-    pub snapshot: Option<LogId<C::NodeId>>,
+    pub snapshot: Option<LogId>,
 
     /// The last log id that has purged from storage, inclusive.
     ///
     /// `purged` is also the first log id Openraft knows, although the corresponding log entry has
     /// already been deleted.
-    pub purged: Option<LogId<C::NodeId>>,
+    pub purged: Option<LogId>,
 
     // ---
     // --- cluster ---
@@ -57,7 +58,7 @@ pub struct RaftMetrics<C: RaftTypeConfig> {
     pub state: ServerState,
 
     /// The current cluster leader.
-    pub current_leader: Option<C::NodeId>,
+    pub current_leader: Option<NID>,
 
     /// For a leader, it is the elapsed time in milliseconds since the most recently acknowledged
     /// timestamp by a quorum.
@@ -110,7 +111,7 @@ pub struct RaftMetrics<C: RaftTypeConfig> {
     // --- replication ---
     // ---
     /// The replication states. It is Some() only when this node is leader.
-    pub replication: Option<ReplicationMetrics<C>>,
+    pub replication: Option<ReplicationMetrics>,
 }
 
 impl<C> fmt::Display for RaftMetrics<C>
@@ -161,7 +162,7 @@ where C: RaftTypeConfig
 impl<C> RaftMetrics<C>
 where C: RaftTypeConfig
 {
-    pub fn new_initial(id: C::NodeId) -> Self {
+    pub fn new_initial(id: NID) -> Self {
         #[allow(deprecated)]
         Self {
             running_state: Ok(()),
@@ -189,10 +190,10 @@ where C: RaftTypeConfig
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize), serde(bound = ""))]
 pub struct RaftDataMetrics<C: RaftTypeConfig> {
-    pub last_log: Option<LogId<C::NodeId>>,
-    pub last_applied: Option<LogId<C::NodeId>>,
-    pub snapshot: Option<LogId<C::NodeId>>,
-    pub purged: Option<LogId<C::NodeId>>,
+    pub last_log: Option<LogId>,
+    pub last_applied: Option<LogId>,
+    pub snapshot: Option<LogId>,
+    pub purged: Option<LogId>,
 
     /// For a leader, it is the elapsed time in milliseconds since the most recently acknowledged
     /// timestamp by a quorum.
@@ -224,7 +225,7 @@ pub struct RaftDataMetrics<C: RaftTypeConfig> {
     /// cluster.
     pub last_quorum_acked: Option<SerdeInstant<InstantOf<C>>>,
 
-    pub replication: Option<ReplicationMetrics<C>>,
+    pub replication: Option<ReplicationMetrics>,
 
     /// Heartbeat metrics. It is Some() only when this node is leader.
     ///
@@ -279,10 +280,10 @@ where C: RaftTypeConfig
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize), serde(bound = ""))]
 pub struct RaftServerMetrics<C: RaftTypeConfig> {
-    pub id: C::NodeId,
-    pub vote: Vote<C::NodeId>,
+    pub id: NID,
+    pub vote: Vote,
     pub state: ServerState,
-    pub current_leader: Option<C::NodeId>,
+    pub current_leader: Option<NID>,
 
     pub membership_config: Arc<StoredMembership<C>>,
 }

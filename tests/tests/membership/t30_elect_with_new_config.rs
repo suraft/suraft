@@ -45,7 +45,7 @@ async fn leader_election_after_changing_0_to_01234() -> Result<()> {
     sleep(Duration::from_millis(700)).await;
 
     // Let node-1 become leader.
-    let node_1 = router.get_raft_handle(&1)?;
+    let node_1 = router.get_raft_handle(&s(1))?;
     node_1.trigger().elect().await?;
     log_index += 1; // leader initial blank log
 

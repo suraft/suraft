@@ -39,7 +39,7 @@ async fn add_learner_basic() -> Result<()> {
     );
     let mut router = RaftRouter::new(config.clone());
 
-    let mut log_index = router.new_cluster(btreeset! {0}, btreeset! {}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0)}, btreeset! {}).await?;
 
     tracing::info!(log_index, "--- re-adding leader commits a new log but does nothing");
     {
@@ -54,18 +54,25 @@ async fn add_learner_basic() -> Result<()> {
     {
         tracing::info!(log_index, "--- write up to 1000 logs");
         {
-            router.client_request_many(0, "learner_add", 1000 - log_index as usize).await?;
+            router.client_request_many(s(0), "learner_add", 1000 - log_index as usize).await?;
             log_index = 1000;
 
             tracing::info!(log_index, "--- write up to 1000 logs done");
-            router.wait_for_log(&btreeset! {0}, Some(log_index), timeout(), "write 1000 logs to leader").await?;
+            router
+                .wait_for_log(
+                    &btreeset! {s(0)},
+                    Some(log_index),
+                    timeout(),
+                    "write 1000 logs to leader",
+                )
+                .await?;
         }
 
         router.new_raft_node(1).await;
         router.add_learner(0, 1).await?;
         log_index += 1;
 
-        router.wait_for_log(&btreeset! {0,1}, Some(log_index), timeout(), "add learner").await?;
+        router.wait_for_log(&btreeset! {s(0),s(1)}, Some(log_index), timeout(), "add learner").await?;
 
         tracing::info!(log_index, "--- add_learner blocks until the replication catches up");
         {
@@ -77,7 +84,14 @@ async fn add_learner_basic() -> Result<()> {
             // 0-th log
             assert_eq!(log_index + 1, logs.len() as u64);
 
-            router.wait_for_log(&btreeset! {0,1}, Some(log_index), timeout(), "replication to learner").await?;
+            router
+                .wait_for_log(
+                    &btreeset! {s(0),s(1)},
+                    Some(log_index),
+                    timeout(),
+                    "replication to learner",
+                )
+                .await?;
         }
     }
 
@@ -89,7 +103,7 @@ async fn add_learner_basic() -> Result<()> {
         assert_eq!(log_index, res.log_id.index);
         router.wait(&0, timeout()).applied_index(Some(log_index), "commit re-adding node-1 log").await?;
 
-        let metrics = router.get_raft_handle(&0)?.metrics().borrow().clone();
+        let metrics = router.get_raft_handle(&s(0))?.metrics().borrow().clone();
         let node_ids = metrics.membership_config.membership().nodes().map(|x| *x.0).collect::<Vec<_>>();
         assert_eq!(vec![0, 1], node_ids);
     }
@@ -115,13 +129,13 @@ async fn add_learner_non_blocking() -> Result<()> {
     );
     let mut router = RaftRouter::new(config.clone());
 
-    let mut log_index = router.new_cluster(btreeset! {0}, btreeset! {}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0)}, btreeset! {}).await?;
 
     tracing::info!(log_index, "--- add new node node-1, in non blocking mode");
     {
         tracing::info!(log_index, "--- write up to 100 logs");
 
-        router.client_request_many(0, "learner_add", 100 - log_index as usize).await?;
+        router.client_request_many(s(0), "learner_add", 100 - log_index as usize).await?;
         log_index = 100;
 
         router.wait(&0, timeout()).applied_index(Some(log_index), "received 100 logs").await?;
@@ -131,7 +145,7 @@ async fn add_learner_non_blocking() -> Result<()> {
         // Replication problem should not block adding-learner in non-blocking mode.
         router.set_network_error(1, true);
 
-        let raft = router.get_raft_handle(&0)?;
+        let raft = router.get_raft_handle(&s(0))?;
         raft.add_learner(1, (), false).await?;
 
         let n = 6;
@@ -140,7 +154,7 @@ async fn add_learner_non_blocking() -> Result<()> {
                 unreachable!("no replication status is reported to metrics!");
             }
 
-            let metrics = router.get_raft_handle(&0)?.metrics().borrow().clone();
+            let metrics = router.get_raft_handle(&s(0))?.metrics().borrow().clone();
             let repl = metrics.replication.as_ref().unwrap();
 
             // The result is Some(&None) when there is no success replication is made,
@@ -175,13 +189,13 @@ async fn add_learner_with_set_nodes() -> Result<()> {
     );
     let mut router = RaftRouter::new(config.clone());
 
-    let log_index = router.new_cluster(btreeset! {0,1,2}, btreeset! {}).await?;
+    let log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {}).await?;
 
     tracing::info!(log_index, "--- set node 2 and 4");
     {
         router.new_raft_node(4).await;
 
-        let raft = router.get_raft_handle(&0)?;
+        let raft = router.get_raft_handle(&s(0))?;
         raft.change_membership(ChangeMembers::SetNodes(btreemap! {2=>(), 4=>()}), true).await?;
 
         router
@@ -212,13 +226,13 @@ async fn add_learner_when_previous_membership_not_committed() -> Result<()> {
     );
     let mut router = RaftRouter::new(config.clone());
 
-    let log_index = router.new_cluster(btreeset! {0}, btreeset! {1}).await?;
+    let log_index = router.new_cluster(btreeset! {s(0)}, btreeset! {s(1)}).await?;
 
     tracing::info!(log_index, "--- block replication to prevent committing any log");
     {
         router.set_network_error(1, true);
 
-        let node = router.get_raft_handle(&0)?;
+        let node = router.get_raft_handle(&s(0))?;
         tokio::spawn(async move {
             let res = node.change_membership([0, 1], false).await;
             tracing::info!("do not expect res: {:?}", res);
@@ -230,14 +244,14 @@ async fn add_learner_when_previous_membership_not_committed() -> Result<()> {
 
     tracing::info!(log_index, "--- add new node node-1, in non blocking mode");
     {
-        let node = router.get_raft_handle(&0)?;
+        let node = router.get_raft_handle(&s(0))?;
         let res = node.add_learner(2, (), true).await;
         tracing::debug!("res: {:?}", res);
 
         let err = res.unwrap_err().into_api_error().unwrap();
         assert_eq!(
             ClientWriteError::ChangeMembershipError(ChangeMembershipError::InProgress(InProgress {
-                committed: Some(log_id(1, 0, 2)),
+                committed: Some(log_id(1, s(0), 2)),
                 membership_log_id: Some(log_id(1, 0, log_index + 1))
             })),
             err
@@ -267,7 +281,7 @@ async fn check_learner_after_leader_transferred() -> Result<()> {
     let mut router = RaftRouter::new(config.clone());
 
     tracing::info!("--- initializing cluster members: 0,1; learners: 2");
-    let mut log_index = router.new_cluster(btreeset! {0,1}, btreeset! {2}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0),s(1)}, btreeset! {2}).await?;
 
     // Submit a config change which adds two new nodes and removes the current leader.
     let orig_leader_id = router.leader().expect("expected the cluster to have a leader");
@@ -345,9 +359,9 @@ fn timeout() -> Option<Duration> {
     Some(Duration::from_millis(3_000))
 }
 
-pub fn log_id(term: u64, node_id: u64, index: u64) -> LogId<u64> {
+pub fn log_id(term: u64, node_id: u64, index: u64) -> LogId {
     LogId::<u64> {
-        leader_id: CommittedLeaderId::new(term, node_id),
+        term: CommittedLeaderId::new(term, node_id),
         index,
     }
 }

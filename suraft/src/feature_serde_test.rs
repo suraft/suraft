@@ -1,7 +1,7 @@
 #[cfg(feature = "serde")]
 mod serde_enabled {
     use crate::AppData;
-    use crate::AppDataResponse;
+    use crate::AppResponse;
     use crate::OptionalSerde;
 
     #[derive(Clone)]
@@ -35,7 +35,7 @@ mod serde_enabled {
     #[test]
     fn test_app_data_response_serde_enabled() {
         /// A value that implements OptionalSerde implements serde::Serialize
-        fn serde_it(v: impl AppDataResponse) {
+        fn serde_it(v: impl AppResponse) {
             let s = serde_json::to_string(&v).unwrap();
             assert_eq!(r#"{"i":3}"#, s);
         }
@@ -48,7 +48,7 @@ mod serde_enabled {
 mod serde_disabled {
 
     use crate::AppData;
-    use crate::AppDataResponse;
+    use crate::AppResponse;
     use crate::OptionalSerde;
 
     #[derive(Clone)]
@@ -80,7 +80,7 @@ mod serde_disabled {
 
     #[test]
     fn test_app_data_response_serde_disabled() {
-        fn accept_any_value(v: impl AppDataResponse) {
+        fn accept_any_value(v: impl AppResponse) {
             let _ = v;
         }
 

@@ -46,11 +46,11 @@ async fn snapshot_overrides_membership() -> Result<()> {
     );
     let mut router = RaftRouter::new(config.clone());
 
-    let mut log_index = router.new_cluster(btreeset! {0}, btreeset! {}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0)}, btreeset! {}).await?;
 
     tracing::info!(log_index, "--- send just enough logs to trigger snapshot");
     {
-        router.client_request_many(0, "0", (snapshot_threshold - 1 - log_index) as usize).await?;
+        router.client_request_many(s(0), "0", (snapshot_threshold - 1 - log_index) as usize).await?;
         log_index = snapshot_threshold - 1;
 
         router
@@ -62,20 +62,13 @@ async fn snapshot_overrides_membership() -> Result<()> {
             )
             .await?;
 
-        router
-            .wait_for_snapshot(
-                &btreeset![0],
-                LogId::new(CommittedLeaderId::new(1, 0), log_index),
-                timeout(),
-                "snapshot",
-            )
-            .await?;
+        router.wait_for_snapshot(&btreeset![0], LogId::new(1, log_index), timeout(), "snapshot").await?;
         router
             .assert_storage_state(
                 1,
                 log_index,
                 Some(0),
-                LogId::new(CommittedLeaderId::new(1, 0), log_index),
+                LogId::new(1, log_index),
                 Some((log_index.into(), 1)),
             )
             .await?;
@@ -90,13 +83,13 @@ async fn snapshot_overrides_membership() -> Result<()> {
         tracing::info!(log_index, "--- add a membership config log to the learner");
         {
             let req = AppendEntriesRequest {
-                vote: Vote::new_committed(1, 0),
+                vote: Vote::new_committed(1, s(0)),
                 prev_log_id: None,
-                entries: vec![blank_ent(0, 0, 0), Entry {
-                    log_id: LogId::new(CommittedLeaderId::new(1, 0), 1),
-                    payload: EntryPayload::Membership(Membership::new(vec![btreeset! {2,3}], None)),
+                entries: vec![blank_ent(0, 0), Entry {
+                    log_id: LogId::new(1, 1),
+                    payload: EntryPayload::Membership(Membership::new(vec![btreeset! {s(2), s(3)}], None)),
                 }],
-                leader_commit: Some(LogId::new(CommittedLeaderId::new(0, 0), 0)),
+                leader_commit: Some(LogId::new(0, 0)),
             };
             let option = RPCOption::new(Duration::from_millis(1_000));
 
@@ -108,7 +101,7 @@ async fn snapshot_overrides_membership() -> Result<()> {
 
                 assert_eq!(&EffectiveMembership::default(), m.committed().as_ref());
                 assert_eq!(
-                    &Membership::new(vec![btreeset! {2,3}], None),
+                    &Membership::new(vec![btreeset! {s(2), s(3)}], None),
                     m.effective().membership()
                 );
             }
@@ -127,14 +120,7 @@ async fn snapshot_overrides_membership() -> Result<()> {
             tracing::info!(log_index, "--- DONE add learner");
 
             router.wait_for_log(&btreeset![0, 1], Some(log_index), timeout(), "add learner").await?;
-            router
-                .wait_for_snapshot(
-                    &btreeset![1],
-                    LogId::new(CommittedLeaderId::new(1, 0), snapshot_index),
-                    timeout(),
-                    "",
-                )
-                .await?;
+            router.wait_for_snapshot(&btreeset![1], LogId::new(1, snapshot_index), timeout(), "").await?;
 
             let expected_snap = Some((snapshot_index.into(), 1));
 
@@ -143,7 +129,7 @@ async fn snapshot_overrides_membership() -> Result<()> {
                     1,
                     log_index,
                     None, /* learner does not vote */
-                    LogId::new(CommittedLeaderId::new(1, 0), log_index),
+                    LogId::new(1, log_index),
                     expected_snap,
                 )
                 .await?;
@@ -151,12 +137,12 @@ async fn snapshot_overrides_membership() -> Result<()> {
             let m = StorageHelper::new(&mut sto, &mut sm).get_membership().await?;
 
             assert_eq!(
-                &Membership::new(vec![btreeset! {0}], Some(btreeset! {1})),
+                &Membership::new(vec![btreeset! {s(0)}], Some(btreeset! {s(1)})),
                 m.committed().membership(),
                 "membership should be overridden by the snapshot"
             );
             assert_eq!(
-                &Membership::new(vec![btreeset! {0}], Some(btreeset! {1})),
+                &Membership::new(vec![btreeset! {s(0)}], Some(btreeset! {s(1)})),
                 m.effective().membership(),
                 "membership should be overridden by the snapshot"
             );

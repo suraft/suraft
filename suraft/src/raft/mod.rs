@@ -97,6 +97,7 @@ use crate::RaftState;
 pub use crate::RaftTypeConfig;
 use crate::StorageHelper;
 use crate::Vote;
+use crate::NID;
 
 /// Define types for a Raft type configuration.
 ///
@@ -169,9 +170,8 @@ macro_rules! declare_raft_types {
                 $(($type_id, $(#[$inner])*, $type),)*
 
                 // Default types:
-                (D            , , String                                ),
-                (R            , , String                                ),
-                (NodeId       , , u64                                   ),
+                (AppData      , , String                                ),
+                (AppResponse  , , String                                ),
                 (Node         , , $crate::impls::BasicNode              ),
                 (Entry        , , $crate::impls::Entry<Self>            ),
                 (SnapshotData , , std::io::Cursor<Vec<u8>>                       ),
@@ -232,12 +232,12 @@ where C: RaftTypeConfig
     /// used by Raft for data storage.
     #[tracing::instrument(level="debug", skip_all, fields(cluster=%config.cluster_name))]
     pub async fn new<LS, N, SM>(
-        id: C::NodeId,
+        id: NID,
         config: Arc<Config>,
         network: N,
         mut log_store: LS,
         mut state_machine: SM,
-    ) -> Result<Self, Fatal<C>>
+    ) -> Result<Self, Fatal>
     where
         N: RaftNetworkFactory<C>,
         LS: RaftLogStorage<C>,
@@ -266,7 +266,7 @@ where C: RaftTypeConfig
             cluster = display(&config.cluster_name)
         );
 
-        let eng_config = EngineConfig::new(id.clone(), config.as_ref());
+        let eng_config = EngineConfig::new::<C>(id.clone(), config.as_ref());
 
         let state = {
             let mut helper = StorageHelper::new(&mut log_store, &mut state_machine);
@@ -369,7 +369,7 @@ where C: RaftTypeConfig
     /// These RPCs are sent by the cluster leader to replicate log entries (§5.3), and are also
     /// used as heartbeats (§5.2).
     #[tracing::instrument(level = "debug", skip(self, rpc))]
-    pub async fn append_entries(&self, rpc: AppendEntriesRequest<C>) -> Result<AppendEntriesResponse<C>, RaftError<C>> {
+    pub async fn append_entries(&self, rpc: AppendEntriesRequest<C>) -> Result<AppendEntriesResponse, RaftError> {
         tracing::debug!(rpc = display(&rpc), "Raft::append_entries");
 
         let (tx, rx) = C::oneshot();
@@ -381,7 +381,7 @@ where C: RaftTypeConfig
     /// These RPCs are sent by cluster peers which are in candidate state attempting to gather votes
     /// (§5.2).
     #[tracing::instrument(level = "debug", skip(self, rpc))]
-    pub async fn vote(&self, rpc: VoteRequest<C>) -> Result<VoteResponse<C>, RaftError<C>> {
+    pub async fn vote(&self, rpc: VoteRequest) -> Result<VoteResponse, RaftError> {
         tracing::info!(rpc = display(&rpc), "Raft::vote()");
 
         let (tx, rx) = C::oneshot();
@@ -393,7 +393,7 @@ where C: RaftTypeConfig
     /// It returns error only when `RaftCore` fails to serve the request, e.g., Encountering a
     /// storage error or shutting down.
     #[tracing::instrument(level = "debug", skip_all)]
-    pub async fn get_snapshot(&self) -> Result<Option<Snapshot<C>>, RaftError<C>> {
+    pub async fn get_snapshot(&self) -> Result<Option<Snapshot<C>>, RaftError> {
         tracing::debug!("Raft::get_snapshot()");
 
         let (tx, rx) = C::oneshot();
@@ -403,7 +403,7 @@ where C: RaftTypeConfig
 
     /// Get a snapshot data for receiving snapshot from the leader.
     #[tracing::instrument(level = "debug", skip_all)]
-    pub async fn begin_receiving_snapshot(&self) -> Result<Box<SnapshotDataOf<C>>, RaftError<C, Infallible>> {
+    pub async fn begin_receiving_snapshot(&self) -> Result<Box<SnapshotDataOf<C>>, RaftError<Infallible>> {
         tracing::info!("Raft::begin_receiving_snapshot()");
 
         let (tx, rx) = C::oneshot();
@@ -417,11 +417,7 @@ where C: RaftTypeConfig
     /// The application receives a snapshot from the leader, in chunks or a stream, and
     /// then rebuild a snapshot, then pass the snapshot to Raft to install.
     #[tracing::instrument(level = "debug", skip_all)]
-    pub async fn install_full_snapshot(
-        &self,
-        vote: Vote<C::NodeId>,
-        snapshot: Snapshot<C>,
-    ) -> Result<SnapshotResponse<C>, Fatal<C>> {
+    pub async fn install_full_snapshot(&self, vote: Vote, snapshot: Snapshot<C>) -> Result<SnapshotResponse, Fatal> {
         tracing::info!("Raft::install_full_snapshot()");
 
         let (tx, rx) = C::oneshot();
@@ -447,7 +443,7 @@ where C: RaftTypeConfig
     pub async fn install_snapshot(
         &self,
         req: InstallSnapshotRequest<C>,
-    ) -> Result<InstallSnapshotResponse<C>, RaftError<C, crate::error::InstallSnapshotError>>
+    ) -> Result<InstallSnapshotResponse, RaftError<crate::error::InstallSnapshotError>>
     where
         C::SnapshotData: tokio::io::AsyncRead + tokio::io::AsyncWrite + tokio::io::AsyncSeek + Unpin,
     {
@@ -492,7 +488,7 @@ where C: RaftTypeConfig
     /// up-to-date; however, the `is_leader` method must still be used to guard against stale
     /// reads. This method is perfect for making decisions on where to route client requests.
     #[tracing::instrument(level = "debug", skip(self))]
-    pub async fn current_leader(&self) -> Option<C::NodeId> {
+    pub async fn current_leader(&self) -> Option<NID> {
         self.metrics().borrow_watched().current_leader.clone()
     }
 
@@ -503,7 +499,7 @@ where C: RaftTypeConfig
     /// the read will not be stale.
     #[deprecated(since = "0.9.0", note = "use `Raft::ensure_linearizable()` instead")]
     #[tracing::instrument(level = "debug", skip(self))]
-    pub async fn is_leader(&self) -> Result<(), RaftError<C, CheckIsLeaderError<C>>> {
+    pub async fn is_leader(&self) -> Result<(), RaftError<CheckIsLeaderError<C>>> {
         let (tx, rx) = C::oneshot();
         let _ = self.inner.call_core(RaftMsg::CheckIsLeaderRequest { tx }, rx).await?;
         Ok(())
@@ -533,7 +529,7 @@ where C: RaftTypeConfig
     /// ```
     /// Read more about how it works: [Read Operation](crate::docs::protocol::read)
     #[tracing::instrument(level = "debug", skip(self))]
-    pub async fn ensure_linearizable(&self) -> Result<Option<LogId<C::NodeId>>, RaftError<C, CheckIsLeaderError<C>>> {
+    pub async fn ensure_linearizable(&self) -> Result<Option<LogId>, RaftError<CheckIsLeaderError<C>>> {
         let (read_log_id, applied) = self.get_read_log_id().await?;
 
         if read_log_id.index() > applied.index() {
@@ -580,9 +576,7 @@ where C: RaftTypeConfig
     ///
     /// See: [Read Operation](crate::docs::protocol::read)
     #[tracing::instrument(level = "debug", skip(self))]
-    pub async fn get_read_log_id(
-        &self,
-    ) -> Result<(Option<LogId<C::NodeId>>, Option<LogId<C::NodeId>>), RaftError<C, CheckIsLeaderError<C>>> {
+    pub async fn get_read_log_id(&self) -> Result<(Option<LogId>, Option<LogId>), RaftError<CheckIsLeaderError<C>>> {
         let (tx, rx) = C::oneshot();
         let (read_log_id, applied) = self.inner.call_core(RaftMsg::CheckIsLeaderRequest { tx }, rx).await?;
         Ok((read_log_id, applied))
@@ -609,8 +603,8 @@ where C: RaftTypeConfig
     #[tracing::instrument(level = "debug", skip(self, app_data))]
     pub async fn client_write<E>(
         &self,
-        app_data: C::D,
-    ) -> Result<ClientWriteResponse<C>, RaftError<C, ClientWriteError<C>>>
+        app_data: C::AppData,
+    ) -> Result<ClientWriteResponse<C>, RaftError<ClientWriteError<C>>>
     where
         ResponderReceiverOf<C>: Future<Output = Result<ClientWriteResult<C>, E>>,
         E: Error + OptionalSend,
@@ -630,7 +624,7 @@ where C: RaftTypeConfig
     ///
     /// It is same as [`Raft::client_write`] but does not wait for the response.
     #[tracing::instrument(level = "debug", skip(self, app_data))]
-    pub async fn client_write_ff(&self, app_data: C::D) -> Result<ResponderReceiverOf<C>, Fatal<C>> {
+    pub async fn client_write_ff(&self, app_data: C::AppData) -> Result<ResponderReceiverOf<C>, Fatal> {
         let (app_data, tx, rx) = ResponderOf::<C>::from_app_data(app_data);
 
         self.inner.send_msg(RaftMsg::ClientWriteRequest { app_data, tx }).await?;
@@ -652,7 +646,7 @@ where C: RaftTypeConfig
     ///
     /// [`RaftNetworkV2::transfer_leader`]: crate::network::v2::RaftNetworkV2::transfer_leader
     #[since(version = "0.10.0")]
-    pub async fn handle_transfer_leader(&self, req: TransferLeaderRequest<C>) -> Result<(), Fatal<C>> {
+    pub async fn handle_transfer_leader(&self, req: TransferLeaderRequest) -> Result<(), Fatal> {
         // Reset the Leader lease at once and quit, if this is not the assigned next leader.
         // Only the assigned next Leader waits for the log to be flushed.
         if req.to_node_id == self.inner.id {
@@ -671,7 +665,7 @@ where C: RaftTypeConfig
 
     /// Wait for the log to be flushed to make sure the RequestVote.last_log_id is upto date, then
     /// TransferLeader will be able to proceed.
-    async fn ensure_log_flushed_for_transfer_leader(&self, req: &TransferLeaderRequest<C>) -> Result<(), Fatal<C>> {
+    async fn ensure_log_flushed_for_transfer_leader(&self, req: &TransferLeaderRequest) -> Result<(), Fatal> {
         // If the next Leader is this node, wait for the log to be flushed to make sure the
         // RequestVote.last_log_id is upto date.
 
@@ -721,7 +715,7 @@ where C: RaftTypeConfig
 
     /// Return `true` if this node is already initialized and can not be initialized again with
     /// [`Raft::initialize`]
-    pub async fn is_initialized(&self) -> Result<bool, Fatal<C>> {
+    pub async fn is_initialized(&self) -> Result<bool, Fatal> {
         let initialized = self.with_raft_state(|st| st.is_initialized()).await?;
 
         Ok(initialized)
@@ -751,8 +745,8 @@ where C: RaftTypeConfig
     /// More than one node performing `initialize()` with the same config is safe,
     /// with different config will result in split brain condition.
     #[tracing::instrument(level = "debug", skip(self))]
-    pub async fn initialize<T>(&self, members: T) -> Result<(), RaftError<C, InitializeError<C>>>
-    where T: IntoNodes<C::NodeId, C::Node> + Debug {
+    pub async fn initialize<T>(&self, members: T) -> Result<(), RaftError<InitializeError<C>>>
+    where T: IntoNodes<C::Node> + Debug {
         let (tx, rx) = C::oneshot();
         self.inner
             .call_core(
@@ -772,9 +766,9 @@ where C: RaftTypeConfig
     fn check_replication_upto_date(
         &self,
         metrics: &RaftMetrics<C>,
-        node_id: &C::NodeId,
-        membership_log_id: Option<&LogId<C::NodeId>>,
-    ) -> Result<Option<LogId<C::NodeId>>, ()> {
+        node_id: &NID,
+        membership_log_id: Option<&LogId>,
+    ) -> Result<Option<LogId>, ()> {
         if metrics.membership_config.log_id().as_ref() < membership_log_id {
             // Waiting for the latest metrics to report.
             return Err(());
@@ -818,7 +812,7 @@ where C: RaftTypeConfig
     /// Provides read-only access to [`RaftState`] through a user-provided function.
     ///
     /// The function `func` is applied to the current [`RaftState`]. The result of this function,
-    /// of type `V`, is returned wrapped in `Result<V, Fatal<C>>`. `Fatal` error will be
+    /// of type `V`, is returned wrapped in `Result<V, Fatal>`. `Fatal` error will be
     /// returned if failed to receive a reply from `RaftCore`.
     ///
     /// A `Fatal` error is returned if:
@@ -830,7 +824,7 @@ where C: RaftTypeConfig
     /// ```ignore
     /// let committed = my_raft.with_raft_state(|st| st.committed).await?;
     /// ```
-    pub async fn with_raft_state<F, V>(&self, func: F) -> Result<V, Fatal<C>>
+    pub async fn with_raft_state<F, V>(&self, func: F) -> Result<V, Fatal>
     where
         F: FnOnce(&RaftState<C>) -> V + OptionalSend + 'static,
         V: OptionalSend + 'static,
@@ -878,7 +872,7 @@ where C: RaftTypeConfig
     ///
     /// The function `func` is applied to the current [`RaftStateMachine`]. The result of this
     /// function, of type `V`, is returned wrapped in
-    /// `Result<Result<V, InvalidStateMachineType>, Fatal<C>>`.
+    /// `Result<Result<V, InvalidStateMachineType>, Fatal>`.
     /// `Fatal` error will be returned if failed to receive a reply from `RaftCore`.
     ///
     /// A `Fatal` error is returned if:
@@ -898,7 +892,7 @@ where C: RaftTypeConfig
     /// }).await?;
     /// ```
     #[since(version = "0.10.0")]
-    pub async fn with_state_machine<F, SM, V>(&self, func: F) -> Result<Result<V, InvalidStateMachineType>, Fatal<C>>
+    pub async fn with_state_machine<F, SM, V>(&self, func: F) -> Result<Result<V, InvalidStateMachineType>, Fatal>
     where
         SM: RaftStateMachine<C>,
         F: FnOnce(&mut SM) -> BoxFuture<V> + OptionalSend + 'static,

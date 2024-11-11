@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::io::Cursor;
 
 use crate::impls::TokioRuntime;
@@ -23,12 +24,15 @@ impl<N> Copy for UTConfig<N> {}
 impl<N> RaftTypeConfig for UTConfig<N>
 where N: Node + Ord
 {
-    type D = ();
-    type R = ();
-    type NodeId = u64;
+    type AppData = ();
+    type AppResponse = ();
     type Node = N;
     type Entry = crate::Entry<Self>;
     type SnapshotData = Cursor<Vec<u8>>;
     type AsyncRuntime = TokioRuntime;
     type Responder = crate::impls::OneshotResponder<Self>;
+}
+
+pub(crate) fn s(x: impl Display) -> String {
+    format!("{}", x)
 }

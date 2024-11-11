@@ -2,7 +2,6 @@
 
 [Change log v0.9.0](https://github.com/suraft/suraft/blob/release-0.9/change-log.md)
 
-
 ## Major changes:
 
 - Removed Compatibility support for v0.7.
@@ -27,10 +26,10 @@
 
     - [`singlethreaded`][]: Run Openraft in a single threaded environment, i.e., without requiring `Send` bound.
     - [`loosen-follower-log-revert`][]: Allows cleaning a follower's data, useful for testing.
-    - [`generic-snapshot-data`][]: Remove `AsyncRead + AsyncWrite` bound from snapshot data. Let application define its own snapshot data transfer.
+    - [`generic-snapshot-data`][]: Remove `AsyncRead + AsyncWrite` bound from snapshot data. Let application define its
+      own snapshot data transfer.
 
-
-## Upgrade for API changes 
+## Upgrade for API changes
 
 The first step for upgrading is to adapt the changes in the API.
 Follow the following steps to update your application to pass compilation with v0.9.
@@ -40,20 +39,21 @@ Follow the following steps to update your application to pass compilation with v
 - Generic types parameters `N, LS, SM` are removed from `Raft<C, N, LS, SM>`.
 
 - `RaftNetwork::send_xxx()` methods are removed, and should be replaced with `RaftNetwork::xxx()`:
-  - `RaftNetwork::send_append_entries()` to `RaftNetwork::append_entries()`;
-  - `RaftNetwork::send_vote()` to `RaftNetwork::vote()`;
-  - `RaftNetwork::send_install_snapshot()` to `RaftNetwork::install_snapshot()`;
+    - `RaftNetwork::send_append_entries()` to `RaftNetwork::append_entries()`;
+    - `RaftNetwork::send_vote()` to `RaftNetwork::vote()`;
+    - `RaftNetwork::send_install_snapshot()` to `RaftNetwork::install_snapshot()`;
 
-- `async` traits in Openraft are declared with [`#[suraft-macros::add_async_trait]`][`suraft-macros`] attribute since 0.9.
+- `async` traits in Openraft are declared with [`#[suraft-macros::add_async_trait]`][`suraft-macros`] attribute since
+  0.9.
   `#[async_trait::async_trait]` are no longer needed when implementing `async` trait.
 
-  For example, upgrade 0.8 async-trait implementation 
+  For example, upgrade 0.8 async-trait implementation
   ```ignore
   #[async_trait::async_trait]
   impl RaftNetwork<TypeConfig> for MyNetwork {}
   ```
-  
-  to 
+
+  to
 
   ```ignore
   impl RaftNetwork<TypeConfig> for MyNetwork {}
@@ -71,13 +71,14 @@ Follow the following steps to update your application to pass compilation with v
         AsyncRuntime = TokioRuntime
   );
   ```
-  
+
   You can just implement the [`AsyncRuntime`][] trait for your own async runtime and use it in `RaftTypeConfig`.
 
 ## Upgrade log storage: save committed log id
 
 In v0.9, `save_committed()` is added to `RaftLogStorage` trait to optionally save the `committed` log id.
 For example:
+
 ```ignore
 impl RaftLogStorage for YourStorage {
     // ...
@@ -109,7 +110,7 @@ To use arbitrary snapshot data, the application needs to:
         SnapshotData = YourSnapshotData
   );
   ```
-  
+
 - implement the snapshot transfer in the application's network layer by implementing the [`RaftNetwork`] trait.
   For example:
   ```ignore
@@ -129,15 +130,16 @@ To use arbitrary snapshot data, the application needs to:
   just call `Chunked::send_snapshot()` in `full_snapshot()`:
   ```ignore 
   impl RaftNetwork for YourNetwork {
-      async fn full_snapshot(&mut self, vote: Vote<C::NodeId>, snapshot: Snapshot<C>, /*...*/
-      ) -> Result<SnapshotResponse<C::NodeId>, StreamingError<C, Fatal<C::NodeId>>> {
+      async fn full_snapshot(&mut self, vote: Vote, snapshot: Snapshot<C>, /*...*/
+      ) -> Result<SnapshotResponse<NID>, StreamingError<C, Fatal<NID>>> {
           let resp = Chunked::send_snapshot(self, vote, snapshot, /*...*/).await?;
           Ok(resp)
       }
   }
   ``` 
-  
-  Refer to: [the default chunk-based snapshot sending](https://github.com/suraft/suraft/blob/2cc7170ffaf87c674e5ca13370402528f8ab3958/suraft/src/network/network.rs#L129)
+
+  Refer
+  to: [the default chunk-based snapshot sending](https://github.com/suraft/suraft/blob/2cc7170ffaf87c674e5ca13370402528f8ab3958/suraft/src/network/network.rs#L129)
 
 - On the receiving end,
   when the application finished receiving the snapshot data,
@@ -171,28 +173,35 @@ To use arbitrary snapshot data, the application needs to:
       Ok(resp)
   }
   ```
-  
-  Refer to: [the default chunk-based snapshot receiving](https://github.com/suraft/suraft/blob/c9a463f5ce73d1e7dd66eabfe909fe8d5a087f0e/suraft/src/raft/mod.rs#L447)
-  
+
+  Refer
+  to: [the default chunk-based snapshot receiving](https://github.com/suraft/suraft/blob/c9a463f5ce73d1e7dd66eabfe909fe8d5a087f0e/suraft/src/raft/mod.rs#L447)
+
   Note that the application is responsible for maintaining a streaming state [`Streaming`][]
   during receiving chunks.
 
-
-
 [`AsyncRuntime`]:                     `crate::AsyncRuntime`
+
 [`RPCOption`]:                        `crate::network::RPCOption`
+
 [`Chunked`]:                          `crate::network::snapshot_transport::Chunked`
+
 [`Chunked::receive_snapshot`]:        `crate::network::snapshot_transport::Chunked::receive_snapshot`
+
 [`Streaming`]:                        `crate::network::snapshot_transport::Streaming`
 
 [`PayloadTooLarge`]:                  `crate::error::PayloadTooLarge`
 
 [`Raft::ensure_linearizable()`]:      `crate::Raft::ensure_linearizable`
+
 [`Raft::get_snapshot()`]:             `crate::Raft::get_snapshot`
+
 [`Raft::begin_receiving_snapshot()`]: `crate::Raft::begin_receiving_snapshot`
+
 [`Raft::install_full_snapshot()`]:    `crate::Raft::install_full_snapshot`
 
 [`RaftNetwork`]:                      `crate::network::RaftNetwork`
+
 [`RaftNetwork::full_snapshot()`]:     `crate::network::v2::RaftNetworkV2::full_snapshot`
 
 [`RaftLogStorage::save_committed()`]: `crate::storage::RaftLogStorage::save_committed`
@@ -200,10 +209,15 @@ To use arbitrary snapshot data, the application needs to:
 [`RaftStateMachine::apply()`]:        `crate::storage::RaftStateMachine::apply`
 
 [`singlethreaded`]:              `crate::docs::feature_flags#feature-flag-singlethreaded`
+
 [`loosen-follower-log-revert`]:  `crate::docs::feature_flags#feature-flag-loosen-follower-log-revert`
+
 [`generic-snapshot-data`]:       `crate::docs::feature_flags#feature-flag-generic-snapshot-data`
+
 [`tracing-log`]:                 `crate::docs::feature_flags#feature-flag-tracing-log`
 
 [`suraft-macros`]: https://docs.rs/suraft-macros/latest/suraft_macros/
-[`tokio`]: https://tokio.rs/ 
+
+[`tokio`]: https://tokio.rs/
+
 [`monoio`]: https://github.com/bytedance/monoio

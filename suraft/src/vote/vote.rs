@@ -2,32 +2,30 @@ use std::cmp::Ordering;
 use std::fmt::Formatter;
 
 use crate::vote::committed::CommittedVote;
-use crate::vote::leader_id::CommittedLeaderId;
 use crate::vote::ref_vote::RefVote;
 use crate::vote::vote_status::VoteStatus;
 use crate::vote::NonCommittedVote;
 use crate::LeaderId;
-use crate::NodeId;
-use crate::RaftTypeConfig;
+use crate::NID;
 
 /// `Vote` represent the privilege of a node.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize), serde(bound = ""))]
-pub struct Vote<NID: NodeId> {
+pub struct Vote {
     /// The id of the node that tries to become the leader.
-    pub leader_id: LeaderId<NID>,
+    pub leader_id: LeaderId,
 
     pub committed: bool,
 }
 
-impl<NID: NodeId> PartialOrd for Vote<NID> {
+impl PartialOrd for Vote {
     #[inline]
-    fn partial_cmp(&self, other: &Vote<NID>) -> Option<Ordering> {
+    fn partial_cmp(&self, other: &Vote) -> Option<Ordering> {
         PartialOrd::partial_cmp(&self.as_ref_vote(), &other.as_ref_vote())
     }
 }
 
-impl<NID: NodeId> std::fmt::Display for Vote<NID> {
+impl std::fmt::Display for Vote {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -38,7 +36,7 @@ impl<NID: NodeId> std::fmt::Display for Vote<NID> {
     }
 }
 
-impl<NID: NodeId> Vote<NID> {
+impl Vote {
     pub fn new(term: u64, node_id: NID) -> Self {
         Self {
             leader_id: LeaderId::new(term, node_id),
@@ -58,23 +56,20 @@ impl<NID: NodeId> Vote<NID> {
         self.committed = true
     }
 
-    pub(crate) fn as_ref_vote(&self) -> RefVote<'_, NID> {
+    pub(crate) fn as_ref_vote(&self) -> RefVote<'_> {
         RefVote::new(&self.leader_id, self.committed)
     }
 
     /// Convert this vote into a `CommittedVote`
-    pub(crate) fn into_committed<C>(self) -> CommittedVote<C>
-    where C: RaftTypeConfig<NodeId = NID> {
+    pub(crate) fn into_committed(self) -> CommittedVote {
         CommittedVote::new(self)
     }
 
-    pub(crate) fn into_non_committed<C>(self) -> NonCommittedVote<C>
-    where C: RaftTypeConfig<NodeId = NID> {
+    pub(crate) fn into_non_committed(self) -> NonCommittedVote {
         NonCommittedVote::new(self)
     }
 
-    pub(crate) fn into_vote_status<C>(self) -> VoteStatus<C>
-    where C: RaftTypeConfig<NodeId = NID> {
+    pub(crate) fn into_vote_status(self) -> VoteStatus {
         if self.committed {
             VoteStatus::Committed(self.into_committed())
         } else {
@@ -89,26 +84,28 @@ impl<NID: NodeId> Vote<NID> {
     /// Return the [`LeaderId`] this vote represents for.
     ///
     /// The leader may or may not be granted by a quorum.
-    pub fn leader_id(&self) -> &LeaderId<NID> {
+    pub fn leader_id(&self) -> &LeaderId {
         &self.leader_id
     }
 
-    pub(crate) fn is_same_leader(&self, leader_id: &CommittedLeaderId<NID>) -> bool {
-        self.leader_id().is_same_as_committed(leader_id)
+    pub(crate) fn is_same_term(&self, term: u64) -> bool {
+        self.leader_id().is_same_term(term)
     }
 }
 
 #[cfg(test)]
 #[allow(clippy::nonminimal_bool)]
 mod tests {
+
     #[cfg(not(feature = "single-term-leader"))]
     mod feature_no_single_term_leader {
+        use crate::engine::testing::s;
         use crate::Vote;
 
         #[cfg(feature = "serde")]
         #[test]
         fn test_vote_serde() -> anyhow::Result<()> {
-            let v = Vote::new(1, 2);
+            let v = Vote::new(1, s(2));
             let s = serde_json::to_string(&v)?;
             assert_eq!(r#"{"leader_id":{"term":1,"node_id":2},"committed":false}"#, s);
 
@@ -155,11 +152,11 @@ mod tests {
         #[cfg(feature = "serde")]
         #[test]
         fn test_vote_serde() -> anyhow::Result<()> {
-            let v = Vote::new(1, 2);
+            let v = Vote::new(1, s(2));
             let s = serde_json::to_string(&v)?;
             assert_eq!(r#"{"leader_id":{"term":1,"voted_for":2},"committed":false}"#, s);
 
-            let v2: Vote<u64> = serde_json::from_str(&s)?;
+            let v2: Vote = serde_json::from_str(&s)?;
             assert_eq!(v, v2);
 
             Ok(())
@@ -169,15 +166,15 @@ mod tests {
         #[allow(clippy::neg_cmp_op_on_partial_ord)]
         fn test_vote_partial_order() -> anyhow::Result<()> {
             #[allow(clippy::redundant_closure)]
-            let vote = |term, node_id| Vote::<u64>::new(term, node_id);
+            let vote = |term, node_id| Vote::new(term, node_id);
 
-            let none = |term| Vote::<u64> {
+            let none = |term| Vote {
                 leader_id: LeaderId { term, voted_for: None },
                 committed: false,
             };
 
             #[allow(clippy::redundant_closure)]
-            let committed = |term, node_id| Vote::<u64>::new_committed(term, node_id);
+            let committed = |term, node_id| Vote::new_committed(term, node_id);
 
             // Compare term first
             assert!(vote(2, 2) > vote(1, 2));

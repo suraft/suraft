@@ -5,6 +5,7 @@ use maplit::btreeset;
 use pretty_assertions::assert_eq;
 
 use crate::core::ServerState;
+use crate::engine::testing::s;
 use crate::engine::testing::UTConfig;
 use crate::engine::Command;
 use crate::engine::Engine;
@@ -16,7 +17,6 @@ use crate::progress::Progress;
 use crate::testing::log_id;
 use crate::type_config::TypeConfigExt;
 use crate::utime::Leased;
-use crate::CommittedLeaderId;
 use crate::EffectiveMembership;
 use crate::LogId;
 use crate::Membership;
@@ -24,19 +24,19 @@ use crate::MembershipState;
 use crate::Vote;
 
 fn m01() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {0,1}], None)
+    Membership::<UTConfig>::new(vec![btreeset! {s(0),s(1)}], None)
 }
 
 fn m23() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {2,3}], None)
+    Membership::<UTConfig>::new(vec![btreeset! {s(2), s(3)}], None)
 }
 
 fn m23_45() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {2,3}], Some(btreeset! {4,5}))
+    Membership::<UTConfig>::new(vec![btreeset! {s(2), s(3)}], Some(btreeset! {4,5}))
 }
 
 fn m34() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {3,4}], None)
+    Membership::<UTConfig>::new(vec![btreeset! {s(3),s(4)}], None)
 }
 
 fn m4_356() -> Membership<UTConfig> {
@@ -44,16 +44,16 @@ fn m4_356() -> Membership<UTConfig> {
 }
 
 fn eng() -> Engine<UTConfig> {
-    let mut eng = Engine::testing_default(0);
+    let mut eng = Engine::testing_default(s(0));
     eng.config.id = 2;
     eng.state.membership_state = MembershipState::new(
-        Arc::new(EffectiveMembership::new(Some(log_id(1, 1, 1)), m01())),
-        Arc::new(EffectiveMembership::new(Some(log_id(2, 1, 3)), m23())),
+        Arc::new(EffectiveMembership::new(Some(log_id(1, s(1), 1)), m01())),
+        Arc::new(EffectiveMembership::new(Some(log_id(2, s(1), 3)), m23())),
     );
     eng.state.vote = Leased::new(
         UTConfig::<()>::now(),
         Duration::from_millis(500),
-        Vote::new_committed(6, 2),
+        Vote::new_committed(6, s(2)),
     );
     eng.state.server_state = eng.calc_server_state();
     eng
@@ -66,12 +66,12 @@ fn test_leader_append_membership_for_leader() -> anyhow::Result<()> {
     eng.testing_new_leader();
     eng.output.take_commands();
 
-    eng.replication_handler().append_membership(&log_id(3, 1, 4), &m34());
+    eng.replication_handler().append_membership(&log_id(3, s(1), 4), &m34());
 
     assert_eq!(
         MembershipState::new(
-            Arc::new(EffectiveMembership::new(Some(log_id(2, 1, 3)), m23())),
-            Arc::new(EffectiveMembership::new(Some(log_id(3, 1, 4)), m34()))
+            Arc::new(EffectiveMembership::new(Some(log_id(2, s(1), 3)), m23())),
+            Arc::new(EffectiveMembership::new(Some(log_id(3, s(1), 4)), m34()))
         ),
         eng.state.membership_state
     );
@@ -110,15 +110,11 @@ fn test_leader_append_membership_update_learner_process() -> anyhow::Result<()> 
     // learner or vice versa.
 
     let mut eng = eng();
-    eng.state.log_ids = LogIdList::new([
-        LogId::new(CommittedLeaderId::new(0, 0), 0),
-        log_id(1, 1, 1),
-        log_id(5, 1, 10),
-    ]);
+    eng.state.log_ids = LogIdList::new([LogId::new(0, 0), log_id(1, s(1), 1), log_id(5, 1, 10)]);
 
     eng.state
         .membership_state
-        .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(2, 1, 3)), m23_45())));
+        .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(2, s(1), 3)), m23_45())));
 
     // Make it a real leader: voted for itself and vote is committed.
     eng.testing_new_leader();
@@ -127,49 +123,49 @@ fn test_leader_append_membership_update_learner_process() -> anyhow::Result<()> 
         assert_eq!(&ProgressEntry::empty(11), l.progress.get(&4));
         assert_eq!(&ProgressEntry::empty(11), l.progress.get(&5));
 
-        let p = ProgressEntry::new(Some(log_id(1, 1, 4)));
+        let p = ProgressEntry::new(Some(log_id(1, s(1), 4)));
         let _ = l.progress.update(&4, p.clone());
         assert_eq!(&p, l.progress.get(&4));
 
-        let p = ProgressEntry::new(Some(log_id(1, 1, 5)));
+        let p = ProgressEntry::new(Some(log_id(1, s(1), 5)));
         let _ = l.progress.update(&5, p.clone());
         assert_eq!(&p, l.progress.get(&5));
 
-        let p = ProgressEntry::new(Some(log_id(1, 1, 3)));
+        let p = ProgressEntry::new(Some(log_id(1, s(1), 3)));
         let _ = l.progress.update(&3, p.clone());
         assert_eq!(&p, l.progress.get(&3));
     } else {
         unreachable!("leader should not be None");
     }
 
-    eng.replication_handler().append_membership(&log_id(3, 1, 4), &m4_356());
+    eng.replication_handler().append_membership(&log_id(3, s(1), 4), &m4_356());
 
     assert_eq!(
         MembershipState::new(
-            Arc::new(EffectiveMembership::new(Some(log_id(2, 1, 3)), m23_45())),
-            Arc::new(EffectiveMembership::new(Some(log_id(3, 1, 4)), m4_356()))
+            Arc::new(EffectiveMembership::new(Some(log_id(2, s(1), 3)), m23_45())),
+            Arc::new(EffectiveMembership::new(Some(log_id(3, s(1), 4)), m4_356()))
         ),
         eng.state.membership_state
     );
 
     if let Some(l) = &mut eng.leader.as_mut() {
         assert_eq!(
-            &ProgressEntry::new(Some(log_id(1, 1, 4)))
-                .with_inflight(Inflight::logs(Some(log_id(1, 1, 4)), Some(log_id(5, 1, 10)))),
+            &ProgressEntry::new(Some(log_id(1, s(1), 4)))
+                .with_inflight(Inflight::logs(Some(log_id(1, s(1), 4)), Some(log_id(5, 1, 10)))),
             l.progress.get(&4),
             "learner-4 progress should be transferred to voter progress"
         );
 
         assert_eq!(
-            &ProgressEntry::new(Some(log_id(1, 1, 3)))
-                .with_inflight(Inflight::logs(Some(log_id(1, 1, 3)), Some(log_id(5, 1, 10)))),
+            &ProgressEntry::new(Some(log_id(1, s(1), 3)))
+                .with_inflight(Inflight::logs(Some(log_id(1, s(1), 3)), Some(log_id(5, 1, 10)))),
             l.progress.get(&3),
             "voter-3 progress should be transferred to learner progress"
         );
 
         assert_eq!(
-            &ProgressEntry::new(Some(log_id(1, 1, 5)))
-                .with_inflight(Inflight::logs(Some(log_id(1, 1, 5)), Some(log_id(5, 1, 10)))),
+            &ProgressEntry::new(Some(log_id(1, s(1), 5)))
+                .with_inflight(Inflight::logs(Some(log_id(1, s(1), 5)), Some(log_id(5, 1, 10)))),
             l.progress.get(&5),
             "learner-5 has previous value"
         );

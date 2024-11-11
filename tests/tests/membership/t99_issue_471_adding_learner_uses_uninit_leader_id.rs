@@ -28,11 +28,11 @@ async fn adding_learner_do_not_use_matched_leader_id() -> Result<()> {
     );
     let mut router = RaftRouter::new(config.clone());
 
-    router.new_cluster(btreeset! {0}, btreeset! {}).await?;
+    router.new_cluster(btreeset! {s(0)}, btreeset! {}).await?;
 
     tracing::info!("--- feed 2 log to make replication busy");
     {
-        router.client_request_many(0, "foo", 2).await?;
+        router.client_request_many(s(0), "foo", 2).await?;
     }
 
     // Delay replication.

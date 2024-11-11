@@ -37,7 +37,7 @@ async fn client_reads() -> Result<()> {
     router.network_send_delay(0);
 
     tracing::info!("--- initializing cluster");
-    let log_index = router.new_cluster(btreeset! {0,1,2}, btreeset! {}).await?;
+    let log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {}).await?;
 
     // Get the ID of the leader, and assert that ensure_linearizable succeeds.
     let leader = router.leader().expect("leader not found");
@@ -87,7 +87,7 @@ async fn get_read_log_id() -> Result<()> {
     let mut router = RaftRouter::new(config.clone());
 
     tracing::info!("--- initializing cluster");
-    let mut log_index = router.new_cluster(btreeset! {0,1}, btreeset! {}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0),s(1)}, btreeset! {}).await?;
 
     // Blocks append-entries to node 0, but let heartbeat pass.
     let block_to_n0 = |_router: &_, req, _id, target| {
@@ -119,7 +119,7 @@ async fn get_read_log_id() -> Result<()> {
     tokio::time::sleep(Duration::from_millis(200)).await;
 
     tracing::info!("--- let node 1 to become leader, append a blank log");
-    let n1 = router.get_raft_handle(&1).unwrap();
+    let n1 = router.get_raft_handle(&s(1)).unwrap();
     n1.trigger().elect().await?;
 
     tracing::info!(log_index = log_index, "--- node 1 appends blank log but can not commit");

@@ -3,13 +3,13 @@ use std::sync::Arc;
 use anyhow::Result;
 use maplit::btreeset;
 use suraft::storage::RaftStateMachine;
-use suraft::CommittedLeaderId;
 use suraft::Config;
 use suraft::LogId;
 use suraft::LogIdOptionExt;
 use suraft::Membership;
 use suraft::StoredMembership;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -34,15 +34,12 @@ async fn state_machine_apply_membership() -> Result<()> {
     let mut router = RaftRouter::new(config.clone());
 
     tracing::info!("--- initializing cluster");
-    let mut log_index = router.new_cluster(btreeset! {0}, btreeset! {}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0)}, btreeset! {}).await?;
 
     for i in 0..=0 {
         let (_sto, mut sm) = router.get_storage_handle(&i)?;
         assert_eq!(
-            StoredMembership::new(
-                Some(LogId::new(CommittedLeaderId::new(0, 0), 0)),
-                Membership::new(vec![btreeset! {0}], None)
-            ),
+            StoredMembership::new(Some(LogId::new(0, 0)), Membership::new(vec![btreeset! {s(0)}], None)),
             sm.applied_state().await?.1
         );
     }
@@ -64,7 +61,7 @@ async fn state_machine_apply_membership() -> Result<()> {
     router.wait_for_log(&btreeset![0], Some(log_index), None, "add learner").await?;
 
     tracing::info!(log_index, "--- changing cluster config");
-    let node = router.get_raft_handle(&0)?;
+    let node = router.get_raft_handle(&s(0))?;
     node.change_membership([0, 1, 2], false).await?;
 
     log_index += 2;
@@ -88,8 +85,8 @@ async fn state_machine_apply_membership() -> Result<()> {
         let (_, last_membership) = sm.applied_state().await?;
         assert_eq!(
             StoredMembership::new(
-                Some(LogId::new(CommittedLeaderId::new(1, 0), log_index)),
-                Membership::new(vec![btreeset! {0, 1, 2}], Some(btreeset! {3,4}))
+                Some(LogId::new(1, log_index)),
+                Membership::new(vec![btreeset! {0, 1, 2}], Some(btreeset! {s(3),s(4)}))
             ),
             last_membership
         );

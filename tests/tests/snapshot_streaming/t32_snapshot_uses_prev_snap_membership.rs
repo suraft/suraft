@@ -46,13 +46,13 @@ async fn snapshot_uses_prev_snap_membership() -> Result<()> {
     );
     let mut router = RaftRouter::new(config.clone());
 
-    let mut log_index = router.new_cluster(btreeset! {0,1}, btreeset! {}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0),s(1)}, btreeset! {}).await?;
 
     let (mut sto0, mut sm0) = router.get_storage_handle(&0)?;
 
     tracing::info!(log_index, "--- send just enough logs to trigger snapshot");
     {
-        router.client_request_many(0, "0", (snapshot_threshold - 1 - log_index) as usize).await?;
+        router.client_request_many(s(0), "0", (snapshot_threshold - 1 - log_index) as usize).await?;
         log_index = snapshot_threshold - 1;
 
         router
@@ -63,14 +63,7 @@ async fn snapshot_uses_prev_snap_membership() -> Result<()> {
                 "send log to trigger snapshot",
             )
             .await?;
-        router
-            .wait_for_snapshot(
-                &btreeset![0],
-                LogId::new(CommittedLeaderId::new(1, 0), log_index),
-                timeout(),
-                "1st snapshot",
-            )
-            .await?;
+        router.wait_for_snapshot(&btreeset![0], LogId::new(1, log_index), timeout(), "1st snapshot").await?;
 
         {
             let logs = sto0.try_get_log_entries(..).await?;
@@ -79,12 +72,12 @@ async fn snapshot_uses_prev_snap_membership() -> Result<()> {
         let m = StorageHelper::new(&mut sto0, &mut sm0).get_membership().await?;
 
         assert_eq!(
-            &Membership::new(vec![btreeset! {0,1}], None),
+            &Membership::new(vec![btreeset! {s(0),s(1)}], None),
             m.committed().membership(),
             "membership "
         );
         assert_eq!(
-            &Membership::new(vec![btreeset! {0,1}], None),
+            &Membership::new(vec![btreeset! {s(0),s(1)}], None),
             m.effective().membership(),
             "membership "
         );
@@ -92,18 +85,11 @@ async fn snapshot_uses_prev_snap_membership() -> Result<()> {
 
     tracing::info!(log_index, "--- send just enough logs to trigger the 2nd snapshot");
     {
-        router.client_request_many(0, "0", (snapshot_threshold * 2 - 1 - log_index) as usize).await?;
+        router.client_request_many(s(0), "0", (snapshot_threshold * 2 - 1 - log_index) as usize).await?;
         log_index = snapshot_threshold * 2 - 1;
 
         router.wait_for_log(&btreeset![0, 1], Some(log_index), None, "send log to trigger snapshot").await?;
-        router
-            .wait_for_snapshot(
-                &btreeset![0],
-                LogId::new(CommittedLeaderId::new(1, 0), log_index),
-                None,
-                "2nd snapshot",
-            )
-            .await?;
+        router.wait_for_snapshot(&btreeset![0], LogId::new(1, log_index), None, "2nd snapshot").await?;
     }
 
     tracing::info!(log_index, "--- check membership");
@@ -115,12 +101,12 @@ async fn snapshot_uses_prev_snap_membership() -> Result<()> {
         let m = StorageHelper::new(&mut sto0, &mut sm0).get_membership().await?;
 
         assert_eq!(
-            &Membership::new(vec![btreeset! {0,1}], None),
+            &Membership::new(vec![btreeset! {s(0),s(1)}], None),
             m.committed().membership(),
             "membership "
         );
         assert_eq!(
-            &Membership::new(vec![btreeset! {0,1}], None),
+            &Membership::new(vec![btreeset! {s(0),s(1)}], None),
             m.effective().membership(),
             "membership "
         );

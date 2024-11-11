@@ -3,7 +3,6 @@ use std::ops::RangeInclusive;
 use crate::engine::leader_log_ids::LeaderLogIds;
 use crate::log_id::RaftLogId;
 use crate::storage::RaftLogReaderExt;
-use crate::type_config::alias::LogIdOf;
 use crate::LogId;
 use crate::LogIdOptionExt;
 use crate::RaftLogReader;
@@ -19,15 +18,11 @@ use crate::StorageError;
 /// The last one may have the same leader id as the second last one.
 #[derive(Default, Debug, Clone)]
 #[derive(PartialEq, Eq)]
-pub struct LogIdList<C>
-where C: RaftTypeConfig
-{
-    key_log_ids: Vec<LogId<C::NodeId>>,
+pub struct LogIdList {
+    key_log_ids: Vec<LogId>,
 }
 
-impl<C> LogIdList<C>
-where C: RaftTypeConfig
-{
+impl LogIdList {
     /// Load all log ids that are the first one proposed by a leader.
     ///
     /// E.g., log ids with the same leader id will be got rid of, except the smallest.
@@ -48,17 +43,18 @@ where C: RaftTypeConfig
     /// A-------B-------C : find(A,B); find(B,C)   // both find `B`, need to de-dup
     /// A-------C-------C : find(A,C)
     /// ```
-    pub(crate) async fn get_key_log_ids<LR>(
-        range: RangeInclusive<LogId<C::NodeId>>,
+    pub(crate) async fn get_key_log_ids<C, LR>(
+        range: RangeInclusive<LogId>,
         sto: &mut LR,
-    ) -> Result<Vec<LogIdOf<C>>, StorageError<C>>
+    ) -> Result<Vec<LogId>, StorageError>
     where
+        C: RaftTypeConfig,
         LR: RaftLogReader<C> + ?Sized,
     {
         let first = range.start().clone();
         let last = range.end().clone();
 
-        let mut res: Vec<LogIdOf<C>> = vec![];
+        let mut res: Vec<LogId> = vec![];
 
         // Recursion stack
         let mut stack = vec![(first, last.clone())];
@@ -72,8 +68,8 @@ where C: RaftTypeConfig
             };
 
             // Case AA
-            if first.leader_id == last.leader_id {
-                if res.last().map(|x| &x.leader_id) < Some(&first.leader_id) {
+            if first.term == last.term {
+                if res.last().map(|x| &x.term) < Some(&first.term) {
                     res.push(first);
                 }
                 continue;
@@ -81,7 +77,7 @@ where C: RaftTypeConfig
 
             // Two adjacent logs with different leader_id, no need to binary search
             if first.index + 1 == last.index {
-                if res.last().map(|x| &x.leader_id) < Some(&first.leader_id) {
+                if res.last().map(|x| &x.term) < Some(&first.term) {
                     res.push(first);
                 }
                 res.push(last);
@@ -90,13 +86,13 @@ where C: RaftTypeConfig
 
             let mid = sto.get_log_id((first.index + last.index) / 2).await?;
 
-            if first.leader_id == mid.leader_id {
+            if first.term == mid.term {
                 // Case AAC
-                if res.last().map(|x| &x.leader_id) < Some(&first.leader_id) {
+                if res.last().map(|x| &x.term) < Some(&first.term) {
                     res.push(first);
                 }
                 stack.push((mid, last));
-            } else if mid.leader_id == last.leader_id {
+            } else if mid.term == last.term {
                 // Case ACC
                 stack.push((first, mid));
             } else {
@@ -116,13 +112,11 @@ where C: RaftTypeConfig
     }
 }
 
-impl<C> LogIdList<C>
-where C: RaftTypeConfig
-{
+impl LogIdList {
     /// Create a new `LogIdList`.
     ///
     /// It stores the last purged log id, and a series of key log ids.
-    pub fn new(key_log_ids: impl IntoIterator<Item = LogId<C::NodeId>>) -> Self {
+    pub fn new(key_log_ids: impl IntoIterator<Item = LogId>) -> Self {
         Self {
             key_log_ids: key_log_ids.into_iter().collect(),
         }
@@ -131,14 +125,14 @@ where C: RaftTypeConfig
     /// Extends a list of `log_id` that are proposed by a same leader.
     ///
     /// The log ids in the input has to be continuous.
-    pub(crate) fn extend_from_same_leader<'a, LID: RaftLogId<C::NodeId> + 'a>(&mut self, new_ids: &[LID]) {
+    pub(crate) fn extend_from_same_leader<'a, LID: RaftLogId + 'a>(&mut self, new_ids: &[LID]) {
         if let Some(first) = new_ids.first() {
             let first_id = first.get_log_id();
             self.append(first_id.clone());
 
             if let Some(last) = new_ids.last() {
                 let last_id = last.get_log_id();
-                assert_eq!(last_id.leader_id, first_id.leader_id);
+                assert_eq!(last_id.term, first_id.term);
 
                 if last_id != first_id {
                     self.append(last_id.clone());
@@ -149,16 +143,16 @@ where C: RaftTypeConfig
 
     /// Extends a list of `log_id`.
     #[allow(dead_code)]
-    pub(crate) fn extend<'a, LID: RaftLogId<C::NodeId> + 'a>(&mut self, new_ids: &[LID]) {
-        let mut prev = self.last().map(|x| x.leader_id.clone());
+    pub(crate) fn extend<'a, LID: RaftLogId + 'a>(&mut self, new_ids: &[LID]) {
+        let mut prev = self.last().map(|x| x.term.clone());
 
         for x in new_ids.iter() {
             let log_id = x.get_log_id();
 
-            if prev.as_ref() != Some(&log_id.leader_id) {
+            if prev.as_ref() != Some(&log_id.term) {
                 self.append(log_id.clone());
 
-                prev = Some(log_id.leader_id.clone());
+                prev = Some(log_id.term.clone());
             }
         }
 
@@ -179,7 +173,7 @@ where C: RaftTypeConfig
     ///
     /// NOTE: The last two in `key_log_ids` may be with the same `leader_id`, because `last_log_id`
     /// always present in `log_ids`.
-    pub(crate) fn append(&mut self, new_log_id: LogId<C::NodeId>) {
+    pub(crate) fn append(&mut self, new_log_id: LogId) {
         let l = self.key_log_ids.len();
         if l == 0 {
             self.key_log_ids.push(new_log_id);
@@ -204,7 +198,7 @@ where C: RaftTypeConfig
 
         let last = &self.key_log_ids[l - 1];
 
-        if self.key_log_ids.get(l - 2).map(|x| &x.leader_id) == Some(&last.leader_id) {
+        if self.key_log_ids.get(l - 2).map(|x| &x.term) == Some(&last.term) {
             // Replace the **last log id**.
             self.key_log_ids[l - 1] = new_log_id;
             return;
@@ -236,7 +230,7 @@ where C: RaftTypeConfig
         // Add key log id if there is a gap between last.index and at - 1.
         let last = self.key_log_ids.last();
         if let Some(last) = last {
-            let (last_leader_id, last_index) = (last.leader_id.clone(), last.index);
+            let (last_leader_id, last_index) = (last.term.clone(), last.index);
             if last_index < at - 1 {
                 self.append(LogId::new(last_leader_id, at - 1));
             }
@@ -245,7 +239,7 @@ where C: RaftTypeConfig
 
     /// Purge log ids upto the log with index `upto_index`, inclusive.
     #[allow(dead_code)]
-    pub(crate) fn purge(&mut self, upto: &LogId<C::NodeId>) {
+    pub(crate) fn purge(&mut self, upto: &LogId) {
         let last = self.last().cloned();
 
         // When installing  snapshot it may need to purge across the `last_log_id`.
@@ -277,32 +271,32 @@ where C: RaftTypeConfig
     /// Get the log id at the specified index.
     ///
     /// It will return `last_purged_log_id` if index is at the last purged index.
-    pub(crate) fn get(&self, index: u64) -> Option<LogId<C::NodeId>> {
+    pub(crate) fn get(&self, index: u64) -> Option<LogId> {
         let res = self.key_log_ids.binary_search_by(|log_id| log_id.index.cmp(&index));
 
         match res {
-            Ok(i) => Some(LogId::new(self.key_log_ids[i].leader_id.clone(), index)),
+            Ok(i) => Some(LogId::new(self.key_log_ids[i].term.clone(), index)),
             Err(i) => {
                 if i == 0 || i == self.key_log_ids.len() {
                     None
                 } else {
-                    Some(LogId::new(self.key_log_ids[i - 1].leader_id.clone(), index))
+                    Some(LogId::new(self.key_log_ids[i - 1].term.clone(), index))
                 }
             }
         }
     }
 
-    pub(crate) fn first(&self) -> Option<&LogId<C::NodeId>> {
+    pub(crate) fn first(&self) -> Option<&LogId> {
         self.key_log_ids.first()
     }
 
-    pub(crate) fn last(&self) -> Option<&LogId<C::NodeId>> {
+    pub(crate) fn last(&self) -> Option<&LogId> {
         self.key_log_ids.last()
     }
 
     // This method will only be used under feature tokio-rt
     #[cfg_attr(not(feature = "tokio-rt"), allow(dead_code))]
-    pub(crate) fn key_log_ids(&self) -> &[LogId<C::NodeId>] {
+    pub(crate) fn key_log_ids(&self) -> &[LogId] {
         &self.key_log_ids
     }
 
@@ -311,7 +305,7 @@ where C: RaftTypeConfig
     /// Note that the 0-th log does not belong to any leader(but a membership log to initialize a
     /// cluster) but this method does not differentiate between them.
     #[allow(dead_code)]
-    pub(crate) fn by_last_leader(&self) -> LeaderLogIds<C> {
+    pub(crate) fn by_last_leader(&self) -> LeaderLogIds {
         let ks = &self.key_log_ids;
         let l = ks.len();
         if l < 2 {
@@ -320,7 +314,7 @@ where C: RaftTypeConfig
         }
 
         // There are at most two(adjacent) key log ids with the same leader_id
-        if ks[l - 1].leader_id() == ks[l - 2].leader_id() {
+        if ks[l - 1].term() == ks[l - 2].term() {
             LeaderLogIds::new_start_end(ks[l - 2].clone(), ks[l - 1].clone())
         } else {
             let last = self.last().cloned().unwrap();

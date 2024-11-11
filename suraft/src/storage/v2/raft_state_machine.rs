@@ -35,7 +35,7 @@ where C: RaftTypeConfig
     /// last-applied-log-id.
     /// Because upon startup, the last membership will be loaded by scanning logs from the
     /// `last-applied-log-id`.
-    async fn applied_state(&mut self) -> Result<(Option<LogId<C::NodeId>>, StoredMembership<C>), StorageError<C>>;
+    async fn applied_state(&mut self) -> Result<(Option<LogId>, StoredMembership<C>), StorageError>;
 
     /// Apply the given payload of entries to the state machine.
     ///
@@ -63,7 +63,7 @@ where C: RaftTypeConfig
     /// - An implementation with persistent snapshot: `apply()` does not have to persist state on
     ///   disk. But every snapshot has to be persistent. And when starting up the application, the
     ///   state machine should be rebuilt from the last snapshot.
-    async fn apply<I>(&mut self, entries: I) -> Result<Vec<C::R>, StorageError<C>>
+    async fn apply<I>(&mut self, entries: I) -> Result<Vec<C::AppResponse>, StorageError>
     where
         I: IntoIterator<Item = C::Entry> + OptionalSend,
         I::IntoIter: OptionalSend;
@@ -86,7 +86,7 @@ where C: RaftTypeConfig
     /// See the [storage chapter of the guide][sto] for details on log compaction / snapshotting.
     ///
     /// [sto]: crate::docs::getting_started#3-implement-raftlogstorage-and-raftstatemachine
-    async fn begin_receiving_snapshot(&mut self) -> Result<Box<C::SnapshotData>, StorageError<C>>;
+    async fn begin_receiving_snapshot(&mut self) -> Result<Box<C::SnapshotData>, StorageError>;
 
     /// Install a snapshot which has finished streaming from the leader.
     ///
@@ -103,7 +103,7 @@ where C: RaftTypeConfig
         &mut self,
         meta: &SnapshotMeta<C>,
         snapshot: Box<C::SnapshotData>,
-    ) -> Result<(), StorageError<C>>;
+    ) -> Result<(), StorageError>;
 
     /// Get a readable handle to the current snapshot.
     ///
@@ -118,5 +118,5 @@ where C: RaftTypeConfig
     /// A proper snapshot implementation will store last-applied-log-id and the
     /// last-applied-membership config as part of the snapshot, which should be decoded for
     /// creating this method's response data.
-    async fn get_current_snapshot(&mut self) -> Result<Option<Snapshot<C>>, StorageError<C>>;
+    async fn get_current_snapshot(&mut self) -> Result<Option<Snapshot<C>>, StorageError>;
 }

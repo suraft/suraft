@@ -33,7 +33,7 @@ async fn metrics_wait() -> Result<()> {
     let cluster = btreeset![0];
     router.new_raft_node(0).await;
     {
-        let n0 = router.get_raft_handle(&0)?;
+        let n0 = router.get_raft_handle(&s(0))?;
         n0.initialize(cluster.clone()).await?;
 
         router.wait(&0, timeout()).state(ServerState::Leader, "n0 -> leader").await?;

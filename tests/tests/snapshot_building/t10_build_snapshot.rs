@@ -9,7 +9,6 @@ use suraft::network::RaftNetworkFactory;
 use suraft::raft::AppendEntriesRequest;
 use suraft::storage::RaftLogStorageExt;
 use suraft::testing::blank_ent;
-use suraft::CommittedLeaderId;
 use suraft::Config;
 use suraft::Entry;
 use suraft::EntryPayload;
@@ -19,6 +18,7 @@ use suraft::RaftLogReader;
 use suraft::SnapshotPolicy;
 use suraft::Vote;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -48,42 +48,35 @@ async fn build_snapshot() -> Result<()> {
     let mut router = RaftRouter::new(config.clone());
 
     tracing::info!("--- initializing cluster");
-    let mut log_index = router.new_cluster(btreeset! {0}, btreeset! {}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0)}, btreeset! {}).await?;
 
     // Send enough requests to the cluster that compaction on the node should be triggered.
     // Puts us exactly at the configured snapshot policy threshold.
 
     // Log at 0 count as 1
-    router.client_request_many(0, "0", (snapshot_threshold - 1 - log_index) as usize).await?;
+    router.client_request_many(s(0), "0", (snapshot_threshold - 1 - log_index) as usize).await?;
     log_index = snapshot_threshold - 1;
 
     tracing::info!(log_index, "--- log_index: {}", log_index);
 
-    router.wait_for_log(&btreeset![0], Some(log_index), timeout(), "write").await?;
-    router
-        .wait_for_snapshot(
-            &btreeset![0],
-            LogId::new(CommittedLeaderId::new(1, 0), log_index),
-            None,
-            "snapshot",
-        )
-        .await?;
+    router.wait_for_log(&btreeset! {s(0)}, Some(log_index), timeout(), "write").await?;
+    router.wait_for_snapshot(&btreeset! {s(0)}, LogId::new(1, log_index), None, "snapshot").await?;
 
     router
         .assert_storage_state(
             1,
             log_index,
             Some(0),
-            LogId::new(CommittedLeaderId::new(1, 0), log_index),
+            LogId::new(1, log_index),
             Some((log_index.into(), 1)),
         )
         .await?;
 
     // Add a new node and assert that it received the same snapshot.
     let (mut sto1, sm1) = router.new_store();
-    sto1.blocking_append([blank_ent(0, 0, 0), Entry {
-        log_id: LogId::new(CommittedLeaderId::new(1, 0), 1),
-        payload: EntryPayload::Membership(Membership::new(vec![btreeset! {0}], None)),
+    sto1.blocking_append([blank_ent(0, 0), Entry {
+        log_id: LogId::new(1, 1),
+        payload: EntryPayload::Membership(Membership::new(vec![btreeset! {s(0)}], None)),
     }])
     .await?;
 
@@ -93,7 +86,7 @@ async fn build_snapshot() -> Result<()> {
 
     tracing::info!(log_index, "--- add 1 log after snapshot, log_index: {}", log_index);
     {
-        router.client_request_many(0, "0", 1).await?;
+        router.client_request_many(s(0), "0", 1).await?;
         log_index += 1;
     }
 
@@ -109,7 +102,7 @@ async fn build_snapshot() -> Result<()> {
         let (mut sto, _sm) = router.get_storage_handle(&1)?;
         let logs = sto.try_get_log_entries(..).await?;
         assert_eq!(2, logs.len());
-        assert_eq!(LogId::new(CommittedLeaderId::new(1, 0), log_index - 1), logs[0].log_id)
+        assert_eq!(LogId::new(1, log_index - 1), logs[0].log_id)
     }
 
     // log 0 counts
@@ -119,7 +112,7 @@ async fn build_snapshot() -> Result<()> {
             1,
             log_index,
             None, /* learner does not vote */
-            LogId::new(CommittedLeaderId::new(1, 0), log_index),
+            LogId::new(1, log_index),
             expected_snap,
         )
         .await?;
@@ -135,10 +128,10 @@ async fn build_snapshot() -> Result<()> {
             .await
             .append_entries(
                 AppendEntriesRequest {
-                    vote: Vote::new_committed(1, 0),
-                    prev_log_id: Some(LogId::new(CommittedLeaderId::new(1, 0), 2)),
+                    vote: Vote::new_committed(1, s(0)),
+                    prev_log_id: Some(LogId::new(1, 2)),
                     entries: vec![],
-                    leader_commit: Some(LogId::new(CommittedLeaderId::new(0, 0), 0)),
+                    leader_commit: Some(LogId::new(0, 0)),
                 },
                 option,
             )

@@ -39,7 +39,7 @@ async fn write_when_leader_quit_and_log_revert() -> Result<()> {
     let mut router = RaftRouter::new(config.clone());
 
     tracing::info!("--- initializing cluster");
-    let log_index = router.new_cluster(btreeset! {0,1}, btreeset! {}).await?;
+    let log_index = router.new_cluster(btreeset! {s(0),s(1)}, btreeset! {}).await?;
 
     tracing::info!(log_index, "--- block replication so that no log will be committed");
     router.set_unreachable(1, true);
@@ -48,7 +48,7 @@ async fn write_when_leader_quit_and_log_revert() -> Result<()> {
 
     tracing::info!(log_index, "--- write a log in another task");
     {
-        let n0 = router.get_raft_handle(&0)?;
+        let n0 = router.get_raft_handle(&s(0))?;
         tokio::spawn(async move {
             let res = n0.client_write(ClientRequest::make_request("cli", 1)).await;
             tx.send(res).unwrap();
@@ -60,7 +60,7 @@ async fn write_when_leader_quit_and_log_revert() -> Result<()> {
 
     tracing::info!(log_index, "--- force node 0 to give up leadership");
     {
-        let n0 = router.get_raft_handle(&0)?;
+        let n0 = router.get_raft_handle(&s(0))?;
         let append_res = n0
             .append_entries(AppendEntriesRequest {
                 // From node 2, with a higher term 10
@@ -114,7 +114,7 @@ async fn write_when_leader_switched() -> Result<()> {
     let mut router = RaftRouter::new(config.clone());
 
     tracing::info!("--- initializing cluster");
-    let log_index = router.new_cluster(btreeset! {0,1}, btreeset! {}).await?;
+    let log_index = router.new_cluster(btreeset! {s(0),s(1)}, btreeset! {}).await?;
 
     tracing::info!(log_index, "--- block replication so that no log will be committed");
     router.set_unreachable(1, true);
@@ -123,7 +123,7 @@ async fn write_when_leader_switched() -> Result<()> {
 
     tracing::info!(log_index, "--- write a log in another task");
     {
-        let n0 = router.get_raft_handle(&0)?;
+        let n0 = router.get_raft_handle(&s(0))?;
         tokio::spawn(async move {
             let res = n0.client_write(ClientRequest::make_request("cli", 1)).await;
             tx.send(res).unwrap();
@@ -135,7 +135,7 @@ async fn write_when_leader_switched() -> Result<()> {
 
     tracing::info!(log_index, "--- force node 0 to give up leadership, inform it to commit");
     {
-        let n0 = router.get_raft_handle(&0)?;
+        let n0 = router.get_raft_handle(&s(0))?;
         let append_res = n0
             .append_entries(AppendEntriesRequest {
                 // From node 2, with a higher term 10

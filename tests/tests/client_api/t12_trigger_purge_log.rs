@@ -28,13 +28,13 @@ async fn trigger_purge_log() -> anyhow::Result<()> {
     let mut router = RaftRouter::new(config.clone());
 
     tracing::info!("--- initializing cluster");
-    let mut log_index = router.new_cluster(btreeset! {0,1,2}, btreeset! {}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {}).await?;
 
     tracing::info!(log_index, "--- write some logs");
     {
-        log_index += router.client_request_many(0, "0", 10).await?;
+        log_index += router.client_request_many(s(0), "0", 10).await?;
 
-        for id in [0, 1, 2] {
+        for id in [s(0), s(1), s(2)] {
             router
                 .wait(&id, timeout())
                 .applied_index(Some(log_index), format_args!("node-{} write logs", id))
@@ -44,19 +44,19 @@ async fn trigger_purge_log() -> anyhow::Result<()> {
 
     tracing::info!(log_index, "--- trigger snapshot for node-0");
     {
-        let n0 = router.get_raft_handle(&0)?;
+        let n0 = router.get_raft_handle(&s(0))?;
         n0.trigger().snapshot().await?;
 
-        router.wait(&0, timeout()).snapshot(log_id(1, 0, log_index), "node-1 snapshot").await?;
+        router.wait(&0, timeout()).snapshot(log_id(1, log_index), "node-1 snapshot").await?;
     }
 
     let snapshot_index = log_index;
 
     tracing::info!(log_index, "--- write another bunch of logs");
     {
-        log_index += router.client_request_many(0, "0", 10).await?;
+        log_index += router.client_request_many(s(0), "0", 10).await?;
 
-        for id in [0, 1, 2] {
+        for id in [s(0), s(1), s(2)] {
             router
                 .wait(&id, timeout())
                 .applied_index(Some(log_index), format_args!("node-{} write logs", id))
@@ -66,7 +66,7 @@ async fn trigger_purge_log() -> anyhow::Result<()> {
 
     tracing::info!(log_index, "--- purge log for node 0");
     {
-        let n0 = router.get_raft_handle(&0)?;
+        let n0 = router.get_raft_handle(&s(0))?;
         n0.trigger().purge_log(snapshot_index).await?;
 
         router
@@ -81,7 +81,7 @@ async fn trigger_purge_log() -> anyhow::Result<()> {
         let res = router
             .wait(&0, timeout())
             .purged(
-                Some(log_id(1, 0, log_index)),
+                Some(log_id(1, log_index)),
                 format_args!("node-0 wont purged upto {}", log_index),
             )
             .await;

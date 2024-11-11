@@ -13,7 +13,6 @@ use crate::config::error::ConfigError;
 use crate::raft_state::LogStateReader;
 use crate::AsyncRuntime;
 use crate::LogIdOptionExt;
-use crate::RaftTypeConfig;
 
 /// Log compaction and snapshot policy.
 ///
@@ -37,8 +36,7 @@ pub enum SnapshotPolicy {
 }
 
 impl SnapshotPolicy {
-    pub(crate) fn should_snapshot<C>(&self, state: &impl Deref<Target = impl LogStateReader<C>>) -> bool
-    where C: RaftTypeConfig {
+    pub(crate) fn should_snapshot(&self, state: &impl Deref<Target = impl LogStateReader>) -> bool {
         match self {
             SnapshotPolicy::LogsSinceLast(threshold) => {
                 state.committed().next_index() >= state.snapshot_last_log_id().next_index() + threshold

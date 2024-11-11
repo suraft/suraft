@@ -33,29 +33,22 @@ async fn switch_to_snapshot_replication_when_lacking_log() -> Result<()> {
     );
     let mut router = RaftRouter::new(config.clone());
 
-    let mut log_index = router.new_cluster(btreeset! {0}, btreeset! {}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0)}, btreeset! {}).await?;
 
     tracing::info!(log_index, "--- send just enough logs to trigger snapshot");
     {
-        router.client_request_many(0, "0", (snapshot_threshold - 1 - log_index) as usize).await?;
+        router.client_request_many(s(0), "0", (snapshot_threshold - 1 - log_index) as usize).await?;
         log_index = snapshot_threshold - 1;
 
         router.wait_for_log(&btreeset![0], Some(log_index), None, "send log to trigger snapshot").await?;
 
-        router
-            .wait_for_snapshot(
-                &btreeset![0],
-                LogId::new(CommittedLeaderId::new(1, 0), log_index),
-                None,
-                "snapshot",
-            )
-            .await?;
+        router.wait_for_snapshot(&btreeset![0], LogId::new(1, log_index), None, "snapshot").await?;
         router
             .assert_storage_state(
                 1,
                 log_index,
                 Some(0),
-                LogId::new(CommittedLeaderId::new(1, 0), log_index),
+                LogId::new(1, log_index),
                 Some((log_index.into(), 1)),
             )
             .await?;
@@ -66,7 +59,7 @@ async fn switch_to_snapshot_replication_when_lacking_log() -> Result<()> {
         "--- send logs to make distance between snapshot index and last_log_index"
     );
     {
-        router.client_request_many(0, "0", (log_cnt - log_index) as usize).await?;
+        router.client_request_many(s(0), "0", (log_cnt - log_index) as usize).await?;
         log_index = log_cnt;
     }
 
@@ -77,21 +70,14 @@ async fn switch_to_snapshot_replication_when_lacking_log() -> Result<()> {
         log_index += 1;
 
         router.wait_for_log(&btreeset![0, 1], Some(log_index), None, "add learner").await?;
-        router
-            .wait_for_snapshot(
-                &btreeset![1],
-                LogId::new(CommittedLeaderId::new(1, 0), snapshot_threshold - 1),
-                None,
-                "",
-            )
-            .await?;
+        router.wait_for_snapshot(&btreeset![1], LogId::new(1, snapshot_threshold - 1), None, "").await?;
         let expected_snap = Some(((snapshot_threshold - 1).into(), 1));
         router
             .assert_storage_state(
                 1,
                 log_index,
                 None, /* learner does not vote */
-                LogId::new(CommittedLeaderId::new(1, 0), log_index),
+                LogId::new(1, log_index),
                 expected_snap,
             )
             .await?;

@@ -11,6 +11,7 @@ use suraft::Config;
 use suraft::ServerState;
 use suraft::Vote;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -36,24 +37,24 @@ async fn elect_compare_last_log() -> Result<()> {
 
     tracing::info!("--- fake store: sto0: last log: 2,1");
     {
-        sto0.save_vote(&Vote::new(10, 0)).await?;
+        sto0.save_vote(&Vote::new(10, s(0))).await?;
 
         sto0.blocking_append([
             //
-            blank_ent(0, 0, 0),
-            membership_ent(2, 0, 1, vec![btreeset! {0,1}]),
+            blank_ent(0, 0),
+            membership_ent(2, 0, 1, vec![btreeset! {s(0),s(1)}]),
         ])
         .await?;
     }
 
     tracing::info!("--- fake store: sto1: last log: 1,2");
     {
-        sto1.save_vote(&Vote::new(10, 0)).await?;
+        sto1.save_vote(&Vote::new(10, s(0))).await?;
 
         sto1.blocking_append([
-            blank_ent(0, 0, 0),
-            membership_ent(1, 0, 1, vec![btreeset! {0,1}]),
-            blank_ent(1, 0, 2),
+            blank_ent(0, 0),
+            membership_ent(1, 0, 1, vec![btreeset! {s(0),s(1)}]),
+            blank_ent(1, 2),
         ])
         .await?;
     }

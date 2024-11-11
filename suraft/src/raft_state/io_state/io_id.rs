@@ -8,7 +8,6 @@ use crate::vote::NonCommittedVote;
 use crate::ErrorSubject;
 use crate::ErrorVerb;
 use crate::LogId;
-use crate::RaftTypeConfig;
 use crate::Vote;
 
 /// An ID to uniquely identify a monotonic increasing io operation to [`RaftLogStorage`].
@@ -28,19 +27,15 @@ use crate::Vote;
 /// [`purge()`]: `crate::storage::RaftLogStorage::purge()`
 #[derive(Debug, Clone)]
 #[derive(PartialEq, Eq)]
-pub(crate) enum IOId<C>
-where C: RaftTypeConfig
-{
+pub(crate) enum IOId {
     /// Saving a non-committed vote, this kind of IO is not related to any log entries.
-    Vote(NonCommittedVote<C>),
+    Vote(NonCommittedVote),
 
     /// Saving log entries by a Leader, which is identified by a committed vote.
-    Log(LogIOId<C>),
+    Log(LogIOId),
 }
 
-impl<C> fmt::Display for IOId<C>
-where C: RaftTypeConfig
-{
+impl fmt::Display for IOId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Vote(vote) => write!(f, "({})", vote),
@@ -52,9 +47,7 @@ where C: RaftTypeConfig
 /// Implement `PartialOrd` for `IOId`
 ///
 /// Compare the `vote` first, if votes are equal, compare the `last_log_id`.
-impl<C> PartialOrd for IOId<C>
-where C: RaftTypeConfig
-{
+impl PartialOrd for IOId {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         let res = self.as_ref_vote().partial_cmp(&other.as_ref_vote())?;
         match res {
@@ -65,10 +58,8 @@ where C: RaftTypeConfig
     }
 }
 
-impl<C> IOId<C>
-where C: RaftTypeConfig
-{
-    pub(crate) fn new(vote: &Vote<C::NodeId>) -> Self {
+impl IOId {
+    pub(crate) fn new(vote: &Vote) -> Self {
         if vote.is_committed() {
             Self::new_log_io(vote.clone().into_committed(), None)
         } else {
@@ -76,32 +67,32 @@ where C: RaftTypeConfig
         }
     }
 
-    pub(crate) fn new_vote_io(vote: NonCommittedVote<C>) -> Self {
+    pub(crate) fn new_vote_io(vote: NonCommittedVote) -> Self {
         Self::Vote(vote)
     }
 
-    pub(crate) fn new_log_io(committed_vote: CommittedVote<C>, last_log_id: Option<LogId<C::NodeId>>) -> Self {
+    pub(crate) fn new_log_io(committed_vote: CommittedVote, last_log_id: Option<LogId>) -> Self {
         Self::Log(LogIOId::new(committed_vote, last_log_id))
     }
 
     /// Returns the vote the io operation is submitted by.
     #[allow(clippy::wrong_self_convention)]
     // The above lint is disabled because in future Vote may not be `Copy`
-    pub(crate) fn to_vote(&self) -> Vote<C::NodeId> {
+    pub(crate) fn to_vote(&self) -> Vote {
         match self {
             Self::Vote(non_committed_vote) => non_committed_vote.clone().into_vote(),
             Self::Log(log_io_id) => log_io_id.committed_vote.clone().into_vote(),
         }
     }
 
-    pub(crate) fn as_ref_vote(&self) -> RefVote<'_, C::NodeId> {
+    pub(crate) fn as_ref_vote(&self) -> RefVote<'_> {
         match self {
             Self::Vote(non_committed_vote) => non_committed_vote.as_ref_vote(),
             Self::Log(log_io_id) => log_io_id.committed_vote.as_ref_vote(),
         }
     }
 
-    pub(crate) fn last_log_id(&self) -> Option<&LogId<C::NodeId>> {
+    pub(crate) fn last_log_id(&self) -> Option<&LogId> {
         match self {
             Self::Vote(_) => None,
             Self::Log(log_io_id) => log_io_id.log_id.as_ref(),
@@ -109,7 +100,7 @@ where C: RaftTypeConfig
     }
 
     /// Return the `subject` of this io operation, such as `Log` or `Vote`.
-    pub(crate) fn subject(&self) -> ErrorSubject<C> {
+    pub(crate) fn subject(&self) -> ErrorSubject {
         match self {
             Self::Vote(_vote) => ErrorSubject::Vote,
             Self::Log(log_io_id) => {

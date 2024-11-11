@@ -1,7 +1,5 @@
 use std::fmt;
 
-use crate::type_config::alias::LogIdOf;
-
 /// A replication request sent by RaftCore leader state to replication stream.
 #[derive(Debug)]
 #[derive(PartialEq, Eq)]
@@ -9,7 +7,7 @@ pub(crate) enum Replicate<C>
 where C: RaftTypeConfig
 {
     /// Inform replication stream to forward the committed log id to followers/learners.
-    Committed(Option<LogId<C::NodeId>>),
+    Committed(Option<LogId>),
 
     /// Send a chunk of data, e.g., logs or snapshot.
     Data(Data<C>),
@@ -18,11 +16,11 @@ where C: RaftTypeConfig
 impl<C> Replicate<C>
 where C: RaftTypeConfig
 {
-    pub(crate) fn logs(log_id_range: LogIdRange<C>) -> Self {
+    pub(crate) fn logs(log_id_range: LogIdRange) -> Self {
         Self::Data(Data::new_logs(log_id_range))
     }
 
-    pub(crate) fn snapshot(last_log_id: Option<LogIdOf<C>>) -> Self {
+    pub(crate) fn snapshot(last_log_id: Option<LogId>) -> Self {
         Self::Data(Data::new_snapshot(last_log_id))
     }
 
@@ -60,8 +58,8 @@ pub(crate) enum Data<C>
 where C: RaftTypeConfig
 {
     Committed,
-    Logs(LogIdRange<C>),
-    Snapshot(Option<LogIdOf<C>>),
+    Logs(LogIdRange),
+    Snapshot(Option<LogId>),
     SnapshotCallback(SnapshotCallback<C>),
 }
 
@@ -106,18 +104,18 @@ where C: RaftTypeConfig
         Self::Committed
     }
 
-    pub(crate) fn new_logs(log_id_range: LogIdRange<C>) -> Self {
+    pub(crate) fn new_logs(log_id_range: LogIdRange) -> Self {
         Self::Logs(log_id_range)
     }
 
-    pub(crate) fn new_snapshot(last_log_id: Option<LogIdOf<C>>) -> Self {
+    pub(crate) fn new_snapshot(last_log_id: Option<LogId>) -> Self {
         Self::Snapshot(last_log_id)
     }
 
     pub(crate) fn new_snapshot_callback(
         start_time: InstantOf<C>,
         snapshot_meta: SnapshotMeta<C>,
-        result: Result<SnapshotResponse<C>, StreamingError<C>>,
+        result: Result<SnapshotResponse, StreamingError<C>>,
     ) -> Self {
         Self::SnapshotCallback(SnapshotCallback::new(start_time, snapshot_meta, result))
     }

@@ -45,12 +45,12 @@ async fn append_inconsistent_log() -> Result<()> {
     let mut router = RaftRouter::new(config.clone());
     router.new_raft_node(0).await;
 
-    let mut log_index = router.new_cluster(btreeset! {0,1,2}, btreeset! {}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {}).await?;
 
     tracing::info!(log_index, "--- remove all nodes and fake the logs");
 
     let (r0, mut sto0, sm0) = router.remove_node(0).unwrap();
-    let (r1, sto1, sm1) = router.remove_node(1).unwrap();
+    let (r1, sto1, sm1) = router.remove_node(s(1)).unwrap();
     let (r2, mut sto2, sm2) = router.remove_node(2).unwrap();
 
     r0.shutdown().await?;
@@ -62,8 +62,8 @@ async fn append_inconsistent_log() -> Result<()> {
         sto2.blocking_append([blank_ent(3, 3, i)]).await?;
     }
 
-    sto0.save_vote(&Vote::new(4, 1)).await?;
-    sto2.save_vote(&Vote::new(3, 3)).await?;
+    sto0.save_vote(&Vote::new(4, s(1))).await?;
+    sto2.save_vote(&Vote::new(3, s(3))).await?;
 
     log_index = 100;
 
@@ -89,7 +89,7 @@ async fn append_inconsistent_log() -> Result<()> {
     {
         router
             .wait_for_state(
-                &btreeset! {0},
+                &btreeset! {s(0)},
                 ServerState::Follower,
                 Some(Duration::from_millis(2000)),
                 "node 0 become follower",
@@ -115,7 +115,7 @@ async fn append_inconsistent_log() -> Result<()> {
     let logs = sto0.try_get_log_entries(60..=60).await?;
     assert_eq!(
         3,
-        logs.first().unwrap().log_id.leader_id.term,
+        logs.first().unwrap().log_id.term.term,
         "log is overridden by leader logs"
     );
 

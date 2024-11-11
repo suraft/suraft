@@ -6,6 +6,7 @@ use maplit::btreeset;
 use suraft::Config;
 use suraft::ServerState;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -31,7 +32,7 @@ async fn append_entries_backoff_rejoin() -> Result<()> {
     let mut router = RaftRouter::new(config.clone());
 
     tracing::info!("--- initializing cluster");
-    let mut log_index = router.new_cluster(btreeset! {0,1,2}, btreeset! {}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {}).await?;
 
     let n = 10;
 
@@ -39,7 +40,7 @@ async fn append_entries_backoff_rejoin() -> Result<()> {
     router.set_unreachable(0, true);
 
     let (_, ls0, sm0) = router.remove_node(0).unwrap();
-    let n1 = router.get_raft_handle(&1)?;
+    let n1 = router.get_raft_handle(&s(1))?;
 
     tracing::info!(log_index, "--- elect node-1");
     {

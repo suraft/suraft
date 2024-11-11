@@ -23,7 +23,7 @@ where C: RaftTypeConfig
     /// Blocking mode append log entries to the storage.
     ///
     /// It blocks until the callback is called by the underlying storage implementation.
-    async fn blocking_append<I>(&mut self, entries: I) -> Result<(), StorageError<C>>
+    async fn blocking_append<I>(&mut self, entries: I) -> Result<(), StorageError>
     where
         I: IntoIterator<Item = C::Entry> + OptionalSend,
         I::IntoIter: OptionalSend,
@@ -34,7 +34,7 @@ where C: RaftTypeConfig
 
         let (tx, mut rx) = C::mpsc_unbounded();
 
-        let io_id = IOId::<C>::new_log_io(Vote::<C::NodeId>::default().into_committed(), Some(last_log_id));
+        let io_id = IOId::new_log_io(Vote::default().into_committed(), Some(last_log_id));
         let notify = Notification::LocalIO { io_id };
 
         let callback = IOFlushed::<C>::new(notify, tx.downgrade());

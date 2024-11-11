@@ -45,9 +45,9 @@ pub(crate) struct FollowingHandler<'x, C>
 where C: RaftTypeConfig
 {
     /// The Leader this Acceptor(Follower/Leaner) currently following.
-    pub(crate) leader_vote: CommittedVote<C>,
+    pub(crate) leader_vote: CommittedVote,
 
-    pub(crate) config: &'x mut EngineConfig<C>,
+    pub(crate) config: &'x mut EngineConfig,
     pub(crate) state: &'x mut RaftState<C>,
     pub(crate) output: &'x mut EngineOutput<C>,
 }
@@ -59,7 +59,7 @@ where C: RaftTypeConfig
     ///
     /// Also clean conflicting entries and update membership state.
     #[tracing::instrument(level = "debug", skip_all)]
-    pub(crate) fn append_entries(&mut self, prev_log_id: Option<LogId<C::NodeId>>, mut entries: Vec<C::Entry>) {
+    pub(crate) fn append_entries(&mut self, prev_log_id: Option<LogId>, mut entries: Vec<C::Entry>) {
         tracing::debug!(
             "{}: local last_log_id: {}, request: prev_log_id: {}, entries: {}",
             func_name!(),
@@ -80,10 +80,10 @@ where C: RaftTypeConfig
         let l = entries.len();
         let since = self.state.first_conflicting_index(&entries);
         if since < l {
-            // Before appending, if an entry overrides an conflicting one,
+            // Before appending, if an entry overrides a conflicting one,
             // the entries after it has to be deleted first.
             // Raft requires log ids are in total order by (term,index).
-            // Otherwise the log id with max index makes committed entry invisible in election.
+            // Otherwise, the log id with max index makes committed entry invisible in election.
             self.truncate_logs(entries[since].get_log_id().index);
 
             let entries = entries.split_off(since);
@@ -111,10 +111,7 @@ where C: RaftTypeConfig
     /// Ensures the log to replicate is consecutive to the local log.
     ///
     /// If not, truncate the local log and return an error.
-    pub(crate) fn ensure_log_consecutive(
-        &mut self,
-        prev_log_id: Option<&LogId<C::NodeId>>,
-    ) -> Result<(), RejectAppendEntries<C>> {
+    pub(crate) fn ensure_log_consecutive(&mut self, prev_log_id: Option<&LogId>) -> Result<(), RejectAppendEntries> {
         if let Some(prev) = prev_log_id {
             if !self.state.has_log_id(prev) {
                 let local = self.state.get_log_id(prev.index);
@@ -161,7 +158,7 @@ where C: RaftTypeConfig
 
     /// Commit entries that are already committed by the leader.
     #[tracing::instrument(level = "debug", skip_all)]
-    pub(crate) fn commit_entries(&mut self, leader_committed: Option<LogId<C::NodeId>>) {
+    pub(crate) fn commit_entries(&mut self, leader_committed: Option<LogId>) {
         let accepted = self.state.accepted_io().cloned();
         let accepted = accepted.and_then(|x| x.last_log_id().cloned());
         let committed = std::cmp::min(accepted.clone(), leader_committed.clone());
@@ -279,7 +276,7 @@ where C: RaftTypeConfig
     /// - Otherwise `None` if the snapshot will not be installed (e.g., if it is not newer than the
     ///   current state).
     #[tracing::instrument(level = "debug", skip_all)]
-    pub(crate) fn install_full_snapshot(&mut self, snapshot: Snapshot<C>) -> Option<Condition<C>> {
+    pub(crate) fn install_full_snapshot(&mut self, snapshot: Snapshot<C>) -> Option<Condition> {
         let meta = &snapshot.meta;
         tracing::info!("install_full_snapshot: meta:{:?}", meta);
 
@@ -297,7 +294,7 @@ where C: RaftTypeConfig
         // snapshot_last_log_id can not be None
         let snap_last_log_id = snap_last_log_id.unwrap();
 
-        // 1. Truncate all logs if conflict.
+        // 1. Truncate all logs if conflicted.
         // 2. Install snapshot.
         // 3. Purge logs the snapshot covers.
 

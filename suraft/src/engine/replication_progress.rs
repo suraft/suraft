@@ -1,15 +1,13 @@
 use std::fmt;
 
 use crate::progress::entry::ProgressEntry;
-use crate::RaftTypeConfig;
+use crate::NID;
 
 #[derive(Debug)]
 #[derive(PartialEq, Eq)]
-pub(crate) struct ReplicationProgress<C: RaftTypeConfig>(pub C::NodeId, pub ProgressEntry<C>);
+pub(crate) struct ReplicationProgress(pub NID, pub ProgressEntry);
 
-impl<C> fmt::Display for ReplicationProgress<C>
-where C: RaftTypeConfig
-{
+impl fmt::Display for ReplicationProgress {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "ReplicationProgress({}={})", self.0, self.1)
     }

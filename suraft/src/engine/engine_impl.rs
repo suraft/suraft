@@ -53,6 +53,7 @@ use crate::Membership;
 use crate::RaftLogId;
 use crate::RaftTypeConfig;
 use crate::Vote;
+use crate::NID;
 
 /// Raft protocol algorithm.
 ///
@@ -67,7 +68,7 @@ use crate::Vote;
 pub(crate) struct Engine<C>
 where C: RaftTypeConfig
 {
-    pub(crate) config: EngineConfig<C>,
+    pub(crate) config: EngineConfig,
 
     /// The state of this raft node.
     pub(crate) state: Valid<RaftState<C>>,
@@ -96,7 +97,7 @@ where C: RaftTypeConfig
 impl<C> Engine<C>
 where C: RaftTypeConfig
 {
-    pub(crate) fn new(init_state: RaftState<C>, config: EngineConfig<C>) -> Self {
+    pub(crate) fn new(init_state: RaftState<C>, config: EngineConfig) -> Self {
         Self {
             config,
             state: Valid::new(init_state),
@@ -111,7 +112,7 @@ where C: RaftTypeConfig
     ///
     /// The candidate `last_log_id` is initialized with the attributes of Acceptor part:
     /// [`RaftState`]
-    pub(crate) fn new_candidate(&mut self, vote: Vote<C::NodeId>) -> &mut Candidate<C, LeaderQuorumSet<C>> {
+    pub(crate) fn new_candidate(&mut self, vote: Vote) -> &mut Candidate<C, LeaderQuorumSet> {
         let now = C::now();
         let last_log_id = self.state.last_log_id().cloned();
 
@@ -130,7 +131,7 @@ where C: RaftTypeConfig
 
     /// Create a default Engine for testing.
     #[allow(dead_code)]
-    pub(crate) fn testing_default(id: C::NodeId) -> Self {
+    pub(crate) fn testing_default(id: NID) -> Self {
         let config = EngineConfig::new_default(id);
         let state = RaftState::default();
         Self::new(state, config)
@@ -228,19 +229,19 @@ where C: RaftTypeConfig
         self.server_state_handler().update_server_state_if_changed();
     }
 
-    pub(crate) fn leader_ref(&self) -> Option<&Leader<C, LeaderQuorumSet<C>>> {
+    pub(crate) fn leader_ref(&self) -> Option<&Leader<C, LeaderQuorumSet>> {
         self.leader.as_deref()
     }
 
-    pub(crate) fn leader_mut(&mut self) -> Option<&mut Leader<C, LeaderQuorumSet<C>>> {
+    pub(crate) fn leader_mut(&mut self) -> Option<&mut Leader<C, LeaderQuorumSet>> {
         self.leader.as_deref_mut()
     }
 
-    pub(crate) fn candidate_ref(&self) -> Option<&Candidate<C, LeaderQuorumSet<C>>> {
+    pub(crate) fn candidate_ref(&self) -> Option<&Candidate<C, LeaderQuorumSet>> {
         self.candidate.as_ref()
     }
 
-    pub(crate) fn candidate_mut(&mut self) -> Option<&mut Candidate<C, LeaderQuorumSet<C>>> {
+    pub(crate) fn candidate_mut(&mut self) -> Option<&mut Candidate<C, LeaderQuorumSet>> {
         self.candidate.as_mut()
     }
 
@@ -270,7 +271,7 @@ where C: RaftTypeConfig
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    pub(crate) fn handle_vote_req(&mut self, req: VoteRequest<C>) -> VoteResponse<C> {
+    pub(crate) fn handle_vote_req(&mut self, req: VoteRequest) -> VoteResponse {
         let now = C::now();
         let local_leased_vote = &self.state.vote;
 
@@ -324,7 +325,7 @@ where C: RaftTypeConfig
     }
 
     #[tracing::instrument(level = "debug", skip(self, resp))]
-    pub(crate) fn handle_vote_resp(&mut self, target: C::NodeId, resp: VoteResponse<C>) {
+    pub(crate) fn handle_vote_resp(&mut self, target: NID, resp: VoteResponse) {
         tracing::info!(
             resp = display(&resp),
             target = display(&target),
@@ -378,8 +379,8 @@ where C: RaftTypeConfig
     #[tracing::instrument(level = "debug", skip_all)]
     pub(crate) fn handle_append_entries(
         &mut self,
-        vote: &Vote<C::NodeId>,
-        prev_log_id: Option<LogId<C::NodeId>>,
+        vote: &Vote,
+        prev_log_id: Option<LogId>,
         entries: Vec<C::Entry>,
         tx: Option<AppendEntriesTx<C>>,
     ) -> bool {
@@ -397,7 +398,7 @@ where C: RaftTypeConfig
         let is_ok = res.is_ok();
 
         if let Some(tx) = tx {
-            let resp: AppendEntriesResponse<C> = res.into();
+            let resp: AppendEntriesResponse = res.into();
 
             let condition = if is_ok {
                 Some(Condition::IOFlushed {
@@ -417,10 +418,10 @@ where C: RaftTypeConfig
 
     pub(crate) fn append_entries(
         &mut self,
-        vote: &Vote<C::NodeId>,
-        prev_log_id: Option<LogId<C::NodeId>>,
+        vote: &Vote,
+        prev_log_id: Option<LogId>,
         entries: Vec<C::Entry>,
-    ) -> Result<(), RejectAppendEntries<C>> {
+    ) -> Result<(), RejectAppendEntries> {
         self.vote_handler().update_vote(vote)?;
 
         // Vote is legal.
@@ -434,7 +435,7 @@ where C: RaftTypeConfig
 
     /// Commit entries for follower/learner.
     #[tracing::instrument(level = "debug", skip_all)]
-    pub(crate) fn handle_commit_entries(&mut self, leader_committed: Option<LogId<C::NodeId>>) {
+    pub(crate) fn handle_commit_entries(&mut self, leader_committed: Option<LogId>) {
         tracing::debug!(
             leader_committed = display(leader_committed.display()),
             my_accepted = display(self.state.accepted_io().display()),
@@ -451,9 +452,9 @@ where C: RaftTypeConfig
     #[tracing::instrument(level = "debug", skip_all)]
     pub(crate) fn handle_install_full_snapshot(
         &mut self,
-        vote: Vote<C::NodeId>,
+        vote: Vote,
         snapshot: Snapshot<C>,
-        tx: ResultSender<C, SnapshotResponse<C>>,
+        tx: ResultSender<C, SnapshotResponse>,
     ) {
         tracing::info!(vote = display(&vote), snapshot = display(&snapshot), "{}", func_name!());
 
@@ -605,7 +606,7 @@ where C: RaftTypeConfig
         self.try_purge_log();
     }
 
-    pub(crate) fn trigger_transfer_leader(&mut self, to: C::NodeId) {
+    pub(crate) fn trigger_transfer_leader(&mut self, to: NID) {
         tracing::info!(to = display(&to), "{}", func_name!());
 
         let Some((mut lh, _)) = self.get_leader_handler_or_reject(None) else {
@@ -652,16 +653,14 @@ where C: RaftTypeConfig
         // No need to submit UpdateIOProgress command,
         // IO progress is updated by the new blank log
 
-        self.leader_handler()
-            .unwrap()
-            .leader_append_entries(vec![C::Entry::new_blank(LogId::<C::NodeId>::default())]);
+        self.leader_handler().unwrap().leader_append_entries(vec![C::Entry::new_blank(LogId::default())]);
     }
 
     /// Check if a raft node is in a state that allows to initialize.
     ///
     /// It is allowed to initialize only when `last_log_id.is_none()` and `vote==(term=0,
     /// node_id=0)`. See: [Conditions for initialization](https://datafuselabs.github.io/suraft/cluster-formation.html#conditions-for-initialization)
-    fn check_initialize(&self) -> Result<(), NotAllowed<C>> {
+    fn check_initialize(&self) -> Result<(), NotAllowed> {
         if !self.state.is_initialized() {
             return Ok(());
         }
@@ -826,7 +825,7 @@ mod engine_testing {
         /// Create a Leader state just for testing purpose only,
         /// without initializing related resource,
         /// such as setting up replication, propose blank log.
-        pub(crate) fn testing_new_leader(&mut self) -> &mut crate::proposer::Leader<C, LeaderQuorumSet<C>> {
+        pub(crate) fn testing_new_leader(&mut self) -> &mut crate::proposer::Leader<C, LeaderQuorumSet> {
             let leader = self.state.new_leader();
             self.leader = Some(Box::new(leader));
             self.leader.as_mut().unwrap()

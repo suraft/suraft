@@ -6,6 +6,7 @@ use maplit::btreeset;
 use suraft::Config;
 use suraft::ServerState;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -24,14 +25,14 @@ async fn elect_seize_leadership() -> Result<()> {
     let mut router = RaftRouter::new(config.clone());
 
     tracing::info!("--- create cluster of 0,1,2");
-    let log_index = router.new_cluster(btreeset! {0,1,2}, btreeset! {}).await?;
+    let log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {}).await?;
 
-    let n0 = router.get_raft_handle(&0)?;
+    let n0 = router.get_raft_handle(&s(0))?;
     n0.wait(timeout()).state(ServerState::Leader, "node 0 becomes leader").await?;
 
     tracing::info!(log_index, "--- trigger election on node 1");
     {
-        let n1 = router.get_raft_handle(&1)?;
+        let n1 = router.get_raft_handle(&s(1))?;
         n1.trigger().elect().await?;
 
         n1.wait(timeout()).state(ServerState::Leader, "node 1 becomes leader").await?;

@@ -26,7 +26,7 @@ async fn current_leader() -> Result<()> {
 
     let mut router = RaftRouter::new(config.clone());
 
-    let _log_index = router.new_cluster(btreeset! {0,1,2}, btreeset! {}).await?;
+    let _log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {}).await?;
 
     // Get the ID of the leader, and assert that current_leader succeeds.
     let leader = router.leader().expect("leader not found");

@@ -21,7 +21,7 @@ pub use traits::RaftPayload;
 pub struct Entry<C>
 where C: RaftTypeConfig
 {
-    pub log_id: LogId<C::NodeId>,
+    pub log_id: LogId,
 
     /// This entry's payload.
     pub payload: EntryPayload<C>,
@@ -30,7 +30,7 @@ where C: RaftTypeConfig
 impl<C> Clone for Entry<C>
 where
     C: RaftTypeConfig,
-    C::D: Clone,
+    C::AppData: Clone,
 {
     fn clone(&self) -> Self {
         Self {
@@ -61,7 +61,7 @@ where C: RaftTypeConfig
 
 impl<C> PartialEq for Entry<C>
 where
-    C::D: PartialEq,
+    C::AppData: PartialEq,
     C: RaftTypeConfig,
 {
     fn eq(&self, other: &Self) -> bool {
@@ -97,14 +97,14 @@ where C: RaftTypeConfig
     }
 }
 
-impl<C> RaftLogId<C::NodeId> for Entry<C>
+impl<C> RaftLogId for Entry<C>
 where C: RaftTypeConfig
 {
-    fn get_log_id(&self) -> &LogId<C::NodeId> {
+    fn get_log_id(&self) -> &LogId {
         &self.log_id
     }
 
-    fn set_log_id(&mut self, log_id: &LogId<C::NodeId>) {
+    fn set_log_id(&mut self, log_id: &LogId) {
         self.log_id = log_id.clone();
     }
 }
@@ -112,14 +112,14 @@ where C: RaftTypeConfig
 impl<C> RaftEntry<C> for Entry<C>
 where C: RaftTypeConfig
 {
-    fn new_blank(log_id: LogId<C::NodeId>) -> Self {
+    fn new_blank(log_id: LogId) -> Self {
         Self {
             log_id,
             payload: EntryPayload::Blank,
         }
     }
 
-    fn new_membership(log_id: LogId<C::NodeId>, m: Membership<C>) -> Self {
+    fn new_membership(log_id: LogId, m: Membership<C>) -> Self {
         Self {
             log_id,
             payload: EntryPayload::Membership(m),
@@ -127,10 +127,10 @@ where C: RaftTypeConfig
     }
 }
 
-impl<C> FromAppData<C::D> for Entry<C>
+impl<C> FromAppData<C::AppData> for Entry<C>
 where C: RaftTypeConfig
 {
-    fn from_app_data(d: C::D) -> Self {
+    fn from_app_data(d: C::AppData) -> Self {
         Entry {
             log_id: LogId::default(),
             payload: EntryPayload::Normal(d),

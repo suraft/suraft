@@ -13,9 +13,7 @@ use crate::RaftTypeConfig;
 /// For example, converting `Result<R, CompositeError>`
 /// to `Result<Result<R, Self::InnerError>, OuterError>`,
 /// where `SomeCompositeError` is a composite of `Self::InnerError` and `OuterError`.
-pub trait DecomposeResult<C, R, OuterError>
-where C: RaftTypeConfig
-{
+pub trait DecomposeResult<R, OuterError> {
     type InnerError;
 
     fn decompose(self) -> Result<Result<R, Self::InnerError>, OuterError>;
@@ -32,12 +30,10 @@ where C: RaftTypeConfig
     }
 }
 
-impl<C, R, E> DecomposeResult<C, R, RaftError<C>> for Result<R, RaftError<C, E>>
-where C: RaftTypeConfig
-{
+impl<R, E> DecomposeResult<R, RaftError> for Result<R, RaftError<E>> {
     type InnerError = E;
 
-    fn decompose(self) -> Result<Result<R, E>, RaftError<C>> {
+    fn decompose(self) -> Result<Result<R, E>, RaftError> {
         match self {
             Ok(r) => Ok(Ok(r)),
             Err(e) => match e {
@@ -48,7 +44,7 @@ where C: RaftTypeConfig
     }
 }
 
-impl<C, R, E> DecomposeResult<C, R, RPCError<C>> for Result<R, RPCError<C, RaftError<C, E>>>
+impl<C, R, E> DecomposeResult<R, RPCError<C>> for Result<R, RPCError<C, RaftError<E>>>
 where
     C: RaftTypeConfig,
     E: Error,
@@ -73,7 +69,7 @@ where
     }
 }
 
-impl<C, R> DecomposeResult<C, R, StreamingError<C>> for Result<R, StreamingError<C, Fatal<C>>>
+impl<C, R> DecomposeResult<R, StreamingError<C>> for Result<R, StreamingError<C, Fatal>>
 where C: RaftTypeConfig
 {
     type InnerError = Infallible;

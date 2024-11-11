@@ -28,21 +28,21 @@ where
         &mut self,
         rpc: AppendEntriesRequest<C>,
         option: RPCOption,
-    ) -> Result<AppendEntriesResponse<C>, RPCError<C>> {
+    ) -> Result<AppendEntriesResponse, RPCError<C>> {
         RaftNetwork::<C>::append_entries(self, rpc, option).await.decompose_infallible()
     }
 
-    async fn vote(&mut self, rpc: VoteRequest<C>, option: RPCOption) -> Result<VoteResponse<C>, RPCError<C>> {
+    async fn vote(&mut self, rpc: VoteRequest, option: RPCOption) -> Result<VoteResponse, RPCError<C>> {
         RaftNetwork::<C>::vote(self, rpc, option).await.decompose_infallible()
     }
 
     async fn full_snapshot(
         &mut self,
-        vote: Vote<C::NodeId>,
+        vote: Vote,
         snapshot: Snapshot<C>,
         cancel: impl Future<Output = ReplicationClosed> + OptionalSend + 'static,
         option: RPCOption,
-    ) -> Result<SnapshotResponse<C>, StreamingError<C>> {
+    ) -> Result<SnapshotResponse, StreamingError<C>> {
         use crate::network::snapshot_transport::Chunked;
         use crate::network::snapshot_transport::SnapshotTransport;
 

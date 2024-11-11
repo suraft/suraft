@@ -6,6 +6,7 @@ use maplit::btreeset;
 use pretty_assertions::assert_eq;
 
 use crate::core::sm;
+use crate::engine::testing::s;
 use crate::engine::testing::UTConfig;
 use crate::engine::Command;
 use crate::engine::Condition;
@@ -23,7 +24,7 @@ use crate::StoredMembership;
 use crate::Vote;
 
 fn m12() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {1,2}], None)
+    Membership::<UTConfig>::new(vec![btreeset! {s(1),s(2)}], None)
 }
 
 fn m1234() -> Membership<UTConfig> {
@@ -31,25 +32,25 @@ fn m1234() -> Membership<UTConfig> {
 }
 
 fn eng() -> Engine<UTConfig> {
-    let mut eng = Engine::testing_default(0);
+    let mut eng = Engine::testing_default(s(0));
     eng.state.enable_validation(false); // Disable validation for incomplete state
 
     eng.state.vote.update(
         UTConfig::<()>::now(),
         Duration::from_millis(500),
-        Vote::new_committed(2, 1),
+        Vote::new_committed(2, s(1)),
     );
-    eng.state.committed = Some(log_id(4, 1, 5));
+    eng.state.committed = Some(log_id(4, s(1), 5));
     eng.state.log_ids = LogIdList::new(vec![
         //
-        log_id(2, 1, 2),
-        log_id(3, 1, 5),
-        log_id(4, 1, 6),
-        log_id(4, 1, 8),
+        log_id(2, s(1), 2),
+        log_id(3, s(1), 5),
+        log_id(4, s(1), 6),
+        log_id(4, s(1), 8),
     ]);
     eng.state.snapshot_meta = SnapshotMeta {
-        last_log_id: Some(log_id(2, 1, 2)),
-        last_membership: StoredMembership::new(Some(log_id(1, 1, 1)), m12()),
+        last_log_id: Some(log_id(2, s(1), 2)),
+        last_membership: StoredMembership::new(Some(log_id(1, s(1), 1)), m12()),
         snapshot_id: "1-2-3-4".to_string(),
     };
     eng.state.server_state = eng.calc_server_state();
@@ -65,8 +66,8 @@ fn test_install_snapshot_lt_last_snapshot() -> anyhow::Result<()> {
 
     let cond = eng.following_handler().install_full_snapshot(Snapshot {
         meta: SnapshotMeta {
-            last_log_id: Some(log_id(2, 1, 2)),
-            last_membership: StoredMembership::new(Some(log_id(1, 1, 1)), m1234()),
+            last_log_id: Some(log_id(2, s(1), 2)),
+            last_membership: StoredMembership::new(Some(log_id(1, s(1), 1)), m1234()),
             snapshot_id: "1-2-3-4".to_string(),
         },
         snapshot: Box::new(Cursor::new(vec![0u8])),
@@ -76,8 +77,8 @@ fn test_install_snapshot_lt_last_snapshot() -> anyhow::Result<()> {
 
     assert_eq!(
         SnapshotMeta {
-            last_log_id: Some(log_id(2, 1, 2)),
-            last_membership: StoredMembership::new(Some(log_id(1, 1, 1)), m12()),
+            last_log_id: Some(log_id(2, s(1), 2)),
+            last_membership: StoredMembership::new(Some(log_id(1, s(1), 1)), m12()),
             snapshot_id: "1-2-3-4".to_string(),
         },
         eng.state.snapshot_meta
@@ -97,8 +98,8 @@ fn test_install_snapshot_lt_committed() -> anyhow::Result<()> {
 
     let cond = eng.following_handler().install_full_snapshot(Snapshot {
         meta: SnapshotMeta {
-            last_log_id: Some(log_id(4, 1, 5)),
-            last_membership: StoredMembership::new(Some(log_id(1, 1, 1)), m1234()),
+            last_log_id: Some(log_id(4, s(1), 5)),
+            last_membership: StoredMembership::new(Some(log_id(1, s(1), 1)), m1234()),
             snapshot_id: "1-2-3-4".to_string(),
         },
         snapshot: Box::new(Cursor::new(vec![0u8])),
@@ -108,8 +109,8 @@ fn test_install_snapshot_lt_committed() -> anyhow::Result<()> {
 
     assert_eq!(
         SnapshotMeta {
-            last_log_id: Some(log_id(2, 1, 2)),
-            last_membership: StoredMembership::new(Some(log_id(1, 1, 1)), m12()),
+            last_log_id: Some(log_id(2, s(1), 2)),
+            last_membership: StoredMembership::new(Some(log_id(1, s(1), 1)), m12()),
             snapshot_id: "1-2-3-4".to_string(),
         },
         eng.state.snapshot_meta
@@ -126,8 +127,8 @@ fn test_install_snapshot_not_conflict() -> anyhow::Result<()> {
 
     let cond = eng.following_handler().install_full_snapshot(Snapshot {
         meta: SnapshotMeta {
-            last_log_id: Some(log_id(4, 1, 6)),
-            last_membership: StoredMembership::new(Some(log_id(1, 1, 1)), m1234()),
+            last_log_id: Some(log_id(4, s(1), 6)),
+            last_membership: StoredMembership::new(Some(log_id(1, s(1), 1)), m1234()),
             snapshot_id: "1-2-3-4".to_string(),
         },
         snapshot: Box::new(Cursor::new(vec![0u8])),
@@ -135,23 +136,26 @@ fn test_install_snapshot_not_conflict() -> anyhow::Result<()> {
 
     assert_eq!(
         Some(Condition::Snapshot {
-            log_id: Some(log_id(4, 1, 6))
+            log_id: Some(log_id(4, s(1), 6))
         }),
         cond
     );
 
     assert_eq!(
         SnapshotMeta {
-            last_log_id: Some(log_id(4, 1, 6)),
-            last_membership: StoredMembership::new(Some(log_id(1, 1, 1)), m1234()),
+            last_log_id: Some(log_id(4, s(1), 6)),
+            last_membership: StoredMembership::new(Some(log_id(1, s(1), 1)), m1234()),
             snapshot_id: "1-2-3-4".to_string(),
         },
         eng.state.snapshot_meta
     );
-    assert_eq!(&[log_id(4, 1, 6), log_id(4, 1, 8)], eng.state.log_ids.key_log_ids());
-    assert_eq!(Some(&log_id(4, 1, 6)), eng.state.committed());
     assert_eq!(
-        &Arc::new(EffectiveMembership::new(Some(log_id(1, 1, 1)), m1234())),
+        &[log_id(4, s(1), 6), log_id(4, s(1), 8)],
+        eng.state.log_ids.key_log_ids()
+    );
+    assert_eq!(Some(&log_id(4, s(1), 6)), eng.state.committed());
+    assert_eq!(
+        &Arc::new(EffectiveMembership::new(Some(log_id(1, s(1), 1)), m1234())),
         eng.state.membership_state.committed()
     );
     assert_eq!(
@@ -160,15 +164,17 @@ fn test_install_snapshot_not_conflict() -> anyhow::Result<()> {
             Command::from(sm::Command::install_full_snapshot(
                 Snapshot {
                     meta: SnapshotMeta {
-                        last_log_id: Some(log_id(4, 1, 6)),
-                        last_membership: StoredMembership::new(Some(log_id(1, 1, 1)), m1234()),
+                        last_log_id: Some(log_id(4, s(1), 6)),
+                        last_membership: StoredMembership::new(Some(log_id(1, s(1), 1)), m1234()),
                         snapshot_id: "1-2-3-4".to_string(),
                     },
                     snapshot: Box::new(Cursor::new(vec![0u8])),
                 },
-                IOId::new_log_io(Vote::new(2, 1).into_committed(), Some(log_id(4, 1, 6))),
+                IOId::new_log_io(Vote::new(2, s(1)).into_committed(), Some(log_id(4, s(1), 6))),
             )),
-            Command::PurgeLog { upto: log_id(4, 1, 6) },
+            Command::PurgeLog {
+                upto: log_id(4, s(1), 6)
+            },
         ],
         eng.output.take_commands()
     );
@@ -187,20 +193,20 @@ fn test_install_snapshot_conflict() -> anyhow::Result<()> {
         eng.state.vote.update(
             UTConfig::<()>::now(),
             Duration::from_millis(500),
-            Vote::new_committed(2, 1),
+            Vote::new_committed(2, s(1)),
         );
-        eng.state.committed = Some(log_id(2, 1, 3));
+        eng.state.committed = Some(log_id(2, s(1), 3));
         eng.state.log_ids = LogIdList::new(vec![
             //
-            log_id(2, 1, 2),
-            log_id(3, 1, 5),
-            log_id(4, 1, 6),
-            log_id(4, 1, 8),
+            log_id(2, s(1), 2),
+            log_id(3, s(1), 5),
+            log_id(4, s(1), 6),
+            log_id(4, s(1), 8),
         ]);
 
         eng.state.snapshot_meta = SnapshotMeta {
-            last_log_id: Some(log_id(2, 1, 2)),
-            last_membership: StoredMembership::new(Some(log_id(1, 1, 1)), m12()),
+            last_log_id: Some(log_id(2, s(1), 2)),
+            last_membership: StoredMembership::new(Some(log_id(1, s(1), 1)), m12()),
             snapshot_id: "1-2-3-4".to_string(),
         };
 
@@ -211,8 +217,8 @@ fn test_install_snapshot_conflict() -> anyhow::Result<()> {
 
     let cond = eng.following_handler().install_full_snapshot(Snapshot {
         meta: SnapshotMeta {
-            last_log_id: Some(log_id(5, 1, 6)),
-            last_membership: StoredMembership::new(Some(log_id(1, 1, 1)), m1234()),
+            last_log_id: Some(log_id(5, s(1), 6)),
+            last_membership: StoredMembership::new(Some(log_id(1, s(1), 1)), m1234()),
             snapshot_id: "1-2-3-4".to_string(),
         },
         snapshot: Box::new(Cursor::new(vec![0u8])),
@@ -220,41 +226,45 @@ fn test_install_snapshot_conflict() -> anyhow::Result<()> {
 
     assert_eq!(
         Some(Condition::Snapshot {
-            log_id: Some(log_id(5, 1, 6))
+            log_id: Some(log_id(5, s(1), 6))
         }),
         cond
     );
 
     assert_eq!(
         SnapshotMeta {
-            last_log_id: Some(log_id(5, 1, 6)),
-            last_membership: StoredMembership::new(Some(log_id(1, 1, 1)), m1234()),
+            last_log_id: Some(log_id(5, s(1), 6)),
+            last_membership: StoredMembership::new(Some(log_id(1, s(1), 1)), m1234()),
             snapshot_id: "1-2-3-4".to_string(),
         },
         eng.state.snapshot_meta
     );
-    assert_eq!(&[log_id(5, 1, 6)], eng.state.log_ids.key_log_ids());
-    assert_eq!(Some(&log_id(5, 1, 6)), eng.state.committed());
+    assert_eq!(&[log_id(5, s(1), 6)], eng.state.log_ids.key_log_ids());
+    assert_eq!(Some(&log_id(5, s(1), 6)), eng.state.committed());
     assert_eq!(
-        &Arc::new(EffectiveMembership::new(Some(log_id(1, 1, 1)), m1234())),
+        &Arc::new(EffectiveMembership::new(Some(log_id(1, s(1), 1)), m1234())),
         eng.state.membership_state.committed()
     );
     assert_eq!(
         vec![
             //
-            Command::TruncateLog { since: log_id(2, 1, 4) },
+            Command::TruncateLog {
+                since: log_id(2, s(1), 4)
+            },
             Command::from(sm::Command::install_full_snapshot(
                 Snapshot {
                     meta: SnapshotMeta {
-                        last_log_id: Some(log_id(5, 1, 6)),
-                        last_membership: StoredMembership::new(Some(log_id(1, 1, 1)), m1234()),
+                        last_log_id: Some(log_id(5, s(1), 6)),
+                        last_membership: StoredMembership::new(Some(log_id(1, s(1), 1)), m1234()),
                         snapshot_id: "1-2-3-4".to_string(),
                     },
                     snapshot: Box::new(Cursor::new(vec![0u8])),
                 },
-                IOId::new_log_io(Vote::new(2, 1).into_committed(), Some(log_id(5, 1, 6)))
+                IOId::new_log_io(Vote::new(2, s(1)).into_committed(), Some(log_id(5, s(1), 6)))
             )),
-            Command::PurgeLog { upto: log_id(5, 1, 6) },
+            Command::PurgeLog {
+                upto: log_id(5, s(1), 6)
+            },
         ],
         eng.output.take_commands()
     );
@@ -270,7 +280,7 @@ fn test_install_snapshot_advance_last_log_id() -> anyhow::Result<()> {
     let cond = eng.following_handler().install_full_snapshot(Snapshot {
         meta: SnapshotMeta {
             last_log_id: Some(log_id(100, 1, 100)),
-            last_membership: StoredMembership::new(Some(log_id(1, 1, 1)), m1234()),
+            last_membership: StoredMembership::new(Some(log_id(1, s(1), 1)), m1234()),
             snapshot_id: "1-2-3-4".to_string(),
         },
         snapshot: Box::new(Cursor::new(vec![0u8])),
@@ -286,7 +296,7 @@ fn test_install_snapshot_advance_last_log_id() -> anyhow::Result<()> {
     assert_eq!(
         SnapshotMeta {
             last_log_id: Some(log_id(100, 1, 100)),
-            last_membership: StoredMembership::new(Some(log_id(1, 1, 1)), m1234()),
+            last_membership: StoredMembership::new(Some(log_id(1, s(1), 1)), m1234()),
             snapshot_id: "1-2-3-4".to_string(),
         },
         eng.state.snapshot_meta
@@ -294,11 +304,11 @@ fn test_install_snapshot_advance_last_log_id() -> anyhow::Result<()> {
     assert_eq!(&[log_id(100, 1, 100)], eng.state.log_ids.key_log_ids());
     assert_eq!(Some(&log_id(100, 1, 100)), eng.state.committed());
     assert_eq!(
-        &Arc::new(EffectiveMembership::new(Some(log_id(1, 1, 1)), m1234())),
+        &Arc::new(EffectiveMembership::new(Some(log_id(1, s(1), 1)), m1234())),
         eng.state.membership_state.committed()
     );
     assert_eq!(
-        &Arc::new(EffectiveMembership::new(Some(log_id(1, 1, 1)), m1234())),
+        &Arc::new(EffectiveMembership::new(Some(log_id(1, s(1), 1)), m1234())),
         eng.state.membership_state.effective()
     );
     assert_eq!(
@@ -307,12 +317,12 @@ fn test_install_snapshot_advance_last_log_id() -> anyhow::Result<()> {
                 Snapshot {
                     meta: SnapshotMeta {
                         last_log_id: Some(log_id(100, 1, 100)),
-                        last_membership: StoredMembership::new(Some(log_id(1, 1, 1)), m1234()),
+                        last_membership: StoredMembership::new(Some(log_id(1, s(1), 1)), m1234()),
                         snapshot_id: "1-2-3-4".to_string(),
                     },
                     snapshot: Box::new(Cursor::new(vec![0u8])),
                 },
-                IOId::new_log_io(Vote::new(2, 1).into_committed(), Some(log_id(100, 1, 100)))
+                IOId::new_log_io(Vote::new(2, s(1)).into_committed(), Some(log_id(100, 1, 100)))
             )),
             Command::PurgeLog {
                 upto: log_id(100, 1, 100)
@@ -332,7 +342,7 @@ fn test_install_snapshot_update_accepted() -> anyhow::Result<()> {
     let cond = eng.following_handler().install_full_snapshot(Snapshot {
         meta: SnapshotMeta {
             last_log_id: Some(log_id(100, 1, 100)),
-            last_membership: StoredMembership::new(Some(log_id(1, 1, 1)), m1234()),
+            last_membership: StoredMembership::new(Some(log_id(1, s(1), 1)), m1234()),
             snapshot_id: "1-2-3-4".to_string(),
         },
         snapshot: Box::new(Cursor::new(vec![0u8])),
@@ -347,7 +357,7 @@ fn test_install_snapshot_update_accepted() -> anyhow::Result<()> {
 
     assert_eq!(
         Some(&IOId::new_log_io(
-            Vote::new(2, 1).into_committed(),
+            Vote::new(2, s(1)).into_committed(),
             Some(log_id(100, 1, 100))
         )),
         eng.state.accepted_io()

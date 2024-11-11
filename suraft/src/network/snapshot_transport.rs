@@ -45,11 +45,11 @@ mod tokio_rt {
     {
         async fn send_snapshot<Net>(
             net: &mut Net,
-            vote: Vote<C::NodeId>,
+            vote: Vote,
             mut snapshot: Snapshot<C>,
             mut cancel: impl Future<Output = ReplicationClosed> + OptionalSend + 'static,
             option: RPCOption,
-        ) -> Result<SnapshotResponse<C>, StreamingError<C, Fatal<C>>>
+        ) -> Result<SnapshotResponse, StreamingError<C, Fatal>>
         where
             Net: RaftNetwork<C> + ?Sized,
         {
@@ -110,7 +110,7 @@ mod tokio_rt {
                     Ok(outer_res) => match outer_res {
                         Ok(res) => res,
                         Err(err) => {
-                            let err: RPCError<C, RaftError<C, InstallSnapshotError>> = err;
+                            let err: RPCError<C, RaftError<InstallSnapshotError>> = err;
 
                             tracing::warn!(error=%err, "error sending InstallSnapshot RPC to target");
 
@@ -166,7 +166,7 @@ mod tokio_rt {
             streaming: &mut Option<Streaming<C>>,
             raft: &Raft<C>,
             req: InstallSnapshotRequest<C>,
-        ) -> Result<Option<Snapshot<C>>, RaftError<C, InstallSnapshotError>> {
+        ) -> Result<Option<Snapshot<C>>, RaftError<InstallSnapshotError>> {
             let snapshot_id = &req.meta.snapshot_id;
             let snapshot_meta = req.meta.clone();
             let done = req.done;
@@ -229,7 +229,7 @@ mod tokio_rt {
         C::SnapshotData: tokio::io::AsyncWrite + tokio::io::AsyncSeek + Unpin,
     {
         /// Receive a chunk of snapshot data.
-        pub async fn receive(&mut self, req: InstallSnapshotRequest<C>) -> Result<bool, StorageError<C>> {
+        pub async fn receive(&mut self, req: InstallSnapshotRequest<C>) -> Result<bool, StorageError> {
             // TODO: check id?
 
             // Always seek to the target offset if not an exact match.
@@ -299,11 +299,11 @@ pub trait SnapshotTransport<C: RaftTypeConfig> {
     // TODO: consider removing dependency on RaftNetwork
     async fn send_snapshot<Net>(
         net: &mut Net,
-        vote: Vote<C::NodeId>,
+        vote: Vote,
         snapshot: Snapshot<C>,
         cancel: impl Future<Output = ReplicationClosed> + OptionalSend + 'static,
         option: RPCOption,
-    ) -> Result<SnapshotResponse<C>, StreamingError<C, Fatal<C>>>
+    ) -> Result<SnapshotResponse, StreamingError<C, Fatal>>
     where
         Net: RaftNetwork<C> + ?Sized;
 
@@ -336,7 +336,7 @@ pub trait SnapshotTransport<C: RaftTypeConfig> {
         streaming: &mut Option<Streaming<C>>,
         raft: &Raft<C>,
         req: InstallSnapshotRequest<C>,
-    ) -> Result<Option<Snapshot<C>>, RaftError<C, InstallSnapshotError>>;
+    ) -> Result<Option<Snapshot<C>>, RaftError<InstallSnapshotError>>;
 }
 
 /// The Raft node is streaming in a snapshot from the leader.
@@ -381,6 +381,7 @@ mod tests {
     use std::io::Cursor;
     use std::time::Duration;
 
+    use crate::engine::testing::s;
     use crate::engine::testing::UTConfig;
     use crate::error::InstallSnapshotError;
     use crate::error::RPCError;
@@ -408,21 +409,21 @@ mod tests {
     }
 
     impl<C> RaftNetwork<C> for Network
-    where C: RaftTypeConfig<NodeId = u64>
+    where C: RaftTypeConfig
     {
         async fn append_entries(
             &mut self,
             _rpc: AppendEntriesRequest<C>,
             _option: RPCOption,
-        ) -> Result<AppendEntriesResponse<C>, RPCError<C, RaftError<C>>> {
+        ) -> Result<AppendEntriesResponse, RPCError<C, RaftError>> {
             unimplemented!()
         }
 
         async fn vote(
             &mut self,
-            _rpc: VoteRequest<C>,
+            _rpc: VoteRequest,
             _option: RPCOption,
-        ) -> Result<VoteResponse<C>, RPCError<C, RaftError<C>>> {
+        ) -> Result<VoteResponse, RPCError<C, RaftError>> {
             unimplemented!()
         }
 
@@ -430,7 +431,7 @@ mod tests {
             &mut self,
             rpc: InstallSnapshotRequest<C>,
             _option: RPCOption,
-        ) -> Result<InstallSnapshotResponse<C>, RPCError<C, RaftError<C, InstallSnapshotError>>> {
+        ) -> Result<InstallSnapshotResponse, RPCError<C, RaftError<InstallSnapshotError>>> {
             // A fake implementation to test the Chunked::send_snapshot.
 
             self.received_offset.push(rpc.offset);
@@ -450,7 +451,10 @@ mod tests {
                     },
                 };
                 let err = RaftError::APIError(InstallSnapshotError::SnapshotMismatch(mismatch));
-                Err(RPCError::RemoteError(crate::error::RemoteError::new(0, err)))
+                Err(RPCError::RemoteError(crate::error::RemoteError::new(
+                    "0".to_string(),
+                    err,
+                )))
             } else {
                 Ok(InstallSnapshotResponse { vote: rpc.vote })
             }
@@ -474,7 +478,7 @@ mod tests {
 
         Chunked::send_snapshot(
             &mut net,
-            Vote::new(1, 0),
+            Vote::new(1, s(0)),
             Snapshot::<UTConfig>::new(
                 SnapshotMeta {
                     last_log_id: None,

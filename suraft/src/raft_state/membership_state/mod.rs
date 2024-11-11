@@ -8,6 +8,7 @@ use crate::EffectiveMembership;
 use crate::LogId;
 use crate::LogIdOptionExt;
 use crate::RaftTypeConfig;
+use crate::NID;
 
 mod change_handler;
 #[cfg(test)]
@@ -70,17 +71,17 @@ where C: RaftTypeConfig
     }
 
     /// Return true if the given node id is an either voter or learner.
-    pub(crate) fn contains(&self, id: &C::NodeId) -> bool {
+    pub(crate) fn contains(&self, id: &NID) -> bool {
         self.effective.membership().contains(id)
     }
 
     /// Check if the given `NodeId` exists and is a voter.
-    pub(crate) fn is_voter(&self, id: &C::NodeId) -> bool {
+    pub(crate) fn is_voter(&self, id: &NID) -> bool {
         self.effective.membership().is_voter(id)
     }
 
     /// Update membership state if the specified committed_log_id is greater than `self.effective`
-    pub(crate) fn commit(&mut self, committed_log_id: &Option<LogId<C::NodeId>>) {
+    pub(crate) fn commit(&mut self, committed_log_id: &Option<LogId>) {
         if committed_log_id >= self.effective().log_id() {
             debug_assert!(committed_log_id.index() >= self.effective().log_id().index());
             self.committed = self.effective.clone();

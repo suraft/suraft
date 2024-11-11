@@ -37,11 +37,11 @@ async fn snapshot_line_rate_to_snapshot() -> Result<()> {
     );
     let mut router = RaftRouter::new(config.clone());
 
-    let mut log_index = router.new_cluster(btreeset! {0}, btreeset! {1}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0)}, btreeset! {s(1)}).await?;
 
     tracing::info!(log_index, "--- send more than half threshold logs");
     {
-        router.client_request_many(0, "0", (snapshot_threshold / 2 + 2 - log_index) as usize).await?;
+        router.client_request_many(s(0), "0", (snapshot_threshold / 2 + 2 - log_index) as usize).await?;
         log_index = snapshot_threshold / 2 + 2;
 
         router
@@ -59,7 +59,7 @@ async fn snapshot_line_rate_to_snapshot() -> Result<()> {
     {
         router.set_network_error(1, true);
 
-        router.client_request_many(0, "0", (snapshot_threshold - 1 - log_index) as usize).await?;
+        router.client_request_many(s(0), "0", (snapshot_threshold - 1 - log_index) as usize).await?;
         log_index = snapshot_threshold - 1;
 
         router
@@ -71,12 +71,7 @@ async fn snapshot_line_rate_to_snapshot() -> Result<()> {
             )
             .await?;
         router
-            .wait_for_snapshot(
-                &btreeset![0],
-                LogId::new(CommittedLeaderId::new(1, 0), log_index),
-                timeout(),
-                "snapshot on node 0",
-            )
+            .wait_for_snapshot(&btreeset![0], LogId::new(1, log_index), timeout(), "snapshot on node 0")
             .await?;
     }
 
@@ -86,12 +81,7 @@ async fn snapshot_line_rate_to_snapshot() -> Result<()> {
 
         router.wait_for_log(&btreeset![1], Some(log_index), timeout(), "replicate by snapshot").await?;
         router
-            .wait_for_snapshot(
-                &btreeset![1],
-                LogId::new(CommittedLeaderId::new(1, 0), log_index),
-                timeout(),
-                "snapshot on node 1",
-            )
+            .wait_for_snapshot(&btreeset![1], LogId::new(1, log_index), timeout(), "snapshot on node 1")
             .await?;
     }
 

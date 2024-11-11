@@ -3,18 +3,13 @@ use std::fmt::Formatter;
 
 use crate::display_ext::DisplayOption;
 use crate::metrics::Metric;
-use crate::RaftTypeConfig;
 
 /// Display the value of a metric.
-pub(crate) struct MetricDisplay<'a, C>
-where C: RaftTypeConfig
-{
-    pub(crate) metric: &'a Metric<C>,
+pub(crate) struct MetricDisplay<'a> {
+    pub(crate) metric: &'a Metric,
 }
 
-impl<'a, C> fmt::Display for MetricDisplay<'a, C>
-where C: RaftTypeConfig
-{
+impl<'a> fmt::Display for MetricDisplay<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self.metric {
             Metric::Term(v) => write!(f, "{}", v),

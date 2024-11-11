@@ -31,24 +31,18 @@ async fn purge_in_snapshot_logs() -> Result<()> {
     );
 
     let mut router = RaftRouter::new(config.clone());
-    let mut log_index = router.new_cluster(btreeset! {0}, btreeset! {1}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0)}, btreeset! {s(1)}).await?;
 
-    let leader = router.get_raft_handle(&0)?;
-    let learner = router.get_raft_handle(&1)?;
+    let leader = router.get_raft_handle(&s(0))?;
+    let learner = router.get_raft_handle(&s(1))?;
 
     let (mut sto0, mut _sm0) = router.get_storage_handle(&0)?;
 
     tracing::info!(log_index, "--- build snapshot on leader, check purged log");
     {
-        log_index += router.client_request_many(0, "0", 10).await?;
+        log_index += router.client_request_many(s(0), "0", 10).await?;
         leader.trigger().snapshot().await?;
-        leader
-            .wait(timeout())
-            .snapshot(
-                LogId::new(CommittedLeaderId::new(1, 0), log_index),
-                "building 1st snapshot",
-            )
-            .await?;
+        leader.wait(timeout()).snapshot(LogId::new(1, log_index), "building 1st snapshot").await?;
         let (mut sto0, mut _sm0) = router.get_storage_handle(&0)?;
 
         // Wait for purge to complete.
@@ -64,17 +58,11 @@ async fn purge_in_snapshot_logs() -> Result<()> {
     {
         router.set_network_error(1, true);
 
-        log_index += router.client_request_many(0, "0", 5).await?;
+        log_index += router.client_request_many(s(0), "0", 5).await?;
         router.wait(&0, timeout()).applied_index(Some(log_index), "write another 5 logs").await?;
 
         leader.trigger().snapshot().await?;
-        leader
-            .wait(timeout())
-            .snapshot(
-                LogId::new(CommittedLeaderId::new(1, 0), log_index),
-                "building 2nd snapshot",
-            )
-            .await?;
+        leader.wait(timeout()).snapshot(LogId::new(1, log_index), "building 2nd snapshot").await?;
     }
 
     // There may be a cached append-entries request that already loads log 10..15 from the store,
@@ -88,13 +76,7 @@ async fn purge_in_snapshot_logs() -> Result<()> {
     {
         router.set_network_error(1, false);
 
-        learner
-            .wait(timeout())
-            .snapshot(
-                LogId::new(CommittedLeaderId::new(1, 0), log_index),
-                "learner install snapshot",
-            )
-            .await?;
+        learner.wait(timeout()).snapshot(LogId::new(1, log_index), "learner install snapshot").await?;
 
         let (mut sto1, mut _sm) = router.get_storage_handle(&1)?;
         let logs = sto1.try_get_log_entries(..).await?;

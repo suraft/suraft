@@ -6,6 +6,7 @@ use crate::error::Fatal;
 use crate::raft::RaftInner;
 use crate::type_config::TypeConfigExt;
 use crate::RaftTypeConfig;
+use crate::NID;
 
 /// Trigger is an interface to trigger an action to RaftCore by external caller.
 ///
@@ -42,7 +43,7 @@ where C: RaftTypeConfig
     ///
     /// Returns error when RaftCore has [`Fatal`] error, e.g. shut down or having storage error.
     /// It is not affected by `Raft::enable_elect(false)`.
-    pub async fn elect(&self) -> Result<(), Fatal<C>> {
+    pub async fn elect(&self) -> Result<(), Fatal> {
         self.raft_inner.send_external_command(ExternalCommand::Elect, "trigger_elect").await
     }
 
@@ -50,14 +51,14 @@ where C: RaftTypeConfig
     ///
     /// Returns error when RaftCore has [`Fatal`] error, e.g. shut down or having storage error.
     /// It is not affected by `Raft::enable_heartbeat(false)`.
-    pub async fn heartbeat(&self) -> Result<(), Fatal<C>> {
+    pub async fn heartbeat(&self) -> Result<(), Fatal> {
         self.raft_inner.send_external_command(ExternalCommand::Heartbeat, "trigger_heartbeat").await
     }
 
     /// Trigger to build a snapshot at once and return at once.
     ///
     /// Returns error when RaftCore has [`Fatal`] error, e.g. shut down or having storage error.
-    pub async fn snapshot(&self) -> Result<(), Fatal<C>> {
+    pub async fn snapshot(&self) -> Result<(), Fatal> {
         self.raft_inner.send_external_command(ExternalCommand::Snapshot, "trigger_snapshot").await
     }
 
@@ -76,14 +77,14 @@ where C: RaftTypeConfig
     /// can't be purged until the replication task is finished.
     ///
     /// [`max_in_snapshot_log_to_keep`]: `crate::Config::max_in_snapshot_log_to_keep`
-    pub async fn purge_log(&self, upto: u64) -> Result<(), Fatal<C>> {
+    pub async fn purge_log(&self, upto: u64) -> Result<(), Fatal> {
         self.raft_inner.send_external_command(ExternalCommand::PurgeLog { upto }, "purge_log").await
     }
 
     /// Submit a command to inform RaftCore to transfer leadership to the specified node.
     ///
     /// If this node is not a Leader, it is just ignored.
-    pub async fn transfer_leader(&self, to: C::NodeId) -> Result<(), Fatal<C>> {
+    pub async fn transfer_leader(&self, to: NID) -> Result<(), Fatal> {
         self.raft_inner
             .send_external_command(ExternalCommand::TriggerTransferLeader { to }, "transfer_leader")
             .await
@@ -126,11 +127,7 @@ where C: RaftTypeConfig
     /// - call [`Self::allow_next_revert`] on the Leader.
     /// - Clear the target node's data directory.
     /// - Restart the target node.
-    pub async fn allow_next_revert(
-        &self,
-        to: &C::NodeId,
-        allow: bool,
-    ) -> Result<Result<(), AllowNextRevertError<C>>, Fatal<C>> {
+    pub async fn allow_next_revert(&self, to: &NID, allow: bool) -> Result<Result<(), AllowNextRevertError<C>>, Fatal> {
         let (tx, rx) = C::oneshot();
         self.raft_inner
             .send_external_command(

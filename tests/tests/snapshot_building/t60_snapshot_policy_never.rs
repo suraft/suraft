@@ -7,6 +7,7 @@ use maplit::btreeset;
 use suraft::Config;
 use suraft::SnapshotPolicy;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -45,7 +46,7 @@ async fn snapshot_policy_never() -> Result<()> {
     let mut router = RaftRouter::new(config.clone());
 
     tracing::info!("--- initializing cluster");
-    let mut log_index = router.new_cluster(btreeset! {0}, btreeset! {}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0)}, btreeset! {}).await?;
 
     let mut clients = futures::stream::FuturesUnordered::new();
 

@@ -3,14 +3,15 @@ use std::time::Duration;
 
 use anyhow::Result;
 use maplit::btreeset;
-use suraft::type_config::TypeConfigExt;
-use suraft::Config;
-use suraft_memstore::TypeConfig;
 #[allow(unused_imports)]
 use pretty_assertions::assert_eq;
 #[allow(unused_imports)]
 use pretty_assertions::assert_ne;
+use suraft::type_config::TypeConfigExt;
+use suraft::Config;
+use suraft_memstore::TypeConfig;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -30,9 +31,9 @@ async fn server_metrics_and_data_metrics() -> Result<()> {
     let mut router = RaftRouter::new(config.clone());
 
     tracing::info!("--- initializing cluster");
-    let mut log_index = router.new_cluster(btreeset! {0,1,2}, btreeset! {}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {}).await?;
 
-    let node = router.get_raft_handle(&0)?;
+    let node = router.get_raft_handle(&s(0))?;
     let mut server_metrics = node.server_metrics();
     let data_metrics = node.data_metrics();
 
@@ -47,7 +48,7 @@ async fn server_metrics_and_data_metrics() -> Result<()> {
     // Write some logs.
     let n = 10;
     tracing::info!(log_index, "--- write {} logs", n);
-    log_index += router.client_request_many(0, "foo", n).await?;
+    log_index += router.client_request_many(s(0), "foo", n).await?;
 
     router.wait(&0, timeout()).applied_index(Some(log_index), "applied log index").await?;
 
@@ -84,9 +85,9 @@ async fn heartbeat_metrics() -> Result<()> {
     let mut router = RaftRouter::new(config.clone());
 
     tracing::info!("--- initializing cluster");
-    let log_index = router.new_cluster(btreeset! {0,1,2}, btreeset! {}).await?;
+    let log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {}).await?;
 
-    let leader = router.get_raft_handle(&0)?;
+    let leader = router.get_raft_handle(&s(0))?;
 
     tracing::info!(log_index, "--- trigger heartbeat; heartbeat metrics refreshes");
     let refreshed_node1;
@@ -131,8 +132,8 @@ async fn heartbeat_metrics() -> Result<()> {
             .as_ref()
             .expect("expect heartbeat to be Some as metrics come from the leader node");
 
-        let got_node1 = heartbeat.get(&1).unwrap().unwrap();
-        let got_node2 = heartbeat.get(&2).unwrap().unwrap();
+        let got_node1 = heartbeat.get(&s(1)).unwrap().unwrap();
+        let got_node2 = heartbeat.get(&s(2)).unwrap().unwrap();
 
         assert!(got_node1 == refreshed_node1);
         assert!(got_node2 == refreshed_node2);

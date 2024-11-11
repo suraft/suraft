@@ -32,14 +32,14 @@ async fn install_snapshot_lower_vote() -> Result<()> {
     let mut log_index = 0;
 
     tracing::info!(log_index, "--- initializing cluster");
-    log_index = router.new_cluster(btreeset! {0}, btreeset! {}).await?;
+    log_index = router.new_cluster(btreeset! {s(0)}, btreeset! {}).await?;
 
     let (n0, _, _) = router.remove_node(0).unwrap();
     let make_req = || InstallSnapshotRequest {
-        vote: Vote::new_committed(2, 1),
+        vote: Vote::new_committed(2, s(1)),
         meta: SnapshotMeta {
             snapshot_id: "ss1".into(),
-            last_log_id: Some(log_id(1, 0, 0)),
+            last_log_id: Some(log_id(1, s(0), 0)),
             last_membership: Default::default(),
         },
         offset: 0,
@@ -51,23 +51,23 @@ async fn install_snapshot_lower_vote() -> Result<()> {
     {
         let _res = n0
             .append_entries(AppendEntriesRequest {
-                vote: Vote::new_committed(2, 1),
+                vote: Vote::new_committed(2, s(1)),
                 prev_log_id: None,
                 entries: vec![],
                 leader_commit: None,
             })
             .await;
         let vote = n0.with_raft_state(|st| *st.vote_ref()).await?;
-        assert_eq!(Vote::new_committed(2, 1), vote);
+        assert_eq!(Vote::new_committed(2, s(1)), vote);
     }
 
     tracing::info!(log_index, "--- install_snapshot with lower vote will be rejected");
     {
         let mut req = make_req();
-        req.vote = Vote::new_committed(1, 1);
+        req.vote = Vote::new_committed(1, s(1));
 
         let got = n0.install_snapshot(req).await?;
-        assert_eq!(Vote::new_committed(2, 1), got.vote);
+        assert_eq!(Vote::new_committed(2, s(1)), got.vote);
 
         let snapshot_meta = n0.with_raft_state(|st| st.snapshot_meta.clone()).await?;
         assert_eq!(SnapshotMeta::default(), snapshot_meta, "no snapshot is installed");
@@ -76,15 +76,15 @@ async fn install_snapshot_lower_vote() -> Result<()> {
     tracing::info!(log_index, "--- install_full_snapshot with lower vote will be rejected");
     {
         let mut req = make_req();
-        req.vote = Vote::new_committed(1, 1);
+        req.vote = Vote::new_committed(1, s(1));
 
         let got = n0
-            .install_full_snapshot(Vote::new_committed(1, 1), Snapshot {
+            .install_full_snapshot(Vote::new_committed(1, s(1)), Snapshot {
                 meta: Default::default(),
                 snapshot: Box::new(Cursor::new(vec![])),
             })
             .await?;
-        assert_eq!(Vote::new_committed(2, 1), got.vote);
+        assert_eq!(Vote::new_committed(2, s(1)), got.vote);
 
         let snapshot_meta = n0.with_raft_state(|st| st.snapshot_meta.clone()).await?;
         assert_eq!(SnapshotMeta::default(), snapshot_meta, "no snapshot is installed");

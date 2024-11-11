@@ -4,6 +4,7 @@ use std::time::Duration;
 use maplit::btreeset;
 use suraft::Config;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -24,7 +25,7 @@ async fn follower_restart_does_not_interrupt() -> anyhow::Result<()> {
     let mut router = RaftRouter::new(config.clone());
 
     tracing::info!("--- bring up cluster of 3 nodes");
-    let log_index = router.new_cluster(btreeset! {0,1,2}, btreeset! {}).await?;
+    let log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {}).await?;
     let _ = log_index;
 
     tracing::info!(log_index, "--- stop and restart follower nodes 1,2");
@@ -37,7 +38,7 @@ async fn follower_restart_does_not_interrupt() -> anyhow::Result<()> {
         let (n2, sto2, sm2) = router.remove_node(2).unwrap();
         n2.shutdown().await?;
 
-        let (n1, sto1, sm1) = router.remove_node(1).unwrap();
+        let (n1, sto1, sm1) = router.remove_node(s(1)).unwrap();
         n1.shutdown().await?;
 
         let (n0, _sto0, _sm0) = router.remove_node(0).unwrap();

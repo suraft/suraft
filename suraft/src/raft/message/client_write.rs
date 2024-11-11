@@ -16,14 +16,14 @@ pub type ClientWriteResult<C> = Result<ClientWriteResponse<C>, ClientWriteError<
 #[cfg_attr(
     feature = "serde",
     derive(serde::Deserialize, serde::Serialize),
-    serde(bound = "C::R: crate::AppDataResponse")
+    serde(bound = "C::AppResponse: crate::AppResponse")
 )]
 pub struct ClientWriteResponse<C: RaftTypeConfig> {
     /// The id of the log that is applied.
-    pub log_id: LogId<C::NodeId>,
+    pub log_id: LogId,
 
     /// Application specific response data.
-    pub data: C::R,
+    pub data: C::AppResponse,
 
     /// If the log entry is a change-membership entry.
     pub membership: Option<Membership<C>>,
@@ -35,7 +35,7 @@ where C: RaftTypeConfig
     /// Create a new instance of `ClientWriteResponse`.
     #[allow(dead_code)]
     #[since(version = "0.9.5")]
-    pub(crate) fn new_app_response(log_id: LogId<C::NodeId>, data: C::R) -> Self {
+    pub(crate) fn new_app_response(log_id: LogId, data: C::AppResponse) -> Self {
         Self {
             log_id,
             data,
@@ -44,12 +44,12 @@ where C: RaftTypeConfig
     }
 
     #[since(version = "0.9.5")]
-    pub fn log_id(&self) -> &LogId<C::NodeId> {
+    pub fn log_id(&self) -> &LogId {
         &self.log_id
     }
 
     #[since(version = "0.9.5")]
-    pub fn response(&self) -> &C::R {
+    pub fn response(&self) -> &C::AppResponse {
         &self.data
     }
 
@@ -61,7 +61,7 @@ where C: RaftTypeConfig
 }
 
 impl<C: RaftTypeConfig> Debug for ClientWriteResponse<C>
-where C::R: Debug
+where C::AppResponse: Debug
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ClientWriteResponse")

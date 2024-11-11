@@ -10,7 +10,7 @@ mod update_server_state_test;
 pub(crate) struct ServerStateHandler<'st, C>
 where C: RaftTypeConfig
 {
-    pub(crate) config: &'st EngineConfig<C>,
+    pub(crate) config: &'st EngineConfig,
     pub(crate) state: &'st mut RaftState<C>,
 }
 

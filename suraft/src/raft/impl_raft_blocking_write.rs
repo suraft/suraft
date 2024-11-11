@@ -16,6 +16,7 @@ use crate::type_config::TypeConfigExt;
 use crate::ChangeMembers;
 use crate::Raft;
 use crate::RaftTypeConfig;
+use crate::NID;
 
 /// Implement blocking mode write operations those reply on oneshot channel for communication
 /// between Raft core and client.
@@ -53,7 +54,7 @@ where C: RaftTypeConfig<Responder = OneshotResponder<C>>
         &self,
         members: impl Into<ChangeMembers<C>>,
         retain: bool,
-    ) -> Result<ClientWriteResponse<C>, RaftError<C, ClientWriteError<C>>> {
+    ) -> Result<ClientWriteResponse<C>, RaftError<ClientWriteError<C>>> {
         let changes: ChangeMembers<C> = members.into();
 
         tracing::info!(
@@ -127,10 +128,10 @@ where C: RaftTypeConfig<Responder = OneshotResponder<C>>
     #[tracing::instrument(level = "debug", skip(self, id), fields(target=display(&id)))]
     pub async fn add_learner(
         &self,
-        id: C::NodeId,
+        id: NID,
         node: C::Node,
         blocking: bool,
-    ) -> Result<ClientWriteResponse<C>, RaftError<C, ClientWriteError<C>>> {
+    ) -> Result<ClientWriteResponse<C>, RaftError<ClientWriteError<C>>> {
         let (tx, rx) = oneshot_channel::<C>();
 
         let msg = RaftMsg::ChangeMembership {

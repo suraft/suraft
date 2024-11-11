@@ -13,10 +13,10 @@ use crate::raft_state::IOState;
 use crate::storage::log_reader_ext::RaftLogReaderExt;
 use crate::storage::RaftLogStorage;
 use crate::storage::RaftStateMachine;
-use crate::type_config::alias::LogIdOf;
 use crate::type_config::TypeConfigExt;
 use crate::utime::Leased;
 use crate::EffectiveMembership;
+use crate::LogId;
 use crate::LogIdOptionExt;
 use crate::MembershipState;
 use crate::RaftLogReader;
@@ -63,7 +63,7 @@ where
     ///
     /// When the Raft node is first started, it will call this interface to fetch the last known
     /// state from stable storage.
-    pub async fn get_initial_state(&mut self) -> Result<RaftState<C>, StorageError<C>> {
+    pub async fn get_initial_state(&mut self) -> Result<RaftState<C>, StorageError> {
         let mut log_reader = self.log_store.get_log_reader().await;
         let vote = log_reader.read_vote().await?;
         let vote = vote.unwrap_or_default();
@@ -177,7 +177,7 @@ where
     }
 
     /// Read log entries from [`RaftLogReader`] in chunks, and apply them to the state machine.
-    pub(crate) async fn reapply_committed(&mut self, mut start: u64, end: u64) -> Result<(), StorageError<C>> {
+    pub(crate) async fn reapply_committed(&mut self, mut start: u64, end: u64) -> Result<(), StorageError> {
         let chunk_size = 64;
 
         tracing::info!(
@@ -243,7 +243,7 @@ where
     /// a follower only need to revert at most one membership log.
     ///
     /// Thus a raft node will only need to store at most two recent membership logs.
-    pub async fn get_membership(&mut self) -> Result<MembershipState<C>, StorageError<C>> {
+    pub async fn get_membership(&mut self) -> Result<MembershipState<C>, StorageError> {
         let (last_applied, sm_mem) = self.state_machine.applied_state().await?;
 
         let log_mem = self.last_membership_in_log(last_applied.next_index()).await?;
@@ -277,10 +277,7 @@ where
     /// `>=since_index`. If no such membership log is found, it returns `None`, e.g., when logs
     /// are cleaned after being applied.
     #[tracing::instrument(level = "trace", skip_all)]
-    pub async fn last_membership_in_log(
-        &mut self,
-        since_index: u64,
-    ) -> Result<Vec<StoredMembership<C>>, StorageError<C>> {
+    pub async fn last_membership_in_log(&mut self, since_index: u64) -> Result<Vec<StoredMembership<C>>, StorageError> {
         let st = self.log_store.get_log_state().await?;
 
         let mut end = st.last_log_id.next_index();
@@ -317,11 +314,7 @@ where
     /// Get key-log-ids from the log store.
     ///
     /// Key-log-ids are the first log id of each Leader.
-    async fn get_key_log_ids(
-        &mut self,
-        purged: Option<LogIdOf<C>>,
-        last: Option<LogIdOf<C>>,
-    ) -> Result<LogIdList<C>, StorageError<C>> {
+    async fn get_key_log_ids(&mut self, purged: Option<LogId>, last: Option<LogId>) -> Result<LogIdList, StorageError> {
         let mut log_reader = self.log_store.get_log_reader().await;
 
         let last = match last {
@@ -339,7 +332,7 @@ where
 
         if !log_ids.is_empty() {
             if let Some(purged) = purged {
-                if purged.leader_id() == log_ids[0].leader_id() {
+                if purged.term() == log_ids[0].term() {
                     if log_ids.len() >= 2 {
                         log_ids[0] = purged;
                     } else {

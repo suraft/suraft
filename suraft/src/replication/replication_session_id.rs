@@ -4,7 +4,6 @@ use std::fmt::Formatter;
 use crate::display_ext::DisplayOptionExt;
 use crate::vote::CommittedVote;
 use crate::LogId;
-use crate::RaftTypeConfig;
 use crate::Vote;
 
 /// Uniquely identifies a replication session.
@@ -31,19 +30,15 @@ use crate::Vote;
 /// core believe node `c` already has `log_id=1`, and commit it.
 #[derive(Debug, Clone)]
 #[derive(PartialEq, Eq)]
-pub(crate) struct ReplicationSessionId<C>
-where C: RaftTypeConfig
-{
+pub(crate) struct ReplicationSessionId {
     /// The Leader or Candidate this replication belongs to.
-    pub(crate) leader_vote: CommittedVote<C>,
+    pub(crate) leader_vote: CommittedVote,
 
     /// The log id of the membership log this replication works for.
-    pub(crate) membership_log_id: Option<LogId<C::NodeId>>,
+    pub(crate) membership_log_id: Option<LogId>,
 }
 
-impl<C> Display for ReplicationSessionId<C>
-where C: RaftTypeConfig
-{
+impl Display for ReplicationSessionId {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -54,21 +49,19 @@ where C: RaftTypeConfig
     }
 }
 
-impl<C> ReplicationSessionId<C>
-where C: RaftTypeConfig
-{
-    pub(crate) fn new(vote: CommittedVote<C>, membership_log_id: Option<LogId<C::NodeId>>) -> Self {
+impl ReplicationSessionId {
+    pub(crate) fn new(vote: CommittedVote, membership_log_id: Option<LogId>) -> Self {
         Self {
             leader_vote: vote,
             membership_log_id,
         }
     }
 
-    pub(crate) fn committed_vote(&self) -> CommittedVote<C> {
+    pub(crate) fn committed_vote(&self) -> CommittedVote {
         self.leader_vote.clone()
     }
 
-    pub(crate) fn vote(&self) -> Vote<C::NodeId> {
+    pub(crate) fn vote(&self) -> Vote {
         self.leader_vote.clone().into_vote()
     }
 }

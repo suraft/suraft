@@ -22,6 +22,10 @@ use anyerror::AnyError;
 use anyhow::Context;
 use lazy_static::lazy_static;
 use maplit::btreeset;
+#[allow(unused_imports)]
+use pretty_assertions::assert_eq;
+#[allow(unused_imports)]
+use pretty_assertions::assert_ne;
 use suraft::error::CheckIsLeaderError;
 use suraft::error::ClientWriteError;
 use suraft::error::Fatal;
@@ -60,6 +64,7 @@ use suraft::RaftState;
 use suraft::RaftTypeConfig;
 use suraft::ServerState;
 use suraft::Vote;
+use suraft::NID;
 use suraft_memstore::ClientRequest;
 use suraft_memstore::ClientResponse;
 use suraft_memstore::IntoMemClientRequest;
@@ -68,10 +73,6 @@ use suraft_memstore::MemNodeId;
 use suraft_memstore::MemStateMachine as SMInner;
 use suraft_memstore::TypeConfig;
 use suraft_memstore::TypeConfig as MemConfig;
-#[allow(unused_imports)]
-use pretty_assertions::assert_eq;
-#[allow(unused_imports)]
-use pretty_assertions::assert_ne;
 use tracing_appender::non_blocking::WorkerGuard;
 
 use crate::fixtures::logging::init_file_logging;
@@ -200,7 +201,7 @@ pub enum RPCErrorType {
 }
 
 impl RPCErrorType {
-    fn make_error<C>(&self, id: C::NodeId, dir: Direction) -> RPCError<C>
+    fn make_error<C>(&self, id: NID, dir: Direction) -> RPCError<C>
     where C: RaftTypeConfig {
         let msg = format!("error {} id={}", dir, id);
 
@@ -234,8 +235,8 @@ where C::SnapshotData: fmt::Debug
     AppendEntries(AppendEntriesRequest<C>),
     InstallSnapshot(InstallSnapshotRequest<C>),
     InstallFullSnapshot(Snapshot<C>),
-    Vote(VoteRequest<C>),
-    TransferLeader(TransferLeaderRequest<C>),
+    Vote(VoteRequest),
+    TransferLeader(TransferLeaderRequest),
 }
 
 impl<C: RaftTypeConfig> RPCRequest<C>
@@ -399,7 +400,7 @@ impl TypedRaftRouter {
         // before other requests in the Raft core API queue, which definitely are executed
         // (since they are awaited).
         #[allow(clippy::single_element_loop)]
-        for node in [0] {
+        for node in [s(0)] {
             self.external_request(node, |s| {
                 assert_eq!(s.server_state, ServerState::Learner);
             });
@@ -414,7 +415,7 @@ impl TypedRaftRouter {
         tracing::info!(log_index, "--- wait for init node to become leader");
 
         self.wait_for_log(&btreeset![leader_id], Some(log_index), timeout(), "init").await?;
-        self.wait(&leader_id, timeout()).vote(Vote::new_committed(1, 0), "init vote").await?;
+        self.wait(&leader_id, timeout()).vote(Vote::new_committed(1, s(0)), "init vote").await?;
 
         for id in voter_ids.iter() {
             if *id == leader_id {
@@ -725,7 +726,7 @@ impl TypedRaftRouter {
     pub async fn wait_for_snapshot(
         &self,
         node_ids: &BTreeSet<MemNodeId>,
-        want: LogId<MemNodeId>,
+        want: LogId,
         timeout: Option<Duration>,
         msg: &str,
     ) -> anyhow::Result<()> {
@@ -863,7 +864,7 @@ impl TypedRaftRouter {
         expect_term: u64,
         expect_last_log: u64,
         expect_voted_for: Option<MemNodeId>,
-        expect_sm_last_applied_log: LogId<MemNodeId>,
+        expect_sm_last_applied_log: LogId,
         expect_snapshot: &Option<(ValueTest<u64>, u64)>,
     ) -> anyhow::Result<()> {
         let last_log_id = storage.get_log_state().await?.last_log_id;
@@ -880,7 +881,7 @@ impl TypedRaftRouter {
         let vote = storage.read_vote().await?.unwrap_or_else(|| panic!("no hard state found for node {}", id));
 
         assert_eq!(
-            vote.leader_id().get_term(),
+            vote.leader_id().term(),
             expect_term,
             "expected node {} to have term {}, got {:?}",
             id,
@@ -926,7 +927,7 @@ impl TypedRaftRouter {
             }
 
             assert_eq!(
-                &snap.meta.last_log_id.unwrap_or_default().leader_id.term,
+                &snap.meta.last_log_id.unwrap_or_default().term.term,
                 term,
                 "expected node {} to have snapshot with term {}, got {:?}",
                 id,
@@ -955,7 +956,7 @@ impl TypedRaftRouter {
         expect_term: u64,
         expect_last_log: u64,
         expect_voted_for: Option<MemNodeId>,
-        expect_sm_last_applied_log: LogId<MemNodeId>,
+        expect_sm_last_applied_log: LogId,
         expect_snapshot: Option<(ValueTest<u64>, u64)>,
     ) -> anyhow::Result<()> {
         let node_ids = {
@@ -1085,7 +1086,7 @@ impl RaftNetworkV2<MemConfig> for RaftRouterNetwork {
 
     async fn full_snapshot(
         &mut self,
-        vote: Vote<MemNodeId>,
+        vote: Vote,
         snapshot: Snapshot<MemConfig>,
         _cancel: impl Future<Output = ReplicationClosed> + OptionalSend + 'static,
         _option: RPCOption,
@@ -1179,4 +1180,8 @@ impl<T> From<std::ops::Range<T>> for ValueTest<T> {
 
 fn timeout() -> Option<Duration> {
     Some(Duration::from_millis(5_000))
+}
+
+pub fn s(x: impl fmt::Display) -> String {
+    x.to_string()
 }

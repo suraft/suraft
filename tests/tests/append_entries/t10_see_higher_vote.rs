@@ -7,7 +7,6 @@ use suraft::network::v2::RaftNetworkV2;
 use suraft::network::RPCOption;
 use suraft::network::RaftNetworkFactory;
 use suraft::raft::VoteRequest;
-use suraft::CommittedLeaderId;
 use suraft::Config;
 use suraft::LogId;
 use suraft::ServerState;
@@ -15,6 +14,7 @@ use suraft::Vote;
 use suraft_memstore::ClientRequest;
 use tokio::time::sleep;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -35,7 +35,7 @@ async fn append_sees_higher_vote() -> Result<()> {
 
     let mut router = RaftRouter::new(config.clone());
 
-    let log_index = router.new_cluster(btreeset! {0,1}, btreeset! {}).await?;
+    let log_index = router.new_cluster(btreeset! {s(0),s(1)}, btreeset! {}).await?;
 
     tracing::info!(log_index, "--- upgrade vote on node-1");
     {
@@ -49,14 +49,14 @@ async fn append_sees_higher_vote() -> Result<()> {
             .await
             .vote(
                 VoteRequest {
-                    vote: Vote::new(10, 1),
-                    last_log_id: Some(LogId::new(CommittedLeaderId::new(10, 1), 5)),
+                    vote: Vote::new(10, s(1)),
+                    last_log_id: Some(LogId::new(10, 5)),
                 },
                 option,
             )
             .await?;
 
-        assert!(resp.is_granted_to(&Vote::new(10, 1)));
+        assert!(resp.is_granted_to(&Vote::new(10, s(1))));
     }
 
     // Current state:
@@ -66,7 +66,7 @@ async fn append_sees_higher_vote() -> Result<()> {
     {
         router.wait(&0, timeout()).state(ServerState::Leader, "node-0 is leader").await?;
 
-        let n0 = router.get_raft_handle(&0)?;
+        let n0 = router.get_raft_handle(&s(0))?;
         tokio::spawn(async move {
             let res = n0
                 .client_write(ClientRequest {
@@ -87,7 +87,7 @@ async fn append_sees_higher_vote() -> Result<()> {
             .await?;
 
         router.external_request(0, |st| {
-            assert_eq!(&Vote::new(10, 1), st.vote_ref(), "higher vote is stored");
+            assert_eq!(&Vote::new(10, s(1)), st.vote_ref(), "higher vote is stored");
         });
     }
 

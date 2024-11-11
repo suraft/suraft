@@ -39,7 +39,7 @@ where C: RaftTypeConfig
     /// `last_purged_log_id` if there is no entry at all.
     // NOTE: This can be made into sync, provided all state machines will use atomic read or the
     // like.
-    async fn get_log_state(&mut self) -> Result<LogState<C>, StorageError<C>>;
+    async fn get_log_state(&mut self) -> Result<LogState, StorageError>;
 
     /// Get the log reader.
     ///
@@ -52,7 +52,7 @@ where C: RaftTypeConfig
     /// ### To ensure correctness:
     ///
     /// The vote must be persisted on disk before returning.
-    async fn save_vote(&mut self, vote: &Vote<C::NodeId>) -> Result<(), StorageError<C>>;
+    async fn save_vote(&mut self, vote: &Vote) -> Result<(), StorageError>;
 
     /// Saves the last committed log id to storage.
     ///
@@ -67,13 +67,13 @@ where C: RaftTypeConfig
     /// See: [`docs::data::log_pointers`].
     ///
     /// [`docs::data::log_pointers`]: `crate::docs::data::log_pointers#optionally-persisted-committed`
-    async fn save_committed(&mut self, _committed: Option<LogId<C::NodeId>>) -> Result<(), StorageError<C>> {
+    async fn save_committed(&mut self, _committed: Option<LogId>) -> Result<(), StorageError> {
         // By default `committed` log id is not saved
         Ok(())
     }
 
     /// Return the last saved committed log id by [`Self::save_committed`].
-    async fn read_committed(&mut self) -> Result<Option<LogId<C::NodeId>>, StorageError<C>> {
+    async fn read_committed(&mut self) -> Result<Option<LogId>, StorageError> {
         // By default `committed` log id is not saved and this method just return None.
         Ok(None)
     }
@@ -96,7 +96,7 @@ where C: RaftTypeConfig
     ///
     /// - There must not be a **hole** in logs. Because Raft only examine the last log id to ensure
     ///   correctness.
-    async fn append<I>(&mut self, entries: I, callback: IOFlushed<C>) -> Result<(), StorageError<C>>
+    async fn append<I>(&mut self, entries: I, callback: IOFlushed<C>) -> Result<(), StorageError>
     where
         I: IntoIterator<Item = C::Entry> + OptionalSend,
         I::IntoIter: OptionalSend;
@@ -106,12 +106,12 @@ where C: RaftTypeConfig
     /// ### To ensure correctness:
     ///
     /// - It must not leave a **hole** in logs.
-    async fn truncate(&mut self, log_id: LogId<C::NodeId>) -> Result<(), StorageError<C>>;
+    async fn truncate(&mut self, log_id: LogId) -> Result<(), StorageError>;
 
     /// Purge logs upto `log_id`, inclusive
     ///
     /// ### To ensure correctness:
     ///
     /// - It must not leave a **hole** in logs.
-    async fn purge(&mut self, log_id: LogId<C::NodeId>) -> Result<(), StorageError<C>>;
+    async fn purge(&mut self, log_id: LogId) -> Result<(), StorageError>;
 }

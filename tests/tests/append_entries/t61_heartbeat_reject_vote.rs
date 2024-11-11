@@ -32,7 +32,7 @@ async fn heartbeat_reject_vote() -> Result<()> {
     let now = TokioInstant::now();
     sleep(Duration::from_millis(1)).await;
 
-    let log_index = router.new_cluster(btreeset! {0,1,2}, btreeset! {3}).await?;
+    let log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {3}).await?;
 
     let vote_modified_time = Arc::new(Mutex::new(Some(TokioInstant::now())));
     tracing::info!(log_index, "--- leader lease is set by heartbeat");
@@ -57,13 +57,13 @@ async fn heartbeat_reject_vote() -> Result<()> {
         });
     }
 
-    let node0 = router.get_raft_handle(&0)?;
-    let node1 = router.get_raft_handle(&1)?;
+    let node0 = router.get_raft_handle(&s(0))?;
+    let node1 = router.get_raft_handle(&s(1))?;
 
     tracing::info!(log_index, "--- leader lease rejects vote request");
     {
-        let res = node1.vote(VoteRequest::new(Vote::new(10, 2), Some(log_id(10, 1, 10)))).await?;
-        assert!(!res.is_granted_to(&Vote::new(10, 2)), "vote is rejected");
+        let res = node1.vote(VoteRequest::new(Vote::new(10, s(2)), Some(log_id(10, 1, 10)))).await?;
+        assert!(!res.is_granted_to(&Vote::new(10, s(2))), "vote is rejected");
     }
 
     tracing::info!(log_index, "--- ensures no more blank-log heartbeat is used");
@@ -80,9 +80,9 @@ async fn heartbeat_reject_vote() -> Result<()> {
 
         router.wait(&1, timeout()).applied_index(Some(log_index), "no log is written").await?;
 
-        let res = node1.vote(VoteRequest::new(Vote::new(10, 2), Some(log_id(10, 1, 10)))).await?;
+        let res = node1.vote(VoteRequest::new(Vote::new(10, s(2)), Some(log_id(10, 1, 10)))).await?;
         assert!(
-            res.is_granted_to(&Vote::new(10, 2)),
+            res.is_granted_to(&Vote::new(10, s(2))),
             "vote is granted after leader lease expired"
         );
     }

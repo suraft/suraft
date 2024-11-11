@@ -33,7 +33,7 @@ where C: RaftTypeConfig
 {
     type Receiver = OneshotReceiverOf<C, ClientWriteResult<C>>;
 
-    fn from_app_data(app_data: C::D) -> (C::D, Self, Self::Receiver)
+    fn from_app_data(app_data: C::AppData) -> (C::AppData, Self, Self::Receiver)
     where Self: Sized {
         let (tx, rx) = C::oneshot();
         (app_data, Self { tx }, rx)

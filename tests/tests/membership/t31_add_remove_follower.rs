@@ -35,7 +35,7 @@ async fn add_remove_voter() -> Result<()> {
 
     tracing::info!(log_index, "--- write 100 logs");
     {
-        router.client_request_many(0, "client", 100).await?;
+        router.client_request_many(s(0), "client", 100).await?;
         log_index += 100;
 
         router.wait_for_log(&c01234, Some(log_index), timeout(), "write 100 logs").await?;
@@ -43,7 +43,7 @@ async fn add_remove_voter() -> Result<()> {
 
     tracing::info!(log_index, "--- remove n{}", 4);
     {
-        let node = router.get_raft_handle(&0)?;
+        let node = router.get_raft_handle(&s(0))?;
         node.change_membership(c0123.clone(), false).await?;
         log_index += 2; // two member-change logs
 
@@ -52,7 +52,7 @@ async fn add_remove_voter() -> Result<()> {
 
     tracing::info!(log_index, "--- write another 100 logs");
     {
-        router.client_request_many(0, "client", 100).await?;
+        router.client_request_many(s(0), "client", 100).await?;
         log_index += 100;
     }
 

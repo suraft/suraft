@@ -17,9 +17,8 @@ use crate::entry::FromAppData;
 use crate::entry::RaftEntry;
 use crate::raft::responder::Responder;
 use crate::AppData;
-use crate::AppDataResponse;
+use crate::AppResponse;
 use crate::Node;
-use crate::NodeId;
 use crate::OptionalSend;
 use crate::OptionalSync;
 
@@ -53,19 +52,16 @@ pub trait RaftTypeConfig:
     Sized + OptionalSend + OptionalSync + Debug + Clone + Copy + Default + Eq + PartialEq + Ord + PartialOrd + 'static
 {
     /// Application-specific request data passed to the state machine.
-    type D: AppData;
+    type AppData: AppData;
 
     /// Application-specific response data returned by the state machine.
-    type R: AppDataResponse;
-
-    /// A Raft node's ID.
-    type NodeId: NodeId;
+    type AppResponse: AppResponse;
 
     /// Raft application level node data
     type Node: Node;
 
     /// Raft log entry, which can be built from an AppData.
-    type Entry: RaftEntry<Self> + FromAppData<Self::D>;
+    type Entry: RaftEntry<Self> + FromAppData<Self::AppData>;
 
     /// Snapshot data for exposing a snapshot for reading & writing.
     ///
@@ -102,9 +98,8 @@ pub mod alias {
     use crate::type_config::AsyncRuntime;
     use crate::RaftTypeConfig;
 
-    pub type DOf<C> = <C as RaftTypeConfig>::D;
-    pub type ROf<C> = <C as RaftTypeConfig>::R;
-    pub type NodeIdOf<C> = <C as RaftTypeConfig>::NodeId;
+    pub type DOf<C> = <C as RaftTypeConfig>::AppData;
+    pub type ROf<C> = <C as RaftTypeConfig>::AppResponse;
     pub type NodeOf<C> = <C as RaftTypeConfig>::Node;
     pub type EntryOf<C> = <C as RaftTypeConfig>::Entry;
     pub type SnapshotDataOf<C> = <C as RaftTypeConfig>::SnapshotData;
@@ -151,9 +146,5 @@ pub mod alias {
     pub type MutexOf<C, T> = <Rt<C> as AsyncRuntime>::Mutex<T>;
 
     // Usually used types
-    pub type LogIdOf<C> = crate::LogId<NodeIdOf<C>>;
-    pub type VoteOf<C> = crate::Vote<NodeIdOf<C>>;
-    pub type LeaderIdOf<C> = crate::LeaderId<NodeIdOf<C>>;
-    pub type CommittedLeaderIdOf<C> = crate::CommittedLeaderId<NodeIdOf<C>>;
     pub type SerdeInstantOf<C> = crate::metrics::SerdeInstant<InstantOf<C>>;
 }

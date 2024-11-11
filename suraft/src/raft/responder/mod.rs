@@ -29,7 +29,7 @@ where C: RaftTypeConfig
     type Receiver;
 
     /// Build a new instance from the application request.
-    fn from_app_data(app_data: C::D) -> (C::D, Self, Self::Receiver)
+    fn from_app_data(app_data: C::AppData) -> (C::AppData, Self, Self::Receiver)
     where Self: Sized;
 
     /// Send result when the request has been completed.

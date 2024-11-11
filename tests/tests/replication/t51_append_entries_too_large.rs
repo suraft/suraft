@@ -10,6 +10,7 @@ use suraft::raft::AppendEntriesRequest;
 use suraft::Config;
 use suraft::RPCTypes;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -31,13 +32,13 @@ async fn append_entries_too_large() -> Result<()> {
     let mut router = RaftRouter::new(config.clone());
 
     tracing::info!("--- initializing cluster of 1 node");
-    let mut log_index = router.new_cluster(btreeset! {0}, btreeset! {}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0)}, btreeset! {}).await?;
 
     let n = 10u64;
 
     tracing::info!(log_index, "--- write {} entries to leader", n);
     {
-        log_index += router.client_request_many(0, "0", n as usize).await?;
+        log_index += router.client_request_many(s(0), "0", n as usize).await?;
         router.wait(&0, timeout()).applied_index(Some(log_index), format!("{} writes", n)).await?;
     }
 

@@ -35,7 +35,7 @@ async fn learner_restart() -> Result<()> {
     let mut router = RaftRouter::new(config.clone());
 
     tracing::info!("--- initializing");
-    let mut log_index = router.new_cluster(btreeset! {0}, btreeset! {1}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0)}, btreeset! {s(1)}).await?;
 
     router.client_request(0, "foo", 1).await?;
     log_index += 1;
@@ -45,7 +45,7 @@ async fn learner_restart() -> Result<()> {
     let (node0, _sto0, _sm0) = router.remove_node(0).unwrap();
     node0.shutdown().await?;
 
-    let (node1, sto1, sm1) = router.remove_node(1).unwrap();
+    let (node1, sto1, sm1) = router.remove_node(s(1)).unwrap();
     node1.shutdown().await?;
 
     // restart node-1, assert the state as expected.

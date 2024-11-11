@@ -25,6 +25,7 @@ use crate::Membership;
 use crate::RaftState;
 use crate::RaftTypeConfig;
 use crate::ServerState;
+use crate::NID;
 
 #[cfg(test)]
 mod append_membership_test;
@@ -42,8 +43,8 @@ mod update_matching_test;
 pub(crate) struct ReplicationHandler<'x, C>
 where C: RaftTypeConfig
 {
-    pub(crate) config: &'x mut EngineConfig<C>,
-    pub(crate) leader: &'x mut Leader<C, LeaderQuorumSet<C>>,
+    pub(crate) config: &'x mut EngineConfig,
+    pub(crate) leader: &'x mut Leader<C, LeaderQuorumSet>,
     pub(crate) state: &'x mut RaftState<C>,
     pub(crate) output: &'x mut EngineOutput<C>,
 }
@@ -55,7 +56,7 @@ where C: RaftTypeConfig
     ///
     /// It is called by the leader when a new membership log is appended to log store.
     #[tracing::instrument(level = "debug", skip_all)]
-    pub(crate) fn append_membership(&mut self, log_id: &LogId<C::NodeId>, m: &Membership<C>) {
+    pub(crate) fn append_membership(&mut self, log_id: &LogId, m: &Membership<C>) {
         tracing::debug!("update effective membership: log_id:{} {}", log_id, m);
 
         debug_assert!(
@@ -113,7 +114,7 @@ where C: RaftTypeConfig
     /// Update progress when replicated data(logs or snapshot) matches on follower/learner and is
     /// accepted.
     #[tracing::instrument(level = "debug", skip_all)]
-    pub(crate) fn update_leader_clock(&mut self, node_id: C::NodeId, t: InstantOf<C>) {
+    pub(crate) fn update_leader_clock(&mut self, node_id: NID, t: InstantOf<C>) {
         tracing::debug!(target = display(&node_id), t = display(t.display()), "{}", func_name!());
 
         let granted = *self
@@ -148,7 +149,7 @@ where C: RaftTypeConfig
     /// Update progress when replicated data(logs or snapshot) matches on follower/learner and is
     /// accepted.
     #[tracing::instrument(level = "debug", skip_all)]
-    pub(crate) fn update_matching(&mut self, node_id: C::NodeId, log_id: Option<LogId<C::NodeId>>) {
+    pub(crate) fn update_matching(&mut self, node_id: NID, log_id: Option<LogId>) {
         tracing::debug!(
             node_id = display(&node_id),
             log_id = display(log_id.display()),
@@ -179,10 +180,10 @@ where C: RaftTypeConfig
     ///
     /// In raft a log that is granted and in the leader term is committed.
     #[tracing::instrument(level = "debug", skip_all)]
-    pub(crate) fn try_commit_quorum_accepted(&mut self, granted: Option<LogId<C::NodeId>>) {
+    pub(crate) fn try_commit_quorum_accepted(&mut self, granted: Option<LogId>) {
         // Only when the log id is proposed by current leader, it is committed.
         if let Some(ref c) = granted {
-            if !self.state.vote_ref().is_same_leader(c.committed_leader_id()) {
+            if !self.state.vote_ref().is_same_term(c.term()) {
                 return;
             }
         }
@@ -210,7 +211,7 @@ where C: RaftTypeConfig
     /// Update progress when replicated data(logs or snapshot) does not match follower/learner state
     /// and is rejected.
     #[tracing::instrument(level = "debug", skip_all)]
-    pub(crate) fn update_conflicting(&mut self, target: C::NodeId, conflict: LogId<C::NodeId>) {
+    pub(crate) fn update_conflicting(&mut self, target: NID, conflict: LogId) {
         // TODO(2): test it?
 
         let prog_entry = self.leader.progress.get_mut(&target).unwrap();
@@ -231,7 +232,7 @@ where C: RaftTypeConfig
     /// - This flag will be consumed upon the next log reversion detection, allowing for a one-time
     ///   reset.
     /// - If the node is not found in the progress tracker, this method ignore it.
-    pub(crate) fn allow_next_revert(&mut self, target: C::NodeId, allow: bool) -> Result<(), NodeNotFound<C>> {
+    pub(crate) fn allow_next_revert(&mut self, target: NID, allow: bool) -> Result<(), NodeNotFound> {
         let Some(prog_entry) = self.leader.progress.get_mut(&target) else {
             tracing::warn!(
                 "target node {} not found in progress tracker, when {}",
@@ -248,7 +249,7 @@ where C: RaftTypeConfig
 
     /// Update replication progress when a response is received.
     #[tracing::instrument(level = "debug", skip_all)]
-    pub(crate) fn update_progress(&mut self, target: C::NodeId, repl_res: Result<ReplicationResult<C>, String>) {
+    pub(crate) fn update_progress(&mut self, target: NID, repl_res: Result<ReplicationResult, String>) {
         tracing::debug!(
             target = display(&target),
             result = display(repl_res.display()),
@@ -326,7 +327,7 @@ where C: RaftTypeConfig
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    pub(crate) fn send_to_target(output: &mut EngineOutput<C>, target: &C::NodeId, inflight: &Inflight<C>) {
+    pub(crate) fn send_to_target(output: &mut EngineOutput<C>, target: &NID, inflight: &Inflight) {
         let req = match inflight {
             Inflight::None => unreachable!("no data to send"),
             Inflight::Logs { log_id_range } => Replicate::logs(log_id_range.clone()),
@@ -385,7 +386,7 @@ where C: RaftTypeConfig
     ///
     /// Writing to local log store does not have to wait for a replication response from remote
     /// node. Thus it can just be done in a fast-path.
-    pub(crate) fn update_local_progress(&mut self, upto: Option<LogId<C::NodeId>>) {
+    pub(crate) fn update_local_progress(&mut self, upto: Option<LogId>) {
         tracing::debug!(upto = display(upto.display()), "{}", func_name!());
 
         if upto.is_none() {

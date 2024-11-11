@@ -14,6 +14,7 @@ use crate::LogId;
 use crate::OptionalSend;
 use crate::RaftTypeConfig;
 use crate::Vote;
+use crate::NID;
 
 // Error variants related to metrics.
 #[derive(Debug, thiserror::Error)]
@@ -93,13 +94,13 @@ where C: RaftTypeConfig
 
     /// Wait for `vote` to become `want` or timeout.
     #[tracing::instrument(level = "trace", skip(self), fields(msg=msg.to_string().as_str()))]
-    pub async fn vote(&self, want: Vote<C::NodeId>, msg: impl ToString) -> Result<RaftMetrics<C>, WaitError> {
+    pub async fn vote(&self, want: Vote, msg: impl ToString) -> Result<RaftMetrics<C>, WaitError> {
         self.eq(Metric::Vote(want), msg).await
     }
 
     /// Wait for `current_leader` to become `Some(leader_id)` until timeout.
     #[tracing::instrument(level = "trace", skip(self), fields(msg=msg.to_string().as_str()))]
-    pub async fn current_leader(&self, leader_id: C::NodeId, msg: impl ToString) -> Result<RaftMetrics<C>, WaitError> {
+    pub async fn current_leader(&self, leader_id: NID, msg: impl ToString) -> Result<RaftMetrics<C>, WaitError> {
         self.metrics(
             |m| m.current_leader.as_ref() == Some(&leader_id),
             &format!("{} .current_leader == {}", msg.to_string(), leader_id),
@@ -172,11 +173,7 @@ where C: RaftTypeConfig
     /// Wait for `membership` to become the expected node id set or timeout.
     #[deprecated(since = "0.9.0", note = "use `voter_ids()` instead")]
     #[tracing::instrument(level = "trace", skip(self), fields(msg=msg.to_string().as_str()))]
-    pub async fn members(
-        &self,
-        want_members: BTreeSet<C::NodeId>,
-        msg: impl ToString,
-    ) -> Result<RaftMetrics<C>, WaitError> {
+    pub async fn members(&self, want_members: BTreeSet<NID>, msg: impl ToString) -> Result<RaftMetrics<C>, WaitError> {
         self.metrics(
             |m| {
                 let got = m.membership_config.membership().voter_ids().collect::<BTreeSet<_>>();
@@ -191,7 +188,7 @@ where C: RaftTypeConfig
     #[tracing::instrument(level = "trace", skip_all, fields(msg=msg.to_string().as_str()))]
     pub async fn voter_ids(
         &self,
-        voter_ids: impl IntoIterator<Item = C::NodeId>,
+        voter_ids: impl IntoIterator<Item = NID>,
         msg: impl ToString,
     ) -> Result<RaftMetrics<C>, WaitError> {
         let want = voter_ids.into_iter().collect::<BTreeSet<_>>();
@@ -210,21 +207,13 @@ where C: RaftTypeConfig
 
     /// Wait for `snapshot` to become `snapshot_last_log_id` or timeout.
     #[tracing::instrument(level = "trace", skip(self), fields(msg=msg.to_string().as_str()))]
-    pub async fn snapshot(
-        &self,
-        snapshot_last_log_id: LogId<C::NodeId>,
-        msg: impl ToString,
-    ) -> Result<RaftMetrics<C>, WaitError> {
+    pub async fn snapshot(&self, snapshot_last_log_id: LogId, msg: impl ToString) -> Result<RaftMetrics<C>, WaitError> {
         self.eq(Metric::Snapshot(Some(snapshot_last_log_id)), msg).await
     }
 
     /// Wait for `purged` to become `want` or timeout.
     #[tracing::instrument(level = "trace", skip(self), fields(msg=msg.to_string().as_str()))]
-    pub async fn purged(
-        &self,
-        want: Option<LogId<C::NodeId>>,
-        msg: impl ToString,
-    ) -> Result<RaftMetrics<C>, WaitError> {
+    pub async fn purged(&self, want: Option<LogId>, msg: impl ToString) -> Result<RaftMetrics<C>, WaitError> {
         self.eq(Metric::Purged(want), msg).await
     }
 
@@ -234,7 +223,7 @@ where C: RaftTypeConfig
     /// ```ignore
     /// my_raft.wait(None).ge(Metric::Term(2), "become term 2").await?;
     /// ```
-    pub async fn ge(&self, metric: Metric<C>, msg: impl ToString) -> Result<RaftMetrics<C>, WaitError> {
+    pub async fn ge(&self, metric: Metric, msg: impl ToString) -> Result<RaftMetrics<C>, WaitError> {
         self.until(Condition::ge(metric), msg).await
     }
 
@@ -244,13 +233,13 @@ where C: RaftTypeConfig
     /// ```ignore
     /// my_raft.wait(None).eq(Metric::Term(2), "become term 2").await?;
     /// ```
-    pub async fn eq(&self, metric: Metric<C>, msg: impl ToString) -> Result<RaftMetrics<C>, WaitError> {
+    pub async fn eq(&self, metric: Metric, msg: impl ToString) -> Result<RaftMetrics<C>, WaitError> {
         self.until(Condition::eq(metric), msg).await
     }
 
     /// Block until a metric satisfies the specified condition or timeout.
     #[tracing::instrument(level = "trace", skip_all, fields(cond=cond.to_string(), msg=msg.to_string().as_str()))]
-    pub(crate) async fn until(&self, cond: Condition<C>, msg: impl ToString) -> Result<RaftMetrics<C>, WaitError> {
+    pub(crate) async fn until(&self, cond: Condition, msg: impl ToString) -> Result<RaftMetrics<C>, WaitError> {
         self.metrics(
             |raft_metrics| match &cond {
                 Condition::GE(expect) => raft_metrics >= expect,

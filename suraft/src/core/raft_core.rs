@@ -103,11 +103,12 @@ use crate::Membership;
 use crate::OptionalSend;
 use crate::RaftTypeConfig;
 use crate::StorageError;
+use crate::NID;
 
 /// A temp struct to hold the data for a node that is being applied.
 #[derive(Debug)]
 pub(crate) struct ApplyingEntry<C: RaftTypeConfig> {
-    log_id: LogId<C::NodeId>,
+    log_id: LogId,
     membership: Option<Membership<C>>,
 }
 
@@ -124,7 +125,7 @@ where C: RaftTypeConfig
 }
 
 impl<C: RaftTypeConfig> ApplyingEntry<C> {
-    pub(crate) fn new(log_id: LogId<C::NodeId>, membership: Option<Membership<C>>) -> Self {
+    pub(crate) fn new(log_id: LogId, membership: Option<Membership<C>>) -> Self {
         Self { log_id, membership }
     }
 }
@@ -133,9 +134,9 @@ impl<C: RaftTypeConfig> ApplyingEntry<C> {
 pub(crate) struct ApplyResult<C: RaftTypeConfig> {
     pub(crate) since: u64,
     pub(crate) end: u64,
-    pub(crate) last_applied: LogId<C::NodeId>,
+    pub(crate) last_applied: LogId,
     pub(crate) applying_entries: Vec<ApplyingEntry<C>>,
-    pub(crate) apply_results: Vec<C::R>,
+    pub(crate) apply_results: Vec<C::AppResponse>,
 }
 
 impl<C: RaftTypeConfig> Debug for ApplyResult<C> {
@@ -169,7 +170,7 @@ where
     LS: RaftLogStorage<C>,
 {
     /// This node's ID.
-    pub(crate) id: C::NodeId,
+    pub(crate) id: NID,
 
     /// This node's runtime config.
     pub(crate) config: Arc<Config>,
@@ -193,7 +194,7 @@ where
     pub(crate) client_resp_channels: BTreeMap<u64, ResponderOf<C>>,
 
     /// A mapping of node IDs the replication state of the target node.
-    pub(crate) replications: BTreeMap<C::NodeId, ReplicationHandle<C>>,
+    pub(crate) replications: BTreeMap<NID, ReplicationHandle<C>>,
 
     pub(crate) heartbeat_handle: HeartbeatWorkersHandle<C>,
 
@@ -222,7 +223,7 @@ where
     LS: RaftLogStorage<C>,
 {
     /// The main loop of the Raft protocol.
-    pub(crate) async fn main(mut self, rx_shutdown: OneshotReceiverOf<C, ()>) -> Result<Infallible, Fatal<C>> {
+    pub(crate) async fn main(mut self, rx_shutdown: OneshotReceiverOf<C, ()>) -> Result<Infallible, Fatal> {
         let span = tracing::span!(parent: &self.span, Level::DEBUG, "main");
         let res = self.do_main(rx_shutdown).instrument(span).await;
 
@@ -253,7 +254,7 @@ where
     }
 
     #[tracing::instrument(level="trace", skip_all, fields(id=display(&self.id), cluster=%self.config.cluster_name))]
-    async fn do_main(&mut self, rx_shutdown: OneshotReceiverOf<C, ()>) -> Result<Infallible, Fatal<C>> {
+    async fn do_main(&mut self, rx_shutdown: OneshotReceiverOf<C, ()>) -> Result<Infallible, Fatal> {
         tracing::debug!("raft node is initializing");
 
         self.engine.startup();
@@ -542,12 +543,7 @@ where
             let replication = Some(
                 replication_prog
                     .iter()
-                    .map(|(id, p)| {
-                        (
-                            id.clone(),
-                            <ProgressEntry<C> as Borrow<Option<LogId<C::NodeId>>>>::borrow(p).clone(),
-                        )
-                    })
+                    .map(|(id, p)| (id.clone(), <ProgressEntry as Borrow<Option<LogId>>>::borrow(p).clone()))
                     .collect(),
             );
 
@@ -566,7 +562,7 @@ where
     #[tracing::instrument(level = "debug", skip_all)]
     pub(crate) fn report_metrics(
         &mut self,
-        replication: Option<ReplicationMetrics<C>>,
+        replication: Option<ReplicationMetrics>,
         heartbeat: Option<HeartbeatMetrics<C>>,
     ) {
         let last_quorum_acked = self.last_quorum_acked_time();
@@ -583,7 +579,7 @@ where
             id: self.id.clone(),
 
             // --- data ---
-            current_term: st.vote_ref().leader_id().get_term(),
+            current_term: st.vote_ref().leader_id().term(),
             vote: st.io_state().io_progress.flushed().map(|io_id| io_id.to_vote()).unwrap_or_default(),
             last_log_index: st.last_log_id().index(),
             last_applied: st.io_applied().cloned(),
@@ -660,7 +656,7 @@ where
     #[tracing::instrument(level = "debug", skip(self, tx))]
     pub(crate) fn handle_initialize(
         &mut self,
-        member_nodes: BTreeMap<C::NodeId, C::Node>,
+        member_nodes: BTreeMap<NID, C::Node>,
         tx: ResultSender<C, (), InitializeError<C>>,
     ) {
         tracing::debug!(member_nodes = debug(&member_nodes), "{}", func_name!());
@@ -712,7 +708,7 @@ where
     }
 
     #[tracing::instrument(level = "debug", skip(self))]
-    pub(crate) fn current_leader(&self) -> Option<C::NodeId> {
+    pub(crate) fn current_leader(&self) -> Option<NID> {
         tracing::debug!(
             self_id = display(&self.id),
             vote = display(self.engine.state.vote_ref()),
@@ -748,7 +744,7 @@ where
         leading.and_then(|l| l.last_quorum_acked_time())
     }
 
-    pub(crate) fn get_leader_node(&self, leader_id: Option<C::NodeId>) -> Option<C::Node> {
+    pub(crate) fn get_leader_node(&self, leader_id: Option<NID>) -> Option<C::Node> {
         let leader_id = match leader_id {
             None => return None,
             Some(x) => x,
@@ -759,11 +755,7 @@ where
 
     /// Apply log entries to the state machine, from the `first`(inclusive) to `last`(inclusive).
     #[tracing::instrument(level = "debug", skip_all)]
-    pub(crate) async fn apply_to_state_machine(
-        &mut self,
-        first: LogId<C::NodeId>,
-        last: LogId<C::NodeId>,
-    ) -> Result<(), StorageError<C>> {
+    pub(crate) async fn apply_to_state_machine(&mut self, first: LogId, last: LogId) -> Result<(), StorageError> {
         tracing::debug!("{}: {}..={}", func_name!(), first, last);
 
         debug_assert!(
@@ -799,7 +791,7 @@ where
 
     /// Send result of applying a log entry to its client.
     #[tracing::instrument(level = "debug", skip_all)]
-    pub(super) fn send_response(entry: ApplyingEntry<C>, resp: C::R, tx: Option<ResponderOf<C>>) {
+    pub(super) fn send_response(entry: ApplyingEntry<C>, resp: C::AppResponse, tx: Option<ResponderOf<C>>) {
         tracing::debug!(entry = debug(&entry), "send_response");
 
         let tx = match tx {
@@ -823,8 +815,8 @@ where
     #[allow(clippy::type_complexity)]
     pub(crate) async fn spawn_replication_stream(
         &mut self,
-        target: C::NodeId,
-        progress_entry: ProgressEntry<C>,
+        target: NID,
+        progress_entry: ProgressEntry,
     ) -> ReplicationHandle<C> {
         // Safe unwrap(): target must be in membership
         let target_node = self.engine.state.membership_state.effective().get_node(&target).unwrap();
@@ -883,7 +875,7 @@ where
     /// If there is a command that waits for a callback, just return and wait for
     /// next RaftMsg.
     #[tracing::instrument(level = "debug", skip_all)]
-    pub(crate) async fn run_engine_commands(&mut self) -> Result<(), StorageError<C>> {
+    pub(crate) async fn run_engine_commands(&mut self) -> Result<(), StorageError> {
         if tracing::enabled!(Level::DEBUG) {
             tracing::debug!("queued commands: start...");
             for c in self.engine.output.iter_commands() {
@@ -921,7 +913,7 @@ where
     ///
     /// It always returns a [`Fatal`] error upon returning.
     #[tracing::instrument(level="debug", skip_all, fields(id=display(&self.id)))]
-    async fn runtime_loop(&mut self, mut rx_shutdown: OneshotReceiverOf<C, ()>) -> Result<Infallible, Fatal<C>> {
+    async fn runtime_loop(&mut self, mut rx_shutdown: OneshotReceiverOf<C, ()>) -> Result<Infallible, Fatal> {
         // Ratio control the ratio of number of RaftMsg to process to number of Notification to process.
         let mut balancer = Balancer::new(10_000);
 
@@ -1002,7 +994,7 @@ where
     ///
     /// It returns the number of processed message.
     /// If the input channel is closed, it returns `Fatal::Stopped`.
-    async fn process_raft_msg(&mut self, at_most: u64) -> Result<u64, Fatal<C>> {
+    async fn process_raft_msg(&mut self, at_most: u64) -> Result<u64, Fatal> {
         for i in 0..at_most {
             let res = self.rx_api.try_recv();
             let msg = match res {
@@ -1037,7 +1029,7 @@ where
     ///
     /// It returns the number of processed notifications.
     /// If the input channel is closed, it returns `Fatal::Stopped`.
-    async fn process_notification(&mut self, at_most: u64) -> Result<u64, Fatal<C>> {
+    async fn process_notification(&mut self, at_most: u64) -> Result<u64, Fatal> {
         for i in 0..at_most {
             let res = self.rx_notification.try_recv();
             let notify = match res {
@@ -1073,7 +1065,7 @@ where
 
     /// Spawn parallel vote requests to all cluster members.
     #[tracing::instrument(level = "trace", skip_all)]
-    async fn spawn_parallel_vote_requests(&mut self, vote_req: &VoteRequest<C>) {
+    async fn spawn_parallel_vote_requests(&mut self, vote_req: &VoteRequest) {
         let members = self.engine.state.membership_state.effective().voter_ids();
 
         let vote = vote_req.vote.clone();
@@ -1108,7 +1100,7 @@ where
                             Ok(res) => res,
 
                             Err(_timeout) => {
-                                let timeout_err = Timeout::<C> {
+                                let timeout_err = Timeout {
                                     action: RPCTypes::Vote,
                                     id,
                                     target: target.clone(),
@@ -1142,7 +1134,7 @@ where
 
     /// Spawn parallel vote requests to all cluster members.
     #[tracing::instrument(level = "trace", skip_all)]
-    async fn broadcast_transfer_leader(&mut self, req: TransferLeaderRequest<C>) {
+    async fn broadcast_transfer_leader(&mut self, req: TransferLeaderRequest) {
         let voter_ids = self.engine.state.membership_state.effective().voter_ids();
 
         for target in voter_ids {
@@ -1192,7 +1184,7 @@ where
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    pub(super) fn handle_vote_request(&mut self, req: VoteRequest<C>, tx: VoteTx<C>) {
+    pub(super) fn handle_vote_request(&mut self, req: VoteRequest, tx: VoteTx<C>) {
         tracing::info!(req = display(&req), func = func_name!());
 
         let resp = self.engine.handle_vote_req(req);
@@ -1339,7 +1331,7 @@ where
     }
 
     #[tracing::instrument(level = "debug", skip_all, fields(state = debug(self.engine.state.server_state), id=display(&self.id)))]
-    pub(crate) fn handle_notification(&mut self, notify: Notification<C>) -> Result<(), Fatal<C>> {
+    pub(crate) fn handle_notification(&mut self, notify: Notification<C>) -> Result<(), Fatal> {
         tracing::debug!("RAFT_event id={:<2} notify: {}", self.id, notify);
 
         match notify {
@@ -1593,7 +1585,7 @@ where
 
     /// If a message is sent by a previous Candidate but is received by current Candidate,
     /// it is a stale message and should be just ignored.
-    fn does_candidate_vote_match(&self, candidate_vote: &NonCommittedVote<C>, msg: impl fmt::Display) -> bool {
+    fn does_candidate_vote_match(&self, candidate_vote: &NonCommittedVote, msg: impl fmt::Display) -> bool {
         // If it finished voting, Candidate's vote is None.
         let Some(my_vote) = self.engine.candidate_ref().map(|x| x.vote_ref().clone()) else {
             tracing::warn!(
@@ -1621,7 +1613,7 @@ where
 
     /// If a message is sent by a previous Leader but is received by current Leader,
     /// it is a stale message and should be just ignored.
-    fn does_leader_vote_match(&self, leader_vote: &CommittedVote<C>, msg: impl fmt::Display) -> bool {
+    fn does_leader_vote_match(&self, leader_vote: &CommittedVote, msg: impl fmt::Display) -> bool {
         let Some(my_vote) = self.engine.leader.as_ref().map(|x| x.committed_vote.clone()) else {
             tracing::warn!(
                 "A message will be ignored because this node is no longer Leader: \
@@ -1648,11 +1640,7 @@ where
 
     /// If a message is sent by a previous replication session but is received by current server
     /// state, it is a stale message and should be just ignored.
-    fn does_replication_session_match(
-        &self,
-        session_id: &ReplicationSessionId<C>,
-        msg: impl fmt::Display + Copy,
-    ) -> bool {
+    fn does_replication_session_match(&self, session_id: &ReplicationSessionId, msg: impl fmt::Display + Copy) -> bool {
         if !self.does_leader_vote_match(&session_id.committed_vote(), msg) {
             return false;
         }
@@ -1676,7 +1664,7 @@ where
     N: RaftNetworkFactory<C>,
     LS: RaftLogStorage<C>,
 {
-    async fn run_command<'e>(&mut self, cmd: Command<C>) -> Result<Option<Command<C>>, StorageError<C>> {
+    async fn run_command<'e>(&mut self, cmd: Command<C>) -> Result<Option<Command<C>>, StorageError> {
         // tracing::debug!("RAFT_event id={:<2} trycmd: {}", self.id, cmd);
 
         let condition = cmd.condition();

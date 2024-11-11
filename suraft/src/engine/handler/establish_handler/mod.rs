@@ -9,7 +9,7 @@ use crate::RaftTypeConfig;
 pub(crate) struct EstablishHandler<'x, C>
 where C: RaftTypeConfig
 {
-    pub(crate) config: &'x mut EngineConfig<C>,
+    pub(crate) config: &'x mut EngineConfig,
     pub(crate) leader: &'x mut LeaderState<C>,
 }
 
@@ -19,8 +19,8 @@ where C: RaftTypeConfig
     /// Consume the `candidate` state and establish a leader.
     pub(crate) fn establish(
         self,
-        candidate: Candidate<C, LeaderQuorumSet<C>>,
-    ) -> Option<&'x mut Leader<C, LeaderQuorumSet<C>>> {
+        candidate: Candidate<C, LeaderQuorumSet>,
+    ) -> Option<&'x mut Leader<C, LeaderQuorumSet>> {
         let vote = candidate.vote_ref().clone();
 
         debug_assert_eq!(

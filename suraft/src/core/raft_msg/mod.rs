@@ -12,14 +12,15 @@ use crate::raft::SnapshotResponse;
 use crate::raft::VoteRequest;
 use crate::raft::VoteResponse;
 use crate::storage::Snapshot;
-use crate::type_config::alias::LogIdOf;
 use crate::type_config::alias::OneshotSenderOf;
 use crate::type_config::alias::ResponderOf;
 use crate::type_config::alias::SnapshotDataOf;
 use crate::ChangeMembers;
+use crate::LogId;
 use crate::RaftState;
 use crate::RaftTypeConfig;
 use crate::Vote;
+use crate::NID;
 
 pub(crate) mod external_command;
 
@@ -27,13 +28,13 @@ pub(crate) mod external_command;
 pub(crate) type ResultSender<C, T, E = Infallible> = OneshotSenderOf<C, Result<T, E>>;
 
 /// TX for Vote Response
-pub(crate) type VoteTx<C> = ResultSender<C, VoteResponse<C>>;
+pub(crate) type VoteTx<C> = ResultSender<C, VoteResponse>;
 
 /// TX for Append Entries Response
-pub(crate) type AppendEntriesTx<C> = ResultSender<C, AppendEntriesResponse<C>>;
+pub(crate) type AppendEntriesTx<C> = ResultSender<C, AppendEntriesResponse>;
 
 /// TX for Linearizable Read Response
-pub(crate) type ClientReadTx<C> = ResultSender<C, (Option<LogIdOf<C>>, Option<LogIdOf<C>>), CheckIsLeaderError<C>>;
+pub(crate) type ClientReadTx<C> = ResultSender<C, (Option<LogId>, Option<LogId>), CheckIsLeaderError<C>>;
 
 /// A message sent by application to the [`RaftCore`].
 ///
@@ -47,14 +48,14 @@ where C: RaftTypeConfig
     },
 
     RequestVote {
-        rpc: VoteRequest<C>,
+        rpc: VoteRequest,
         tx: VoteTx<C>,
     },
 
     InstallFullSnapshot {
-        vote: Vote<C::NodeId>,
+        vote: Vote,
         snapshot: Snapshot<C>,
-        tx: ResultSender<C, SnapshotResponse<C>>,
+        tx: ResultSender<C, SnapshotResponse>,
     },
 
     /// Begin receiving a snapshot from the leader.
@@ -68,7 +69,7 @@ where C: RaftTypeConfig
     },
 
     ClientWriteRequest {
-        app_data: C::D,
+        app_data: C::AppData,
         tx: ResponderOf<C>,
     },
 
@@ -77,7 +78,7 @@ where C: RaftTypeConfig
     },
 
     Initialize {
-        members: BTreeMap<C::NodeId, C::Node>,
+        members: BTreeMap<NID, C::Node>,
         tx: ResultSender<C, (), InitializeError<C>>,
     },
 
@@ -101,9 +102,9 @@ where C: RaftTypeConfig
     /// Otherwise, just reset Leader lease so that the node `to` can become Leader.
     HandleTransferLeader {
         /// The vote of the Leader that is transferring the leadership.
-        from: Vote<C::NodeId>,
+        from: Vote,
         /// The assigned node to be the next Leader.
-        to: C::NodeId,
+        to: NID,
     },
 
     ExternalCommand {

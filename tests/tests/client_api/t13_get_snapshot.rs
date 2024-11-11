@@ -23,11 +23,11 @@ async fn get_snapshot() -> anyhow::Result<()> {
     let mut router = RaftRouter::new(config.clone());
 
     tracing::info!("--- initializing cluster");
-    let log_index = router.new_cluster(btreeset! {0,1}, btreeset! {}).await?;
+    let log_index = router.new_cluster(btreeset! {s(0),s(1)}, btreeset! {}).await?;
 
     tracing::info!(log_index, "--- get None snapshot for node-1");
     {
-        let n1 = router.get_raft_handle(&1)?;
+        let n1 = router.get_raft_handle(&s(1))?;
 
         let curr_snap = n1.get_snapshot().await?;
         assert!(curr_snap.is_none());
@@ -35,14 +35,14 @@ async fn get_snapshot() -> anyhow::Result<()> {
 
     tracing::info!(log_index, "--- trigger and get snapshot for node-1");
     {
-        let n1 = router.get_raft_handle(&1)?;
+        let n1 = router.get_raft_handle(&s(1))?;
         n1.trigger().snapshot().await?;
 
-        router.wait(&1, timeout()).snapshot(log_id(1, 0, log_index), "node-1 snapshot").await?;
+        router.wait(&1, timeout()).snapshot(log_id(1, log_index), "node-1 snapshot").await?;
 
         let curr_snap = n1.get_snapshot().await?;
         let snap = curr_snap.unwrap();
-        assert_eq!(snap.meta.last_log_id, Some(log_id(1, 0, log_index)));
+        assert_eq!(snap.meta.last_log_id, Some(log_id(1, log_index)));
     }
 
     Ok(())

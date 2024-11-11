@@ -7,6 +7,7 @@ use suraft::storage::RaftLogStorage;
 use suraft::testing::log_id;
 use suraft::Config;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -25,18 +26,18 @@ async fn write_committed_log_id_to_log_store() -> Result<()> {
     let mut router = RaftRouter::new(config.clone());
 
     tracing::info!("--- initializing cluster");
-    let mut log_index = router.new_cluster(btreeset! {0,1,2}, btreeset! {}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {}).await?;
 
-    log_index += router.client_request_many(0, "0", 10).await?;
+    log_index += router.client_request_many(s(0), "0", 10).await?;
 
-    for i in [0, 1, 2] {
+    for i in [s(0), s(1), s(2)] {
         router.wait(&i, timeout()).applied_index(Some(log_index), "write logs").await?;
     }
 
-    for id in [0, 1, 2] {
+    for id in [s(0), s(1), s(2)] {
         let (_, mut ls, _) = router.remove_node(id).unwrap();
         let committed = ls.read_committed().await?;
-        assert_eq!(Some(log_id(1, 0, log_index)), committed, "node-{} committed", id);
+        assert_eq!(Some(log_id(1, log_index)), committed, "node-{} committed", id);
     }
 
     Ok(())

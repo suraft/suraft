@@ -37,8 +37,8 @@ async fn metrics_state_machine_consistency() -> Result<()> {
 
     tracing::info!(log_index, "--- initializing single node cluster");
     {
-        let n0 = router.get_raft_handle(&0)?;
-        n0.initialize(btreeset! {0}).await?;
+        let n0 = router.get_raft_handle(&s(0))?;
+        n0.initialize(btreeset! {s(0)}).await?;
         log_index += 1;
 
         router.wait(&0, timeout()).state(ServerState::Leader, "n0 -> leader").await?;

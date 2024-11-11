@@ -29,9 +29,9 @@ async fn leader_last_ack_3_nodes() -> Result<()> {
 
     let mut router = RaftRouter::new(config.clone());
 
-    let log_index = router.new_cluster(btreeset! {0,1,2}, btreeset! {}).await?;
+    let log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {}).await?;
 
-    let n0 = router.get_raft_handle(&0)?;
+    let n0 = router.get_raft_handle(&s(0))?;
     let millis = n0.metrics().borrow().millis_since_quorum_ack;
     assert!(millis >= Some(0));
 
@@ -53,7 +53,7 @@ async fn leader_last_ack_3_nodes() -> Result<()> {
         );
     }
 
-    let n0 = router.get_raft_handle(&0)?;
+    let n0 = router.get_raft_handle(&s(0))?;
 
     tracing::info!(log_index, "--- heartbeat; millis_since_quorum_ack refreshes");
     {
@@ -85,7 +85,7 @@ async fn leader_last_ack_3_nodes() -> Result<()> {
 
     tracing::info!(log_index, "--- remove node 1 and node 2");
     {
-        router.remove_node(1);
+        router.remove_node(s(1));
         router.remove_node(2);
     }
 
@@ -130,14 +130,14 @@ async fn leader_last_ack_3_nodes_abs_time() -> Result<()> {
 
     let mut router = RaftRouter::new(config.clone());
 
-    let log_index = router.new_cluster(btreeset! {0,1,2}, btreeset! {}).await?;
+    let log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {}).await?;
 
     // Wait a short while so that all events finished.
     // Upon receiving a replication Response, it wakes up RaftCore and flush the metrics again.
     // This cause the last_quorum_acked to be updated.
     TypeConfig::sleep(Duration::from_millis(100)).await;
 
-    let n0 = router.get_raft_handle(&0)?;
+    let n0 = router.get_raft_handle(&s(0))?;
     let last_acked = n0.metrics().borrow().last_quorum_acked;
     assert!(last_acked.as_deref() <= Some(&TypeConfig::now()));
 
@@ -155,7 +155,7 @@ async fn leader_last_ack_3_nodes_abs_time() -> Result<()> {
         assert_eq!(acked2, last_acked);
     }
 
-    let n0 = router.get_raft_handle(&0)?;
+    let n0 = router.get_raft_handle(&s(0))?;
 
     tracing::info!(log_index, "--- heartbeat; last_quorum_acked refreshes");
     {
@@ -187,7 +187,7 @@ async fn leader_last_ack_3_nodes_abs_time() -> Result<()> {
 
     tracing::info!(log_index, "--- remove node 1 and node 2");
     {
-        router.remove_node(1);
+        router.remove_node(s(1));
         router.remove_node(2);
     }
 
@@ -231,10 +231,10 @@ async fn leader_last_ack_1_node() -> Result<()> {
 
     let mut router = RaftRouter::new(config.clone());
 
-    let log_index = router.new_cluster(btreeset! {0}, btreeset! {}).await?;
+    let log_index = router.new_cluster(btreeset! {s(0)}, btreeset! {}).await?;
     let _ = log_index;
 
-    let n0 = router.get_raft_handle(&0)?;
+    let n0 = router.get_raft_handle(&s(0))?;
 
     let millis = n0.metrics().borrow().millis_since_quorum_ack;
     assert_eq!(millis, Some(0), "it is always acked for single leader");

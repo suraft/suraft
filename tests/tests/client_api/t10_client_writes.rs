@@ -12,6 +12,7 @@ use suraft_memstore::ClientRequest;
 use suraft_memstore::IntoMemClientRequest;
 use suraft_memstore::TypeConfig;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -36,7 +37,7 @@ async fn client_writes() -> Result<()> {
     let mut router = RaftRouter::new(config.clone());
 
     tracing::info!("--- initializing cluster");
-    let mut log_index = router.new_cluster(btreeset! {0,1,2}, btreeset! {}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {}).await?;
 
     // Write a bunch of data and assert that the cluster stayes stable.
     let leader = router.leader().expect("leader not found");
@@ -57,7 +58,7 @@ async fn client_writes() -> Result<()> {
             1,
             log_index,
             Some(0),
-            LogId::new(CommittedLeaderId::new(1, 0), log_index),
+            LogId::new(1, log_index),
             Some(((499..600).into(), 1)),
         )
         .await?;
@@ -82,10 +83,10 @@ async fn client_write_ff() -> Result<()> {
     let mut router = RaftRouter::new(config.clone());
 
     tracing::info!("--- initializing cluster");
-    let log_index = router.new_cluster(btreeset! {0,1,2}, btreeset! {}).await?;
+    let log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {}).await?;
     let _ = log_index;
 
-    let n0 = router.get_raft_handle(&0)?;
+    let n0 = router.get_raft_handle(&s(0))?;
 
     let resp_rx = n0.client_write_ff(ClientRequest::make_request("foo", 2)).await?;
     let got: ClientWriteResponse<TypeConfig> = resp_rx.await??;

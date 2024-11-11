@@ -26,6 +26,7 @@ use crate::LogId;
 use crate::OptionalSend;
 use crate::RaftTypeConfig;
 use crate::Vote;
+use crate::NID;
 
 /// Commands to send to `RaftRuntime` to execute, to update the application state.
 #[derive(Debug)]
@@ -44,8 +45,8 @@ where C: RaftTypeConfig
         /// Usually the condition is when the previous log is flushed to disk.
         ///
         /// [`RaftLogStorage`]: crate::storage::RaftLogStorage
-        when: Option<Condition<C>>,
-        io_id: IOId<C>,
+        when: Option<Condition>,
+        io_id: IOId,
     },
 
     /// Append a `range` of entries.
@@ -59,18 +60,18 @@ where C: RaftTypeConfig
         /// Where [`LogIOId`] is `(leader_id, log_id)`.
         ///
         /// [`LogIOId`]: crate::raft_state::io_state::io_id::IOId
-        committed_vote: CommittedVote<C>,
+        committed_vote: CommittedVote,
 
         entries: Vec<C::Entry>,
     },
 
     /// Replicate the committed log id to other nodes
-    ReplicateCommitted { committed: Option<LogId<C::NodeId>> },
+    ReplicateCommitted { committed: Option<LogId> },
 
     /// Broadcast heartbeat to all other nodes.
     BroadcastHeartbeat {
-        session_id: ReplicationSessionId<C>,
-        committed: Option<LogId<C::NodeId>>,
+        session_id: ReplicationSessionId,
+        committed: Option<LogId>,
     },
 
     /// Save the committed log id to [`RaftLogStorage`].
@@ -79,7 +80,7 @@ where C: RaftTypeConfig
     /// latest state.
     ///
     /// [`RaftLogStorage`]: crate::storage::RaftLogStorage
-    SaveCommitted { committed: LogId<C::NodeId> },
+    SaveCommitted { committed: LogId },
 
     /// Commit log entries that are already persisted in the store, upto `upto`, inclusive.
     ///
@@ -91,15 +92,15 @@ where C: RaftTypeConfig
     /// [`RaftLogStorage::save_committed()`]: crate::storage::RaftLogStorage::save_committed
     /// [`RaftStateMachine::apply()`]: crate::storage::RaftStateMachine::apply
     Apply {
-        already_committed: Option<LogId<C::NodeId>>,
-        upto: LogId<C::NodeId>,
+        already_committed: Option<LogId>,
+        upto: LogId,
     },
 
     /// Replicate log entries or snapshot to a target.
-    Replicate { target: C::NodeId, req: Replicate<C> },
+    Replicate { target: NID, req: Replicate<C> },
 
     /// Broadcast transfer Leader message to all other nodes.
-    BroadcastTransferLeader { req: TransferLeaderRequest<C> },
+    BroadcastTransferLeader { req: TransferLeaderRequest },
 
     /// Membership config changed, need to update replication streams.
     /// The Runtime has to close all old replications and start new ones.
@@ -108,21 +109,21 @@ where C: RaftTypeConfig
     /// updated.
     RebuildReplicationStreams {
         /// Targets to replicate to.
-        targets: Vec<ReplicationProgress<C>>,
+        targets: Vec<ReplicationProgress>,
     },
 
     /// Save vote to storage
-    SaveVote { vote: Vote<C::NodeId> },
+    SaveVote { vote: Vote },
 
     /// Send vote to all other members
-    SendVote { vote_req: VoteRequest<C> },
+    SendVote { vote_req: VoteRequest },
 
     /// Purge log from the beginning to `upto`, inclusive.
-    PurgeLog { upto: LogId<C::NodeId> },
+    PurgeLog { upto: LogId },
 
     /// Delete logs that conflict with the leader from a follower/learner since log id `since`,
     /// inclusive.
-    TruncateLog { since: LogId<C::NodeId> },
+    TruncateLog { since: LogId },
 
     /// A command send to state machine worker [`sm::worker::Worker`].
     ///
@@ -131,10 +132,7 @@ where C: RaftTypeConfig
     StateMachine { command: sm::Command<C> },
 
     /// Send result to caller
-    Respond {
-        when: Option<Condition<C>>,
-        resp: Respond<C>,
-    },
+    Respond { when: Option<Condition>, resp: Respond<C> },
 }
 
 impl<C> fmt::Display for Command<C>
@@ -254,7 +252,7 @@ where C: RaftTypeConfig
 
     /// Return the condition the command waits for if any.
     #[rustfmt::skip]
-    pub(crate) fn condition(&self) -> Option<Condition<C>> {
+    pub(crate) fn condition(&self) -> Option<Condition<>> {
         match self {
             Command::RebuildReplicationStreams { .. } => None,
             Command::Respond { when, .. }             => when.clone(),
@@ -282,33 +280,29 @@ where C: RaftTypeConfig
 /// A condition to wait for before running a command.
 #[derive(Debug, Clone)]
 #[derive(PartialEq, Eq)]
-pub(crate) enum Condition<C>
-where C: RaftTypeConfig
-{
+pub(crate) enum Condition {
     /// Wait until the log is flushed to the disk.
     ///
     /// In raft, a log io can be uniquely identified by `(leader_id, log_id)`, not `log_id`.
     /// A same log id can be written multiple times by different leaders.
-    IOFlushed { io_id: IOId<C> },
+    IOFlushed { io_id: IOId },
 
     /// A log without specific leader is flushed to disk.
     ///
     /// This is only used by [`Raft::initialize()`], because when initializing there is no leader.
     ///
     /// [`Raft::initialize()`]: `crate::Raft::initialize()`
-    LogFlushed { log_id: Option<LogId<C::NodeId>> },
+    LogFlushed { log_id: Option<LogId> },
 
     /// Wait until the log is applied to the state machine.
     #[allow(dead_code)]
-    Applied { log_id: Option<LogId<C::NodeId>> },
+    Applied { log_id: Option<LogId> },
 
     /// Wait until snapshot is built and includes the log id.
-    Snapshot { log_id: Option<LogId<C::NodeId>> },
+    Snapshot { log_id: Option<LogId> },
 }
 
-impl<C> fmt::Display for Condition<C>
-where C: RaftTypeConfig
-{
+impl fmt::Display for Condition {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Condition::IOFlushed { io_id } => {
@@ -329,11 +323,11 @@ where C: RaftTypeConfig
 pub(crate) enum Respond<C>
 where C: RaftTypeConfig
 {
-    Vote(ValueSender<C, Result<VoteResponse<C>, Infallible>>),
-    AppendEntries(ValueSender<C, Result<AppendEntriesResponse<C>, Infallible>>),
+    Vote(ValueSender<C, Result<VoteResponse, Infallible>>),
+    AppendEntries(ValueSender<C, Result<AppendEntriesResponse, Infallible>>),
     ReceiveSnapshotChunk(ValueSender<C, Result<(), InstallSnapshotError>>),
-    InstallSnapshot(ValueSender<C, Result<InstallSnapshotResponse<C>, InstallSnapshotError>>),
-    InstallFullSnapshot(ValueSender<C, Result<SnapshotResponse<C>, Infallible>>),
+    InstallSnapshot(ValueSender<C, Result<InstallSnapshotResponse, InstallSnapshotError>>),
+    InstallFullSnapshot(ValueSender<C, Result<SnapshotResponse, Infallible>>),
     Initialize(ValueSender<C, Result<(), InitializeError<C>>>),
 }
 

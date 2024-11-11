@@ -9,13 +9,13 @@ pub(in crate::raft) enum CoreState<C>
 where C: RaftTypeConfig
 {
     /// The RaftCore task is still running.
-    Running(JoinHandleOf<C, Result<Infallible, Fatal<C>>>),
+    Running(JoinHandleOf<C, Result<Infallible, Fatal>>),
 
     /// The RaftCore task is waiting for a signal to finish joining.
     Joining(WatchReceiverOf<C, bool>),
 
     /// The RaftCore task has finished. The return value of the task is stored.
-    Done(Result<Infallible, Fatal<C>>),
+    Done(Result<Infallible, Fatal>),
 }
 
 impl<C> CoreState<C>

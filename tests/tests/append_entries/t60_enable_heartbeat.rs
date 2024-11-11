@@ -26,10 +26,10 @@ async fn enable_heartbeat() -> Result<()> {
     );
     let mut router = RaftRouter::new(config.clone());
 
-    let log_index = router.new_cluster(btreeset! {0,1,2}, btreeset! {3}).await?;
+    let log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {3}).await?;
     let _ = log_index;
 
-    let node0 = router.get_raft_handle(&0)?;
+    let node0 = router.get_raft_handle(&s(0))?;
     node0.runtime_config().heartbeat(true);
 
     for _i in 0..3 {

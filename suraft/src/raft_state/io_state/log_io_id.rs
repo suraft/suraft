@@ -3,7 +3,6 @@ use std::fmt;
 use crate::display_ext::DisplayOptionExt;
 use crate::vote::CommittedVote;
 use crate::LogId;
-use crate::RaftTypeConfig;
 
 /// A monotonic increasing id for log append io operation.
 ///
@@ -23,28 +22,22 @@ use crate::RaftTypeConfig;
 #[derive(Debug, Clone)]
 #[derive(PartialEq, Eq)]
 #[derive(PartialOrd, Ord)]
-pub(crate) struct LogIOId<C>
-where C: RaftTypeConfig
-{
+pub(crate) struct LogIOId {
     /// The id of the leader that performs the log io operation.
-    pub(crate) committed_vote: CommittedVote<C>,
+    pub(crate) committed_vote: CommittedVote,
 
     /// The last log id that has been flushed to storage.
-    pub(crate) log_id: Option<LogId<C::NodeId>>,
+    pub(crate) log_id: Option<LogId>,
 }
 
-impl<C> fmt::Display for LogIOId<C>
-where C: RaftTypeConfig
-{
+impl fmt::Display for LogIOId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "by:{}, {}", self.committed_vote, self.log_id.display())
     }
 }
 
-impl<C> LogIOId<C>
-where C: RaftTypeConfig
-{
-    pub(crate) fn new(committed_vote: CommittedVote<C>, log_id: Option<LogId<C::NodeId>>) -> Self {
+impl LogIOId {
+    pub(crate) fn new(committed_vote: CommittedVote, log_id: Option<LogId>) -> Self {
         Self { committed_vote, log_id }
     }
 }

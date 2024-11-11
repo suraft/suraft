@@ -6,21 +6,21 @@ use maplit::btreeset;
 use tokio::time::sleep;
 
 use crate::core::ServerState;
+use crate::engine::testing::s;
 use crate::engine::testing::UTConfig;
 use crate::log_id::LogIdOptionExt;
 use crate::metrics::Wait;
 use crate::metrics::WaitError;
 use crate::testing::log_id;
-use crate::type_config::alias::NodeIdOf;
 use crate::type_config::alias::WatchSenderOf;
 use crate::type_config::TypeConfigExt;
-use crate::vote::CommittedLeaderId;
 use crate::LogId;
 use crate::Membership;
 use crate::RaftMetrics;
 use crate::RaftTypeConfig;
 use crate::StoredMembership;
 use crate::Vote;
+use crate::NID;
 
 /// Test wait for different state changes
 #[tokio::test(flavor = "multi_thread", worker_threads = 8)]
@@ -49,7 +49,7 @@ async fn test_wait() -> anyhow::Result<()> {
             sleep(Duration::from_millis(10)).await;
             let mut update = init.clone();
             update.last_log_index = Some(3);
-            update.last_applied = Some(LogId::new(CommittedLeaderId::new(1, 0), 3));
+            update.last_applied = Some(LogId::new(1, 3));
             let rst = tx.send(update);
             assert!(rst.is_ok());
         });
@@ -95,7 +95,7 @@ async fn test_wait() -> anyhow::Result<()> {
             let mut update = init.clone();
             update.membership_config = Arc::new(StoredMembership::new(
                 None,
-                Membership::new(vec![btreeset! {1,2}], btreemap! {3=>()}),
+                Membership::new(vec![btreeset! {s(1),s(2)}], btreemap! {3=>()}),
             ));
             let rst = tx.send(update);
             assert!(rst.is_ok());
@@ -116,14 +116,14 @@ async fn test_wait() -> anyhow::Result<()> {
         let h = tokio::spawn(async move {
             sleep(Duration::from_millis(10)).await;
             let mut update = init.clone();
-            update.snapshot = Some(LogId::new(CommittedLeaderId::new(1, 0), 2));
+            update.snapshot = Some(LogId::new(1, 2));
             let rst = tx.send(update);
             assert!(rst.is_ok());
         });
-        let got = w.snapshot(LogId::new(CommittedLeaderId::new(1, 0), 2), "snapshot").await?;
+        let got = w.snapshot(LogId::new(1, 2), "snapshot").await?;
         h.await?;
 
-        assert_eq!(Some(LogId::new(CommittedLeaderId::new(1, 0), 2)), got.snapshot);
+        assert_eq!(Some(LogId::new(1, 2)), got.snapshot);
     }
 
     tracing::info!("--- wait for snapshot, only index matches");
@@ -133,13 +133,13 @@ async fn test_wait() -> anyhow::Result<()> {
         let h = tokio::spawn(async move {
             sleep(Duration::from_millis(10)).await;
             let mut update = init.clone();
-            update.snapshot = Some(LogId::new(CommittedLeaderId::new(3, 0), 2));
+            update.snapshot = Some(LogId::new(3, 2));
             let rst = tx.send(update);
             assert!(rst.is_ok());
             // delay otherwise the channel will be closed thus the error is shutdown.
             sleep(Duration::from_millis(200)).await;
         });
-        let got = w.snapshot(LogId::new(CommittedLeaderId::new(1, 0), 2), "snapshot").await;
+        let got = w.snapshot(LogId::new(1, 2), "snapshot").await;
         h.await?;
         match got.unwrap_err() {
             WaitError::Timeout(t, _) => {
@@ -209,18 +209,18 @@ async fn test_wait_vote() -> anyhow::Result<()> {
     let h = tokio::spawn(async move {
         sleep(Duration::from_millis(10)).await;
         let mut update = init.clone();
-        update.vote = Vote::new_committed(1, 2);
+        update.vote = Vote::new_committed(1, s(2));
         let rst = tx.send(update);
         assert!(rst.is_ok());
     });
 
     // timeout
-    let res = w.vote(Vote::new(1, 2), "vote").await;
+    let res = w.vote(Vote::new(1, s(2)), "vote").await;
     assert!(res.is_err());
 
-    let got = w.vote(Vote::new_committed(1, 2), "vote").await?;
+    let got = w.vote(Vote::new_committed(1, s(2)), "vote").await?;
     h.await?;
-    assert_eq!(Vote::new_committed(1, 2), got.vote);
+    assert_eq!(Vote::new_committed(1, s(2)), got.vote);
 
     Ok(())
 }
@@ -232,13 +232,13 @@ async fn test_wait_purged() -> anyhow::Result<()> {
     let h = tokio::spawn(async move {
         sleep(Duration::from_millis(10)).await;
         let mut update = init.clone();
-        update.purged = Some(log_id(1, 2, 3));
+        update.purged = Some(log_id(1, s(2), 3));
         let rst = tx.send(update);
         assert!(rst.is_ok());
     });
-    let got = w.purged(Some(log_id(1, 2, 3)), "purged").await?;
+    let got = w.purged(Some(log_id(1, s(2), 3)), "purged").await?;
     h.await?;
-    assert_eq!(Some(log_id(1, 2, 3)), got.purged);
+    assert_eq!(Some(log_id(1, s(2), 3)), got.purged);
 
     Ok(())
 }
@@ -252,7 +252,7 @@ where C: RaftTypeConfig {
     #[allow(deprecated)]
     let init = RaftMetrics {
         running_state: Ok(()),
-        id: NodeIdOf::<C>::default(),
+        id: NID::default(),
         state: ServerState::Learner,
         current_term: 0,
         vote: Vote::default(),

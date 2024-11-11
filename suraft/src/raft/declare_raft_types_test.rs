@@ -7,14 +7,13 @@ use crate::impls::TokioRuntime;
 
 declare_raft_types!(
     All:
-        NodeId = u64,
         Node = (),
 
         /// This is AppData
-        D = (),
+        AppData = (),
         #[allow(dead_code)]
         #[allow(dead_code)]
-        R = (),
+        AppResponse = (),
         Entry = crate::Entry<Self>,
         SnapshotData = Cursor<Vec<u8>>,
         AsyncRuntime = TokioRuntime,
@@ -23,8 +22,7 @@ declare_raft_types!(
 
 declare_raft_types!(
     WithoutD:
-        R = (),
-        NodeId = u64,
+        AppResponse = (),
         Node = (),
         Entry = crate::Entry<Self>,
         SnapshotData = Cursor<Vec<u8>>,
@@ -33,23 +31,12 @@ declare_raft_types!(
 
 declare_raft_types!(
     WithoutR:
-        D = (),
-        NodeId = u64,
+        AppData = (),
         Node = (),
         Entry = crate::Entry<Self>,
         SnapshotData = Cursor<Vec<u8>>,
         AsyncRuntime = TokioRuntime,
 );
-
-// This raise an compile error:
-// > error: Type not in its expected position : NodeId = u64, D = (), types must present
-// > in this order : D, R, NodeId, Node, Entry, SnapshotData, AsyncRuntime
-// declare_raft_types!(
-//     Foo:
-//         Node = (),
-//         NodeId = u64,
-//         D = (),
-// );
 
 declare_raft_types!(EmptyWithColon:);
 

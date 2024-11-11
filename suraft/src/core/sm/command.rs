@@ -7,8 +7,8 @@ use crate::core::raft_msg::ResultSender;
 use crate::error::Infallible;
 use crate::raft_state::IOId;
 use crate::storage::Snapshot;
-use crate::type_config::alias::LogIdOf;
 use crate::type_config::alias::SnapshotDataOf;
+use crate::LogId;
 use crate::RaftTypeConfig;
 
 /// The payload of a state machine command.
@@ -30,17 +30,17 @@ where C: RaftTypeConfig
         ///
         /// Installing a snapshot is considered as an IO of AppendEntries `[0,
         /// snapshot.last_log_id]`
-        io_id: IOId<C>,
+        io_id: IOId,
         snapshot: Snapshot<C>,
     },
 
     /// Apply the log entries to the state machine.
     Apply {
         /// The first log id to apply, inclusive.
-        first: LogIdOf<C>,
+        first: LogId,
 
         /// The last log id to apply, inclusive.
-        last: LogIdOf<C>,
+        last: LogId,
     },
 
     /// Apply a custom function to the state machine.
@@ -70,17 +70,17 @@ where C: RaftTypeConfig
         Command::BeginReceivingSnapshot { tx }
     }
 
-    pub(crate) fn install_full_snapshot(snapshot: Snapshot<C>, io_id: IOId<C>) -> Self {
+    pub(crate) fn install_full_snapshot(snapshot: Snapshot<C>, io_id: IOId) -> Self {
         Command::InstallFullSnapshot { io_id, snapshot }
     }
 
     /// Applies log ids within the inclusive range `[first, last]`.
-    pub(crate) fn apply(first: LogIdOf<C>, last: LogIdOf<C>) -> Self {
+    pub(crate) fn apply(first: LogId, last: LogId) -> Self {
         Command::Apply { first, last }
     }
 
     /// Return the IOId if this command submit any IO.
-    pub(crate) fn get_submit_io(&self) -> Option<IOId<C>> {
+    pub(crate) fn get_submit_io(&self) -> Option<IOId> {
         match self {
             Command::BuildSnapshot => None,
             Command::GetSnapshot { .. } => None,

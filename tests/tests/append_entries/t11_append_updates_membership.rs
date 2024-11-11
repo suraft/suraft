@@ -5,7 +5,6 @@ use anyhow::Result;
 use maplit::btreeset;
 use suraft::raft::AppendEntriesRequest;
 use suraft::testing::blank_ent;
-use suraft::CommittedLeaderId;
 use suraft::Config;
 use suraft::Entry;
 use suraft::EntryPayload;
@@ -14,6 +13,7 @@ use suraft::Membership;
 use suraft::ServerState;
 use suraft::Vote;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -45,23 +45,23 @@ async fn append_updates_membership() -> Result<()> {
     tracing::info!("--- append-entries update membership");
     {
         let req = AppendEntriesRequest {
-            vote: Vote::new_committed(1, 1),
+            vote: Vote::new_committed(1, s(1)),
             prev_log_id: None,
             entries: vec![
-                blank_ent(0, 0, 0),
-                blank_ent(1, 0, 1),
+                blank_ent(0, 0),
+                blank_ent(1, 1),
                 Entry {
-                    log_id: LogId::new(CommittedLeaderId::new(1, 0), 2),
-                    payload: EntryPayload::Membership(Membership::new(vec![btreeset! {1,2}], None)),
+                    log_id: LogId::new(1, 2),
+                    payload: EntryPayload::Membership(Membership::new(vec![btreeset! {s(1),s(2)}], None)),
                 },
-                blank_ent(1, 0, 3),
+                blank_ent(1, 3),
                 Entry {
-                    log_id: LogId::new(CommittedLeaderId::new(1, 0), 4),
+                    log_id: LogId::new(1, 4),
                     payload: EntryPayload::Membership(Membership::new(vec![btreeset! {1,2,3,4}], None)),
                 },
-                blank_ent(1, 0, 5),
+                blank_ent(1, 5),
             ],
-            leader_commit: Some(LogId::new(CommittedLeaderId::new(0, 0), 0)),
+            leader_commit: Some(LogId::new(0, 0)),
         };
 
         let resp = r0.append_entries(req).await?;
@@ -74,10 +74,10 @@ async fn append_updates_membership() -> Result<()> {
     tracing::info!("--- delete inconsistent logs update membership");
     {
         let req = AppendEntriesRequest {
-            vote: Vote::new_committed(2, 2),
-            prev_log_id: Some(LogId::new(CommittedLeaderId::new(1, 0), 2)),
-            entries: vec![blank_ent(2, 0, 3)],
-            leader_commit: Some(LogId::new(CommittedLeaderId::new(0, 0), 0)),
+            vote: Vote::new_committed(2, s(2)),
+            prev_log_id: Some(LogId::new(1, 2)),
+            entries: vec![blank_ent(2, 3)],
+            leader_commit: Some(LogId::new(0, 0)),
         };
 
         let resp = r0.append_entries(req).await?;

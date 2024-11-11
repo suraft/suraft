@@ -7,46 +7,37 @@ use validit::Validate;
 use crate::display_ext::DisplayOptionExt;
 use crate::LogId;
 use crate::LogIdOptionExt;
-use crate::RaftTypeConfig;
 
 // TODO: I need just a range, but not a log id range.
 
 /// A log id range of continuous series of log entries.
 ///
 /// The range of log to send is left open right close: `(prev, last]`.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 #[derive(PartialEq, Eq)]
-pub(crate) struct LogIdRange<C>
-where C: RaftTypeConfig
-{
+pub(crate) struct LogIdRange {
     /// The prev log id before the first to send, exclusive.
-    pub(crate) prev: Option<LogId<C::NodeId>>,
+    pub(crate) prev: Option<LogId>,
 
     /// The last log id to send, inclusive.
-    pub(crate) last: Option<LogId<C::NodeId>>,
+    pub(crate) last: Option<LogId>,
 }
 
-impl<C> Display for LogIdRange<C>
-where C: RaftTypeConfig
-{
+impl Display for LogIdRange {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "({}, {}]", self.prev.display(), self.last.display())
     }
 }
 
-impl<C> Validate for LogIdRange<C>
-where C: RaftTypeConfig
-{
+impl Validate for LogIdRange {
     fn validate(&self) -> Result<(), Box<dyn Error>> {
         validit::less_equal!(&self.prev, &self.last);
         Ok(())
     }
 }
 
-impl<C> LogIdRange<C>
-where C: RaftTypeConfig
-{
-    pub(crate) fn new(prev: Option<LogId<C::NodeId>>, last: Option<LogId<C::NodeId>>) -> Self {
+impl LogIdRange {
+    pub(crate) fn new(prev: Option<LogId>, last: Option<LogId>) -> Self {
         Self { prev, last }
     }
 
@@ -60,29 +51,24 @@ where C: RaftTypeConfig
 mod tests {
     use validit::Valid;
 
-    use crate::engine::testing::UTConfig;
     use crate::log_id_range::LogIdRange;
-    use crate::CommittedLeaderId;
     use crate::LogId;
 
-    fn log_id(index: u64) -> LogId<u64> {
-        LogId {
-            leader_id: CommittedLeaderId::new(1, 1),
-            index,
-        }
+    fn log_id(index: u64) -> LogId {
+        LogId { term: 1, index }
     }
 
     #[test]
     fn test_log_id_range_validate() -> anyhow::Result<()> {
         let res = std::panic::catch_unwind(|| {
-            let r = Valid::new(LogIdRange::<UTConfig>::new(Some(log_id(5)), None));
+            let r = Valid::new(LogIdRange::new(Some(log_id(5)), None));
             let _x = &r.last;
         });
         tracing::info!("res: {:?}", res);
         assert!(res.is_err(), "prev(5) > last(None)");
 
         let res = std::panic::catch_unwind(|| {
-            let r = Valid::new(LogIdRange::<UTConfig>::new(Some(log_id(5)), Some(log_id(4))));
+            let r = Valid::new(LogIdRange::new(Some(log_id(5)), Some(log_id(4))));
             let _x = &r.last;
         });
         tracing::info!("res: {:?}", res);
