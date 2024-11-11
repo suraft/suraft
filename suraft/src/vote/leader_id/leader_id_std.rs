@@ -69,13 +69,14 @@ impl fmt::Display for LeaderId {
 #[cfg(test)]
 #[allow(clippy::nonminimal_bool)]
 mod tests {
+    use crate::engine::testing::s;
     use crate::LeaderId;
 
     #[test]
     #[allow(clippy::neg_cmp_op_on_partial_ord)]
     fn test_leader_id_partial_order() -> anyhow::Result<()> {
         #[allow(clippy::redundant_closure)]
-        let lid = |term, node_id| LeaderId::new(term, node_id);
+        let lid = |term, node_id: u64| LeaderId::new(term, s(node_id));
 
         let lid_none = |term| LeaderId { term, voted_for: None };
 

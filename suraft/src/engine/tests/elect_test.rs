@@ -40,10 +40,10 @@ fn test_elect_single_node() -> anyhow::Result<()> {
     tracing::info!("--- single node: still need to wait for Vote to persist");
     {
         let mut eng = eng();
-        eng.config.id = 1;
+        eng.config.id = s(1);
         eng.state
             .membership_state
-            .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(0, s(1), 1)), m1())));
+            .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(0, 1)), m1())));
 
         eng.elect();
 
@@ -62,7 +62,7 @@ fn test_elect_single_node() -> anyhow::Result<()> {
                 Command::SendVote {
                     vote_req: VoteRequest {
                         vote: Vote::new(1, s(1)),
-                        last_log_id: Some(log_id(0, s(0), 0)),
+                        last_log_id: Some(log_id(0, 0)),
                     },
                 },
             ],
@@ -78,10 +78,10 @@ fn test_elect_single_node_elect_again() -> anyhow::Result<()> {
     tracing::info!("--- single node: electing again will override previous state");
     {
         let mut eng = eng();
-        eng.config.id = 1;
+        eng.config.id = s(1);
         eng.state
             .membership_state
-            .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(0, s(1), 1)), m1())));
+            .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(0, 1)), m1())));
 
         // Build in-progress election state
         eng.state.vote = Leased::new(
@@ -90,7 +90,7 @@ fn test_elect_single_node_elect_again() -> anyhow::Result<()> {
             Vote::new_committed(1, s(2)),
         );
         eng.testing_new_leader();
-        eng.candidate_mut().map(|candidate| candidate.grant_by(&1));
+        eng.candidate_mut().map(|candidate| candidate.grant_by(&s(1)));
 
         eng.elect();
 
@@ -110,7 +110,7 @@ fn test_elect_single_node_elect_again() -> anyhow::Result<()> {
                 Command::SendVote {
                     vote_req: VoteRequest {
                         vote: Vote::new(2, s(1)),
-                        last_log_id: Some(log_id(0, s(0), 0)),
+                        last_log_id: Some(log_id(0, 0)),
                     },
                 },
             ],
@@ -125,11 +125,11 @@ fn test_elect_multi_node_enter_candidate() -> anyhow::Result<()> {
     tracing::info!("--- multi nodes: enter candidate state");
     {
         let mut eng = eng();
-        eng.config.id = 1;
+        eng.config.id = s(1);
         eng.state
             .membership_state
-            .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(0, s(1), 1)), m12())));
-        eng.state.log_ids = LogIdList::new(vec![log_id(1, s(1), 1)]);
+            .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(0, 1)), m12())));
+        eng.state.log_ids = LogIdList::new(vec![log_id(1, 1)]);
 
         eng.elect();
 
@@ -151,7 +151,7 @@ fn test_elect_multi_node_enter_candidate() -> anyhow::Result<()> {
                     vote: Vote::new(1, s(1))
                 },
                 Command::SendVote {
-                    vote_req: VoteRequest::new(Vote::new(1, s(1)), Some(log_id(1, s(1), 1)))
+                    vote_req: VoteRequest::new(Vote::new(1, s(1)), Some(log_id(1, 1)))
                 },
             ],
             eng.output.take_commands()

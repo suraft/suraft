@@ -5,6 +5,7 @@ use maplit::btreeset;
 use suraft::testing::log_id;
 use suraft::Config;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -38,7 +39,7 @@ async fn get_snapshot() -> anyhow::Result<()> {
         let n1 = router.get_raft_handle(&s(1))?;
         n1.trigger().snapshot().await?;
 
-        router.wait(&1, timeout()).snapshot(log_id(1, log_index), "node-1 snapshot").await?;
+        router.wait(&s(1), timeout()).snapshot(log_id(1, log_index), "node-1 snapshot").await?;
 
         let curr_snap = n1.get_snapshot().await?;
         let snap = curr_snap.unwrap();

@@ -7,6 +7,7 @@ use suraft::Config;
 use suraft::Raft;
 use suraft::ServerState;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -37,19 +38,19 @@ async fn learner_restart() -> Result<()> {
     tracing::info!("--- initializing");
     let mut log_index = router.new_cluster(btreeset! {s(0)}, btreeset! {s(1)}).await?;
 
-    router.client_request(0, "foo", 1).await?;
+    router.client_request(s(0), "foo", 1).await?;
     log_index += 1;
 
-    router.wait_for_log(&btreeset![0, 1], Some(log_index), None, "write one log").await?;
+    router.wait_for_log(&btreeset! {s(0), s(1)}, Some(log_index), None, "write one log").await?;
 
-    let (node0, _sto0, _sm0) = router.remove_node(0).unwrap();
+    let (node0, _sto0, _sm0) = router.remove_node(s(0)).unwrap();
     node0.shutdown().await?;
 
     let (node1, sto1, sm1) = router.remove_node(s(1)).unwrap();
     node1.shutdown().await?;
 
     // restart node-1, assert the state as expected.
-    let restarted = Raft::new(1, config.clone(), router.clone(), sto1, sm1).await?;
+    let restarted = Raft::new(s(1), config.clone(), router.clone(), sto1, sm1).await?;
     restarted.wait(timeout()).applied_index(Some(log_index), "log after restart").await?;
     restarted.wait(timeout()).state(ServerState::Learner, "server state after restart").await?;
 

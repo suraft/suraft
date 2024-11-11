@@ -9,6 +9,7 @@ use suraft::type_config::TypeConfigExt;
 use suraft::Config;
 use suraft_memstore::TypeConfig;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -26,7 +27,7 @@ async fn enable_heartbeat() -> Result<()> {
     );
     let mut router = RaftRouter::new(config.clone());
 
-    let log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {3}).await?;
+    let log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {s(3)}).await?;
     let _ = log_index;
 
     let node0 = router.get_raft_handle(&s(0))?;
@@ -36,8 +37,8 @@ async fn enable_heartbeat() -> Result<()> {
         let now = TypeConfig::now();
         TokioRuntime::sleep(Duration::from_millis(500)).await;
 
-        for node_id in [1, 2, 3] {
-            // no new log will be sent, .
+        for node_id in [s(1), s(2), s(3)] {
+            // no new log will be sent,
             router
                 .wait(&node_id, timeout())
                 .applied_index_at_least(Some(log_index), format!("node {} emit heartbeat log", node_id))

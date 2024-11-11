@@ -43,7 +43,7 @@ async fn building_snapshot_does_not_block_append() -> Result<()> {
     tracing::info!(log_index, "--- build snapshot on follower, it should block");
     {
         log_index += router.client_request_many(s(0), "0", 10).await?;
-        router.wait(&1, timeout()).applied_index(Some(log_index), "written 10 logs").await?;
+        router.wait(&s(1), timeout()).applied_index(Some(log_index), "written 10 logs").await?;
 
         follower.trigger().snapshot().await?;
 
@@ -51,7 +51,7 @@ async fn building_snapshot_does_not_block_append() -> Result<()> {
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         let res = router
-            .wait(&1, Some(Duration::from_millis(500)))
+            .wait(&s(1), Some(Duration::from_millis(500)))
             .snapshot(log_id(1, log_index), "building snapshot is blocked")
             .await;
         assert!(res.is_err(), "snapshot should be blocked and can not finish");
@@ -65,11 +65,11 @@ async fn building_snapshot_does_not_block_append() -> Result<()> {
         let rpc = AppendEntriesRequest::<suraft_memstore::TypeConfig> {
             vote: Vote::new_committed(1, s(0)),
             prev_log_id: Some(log_id(1, log_index)),
-            entries: vec![blank_ent(1, 0, 15)],
+            entries: vec![blank_ent(1, 15)],
             leader_commit: None,
         };
 
-        let mut cli = router.new_client(1, &()).await;
+        let mut cli = router.new_client(s(1), &()).await;
         let option = RPCOption::new(Duration::from_millis(1_000));
         let fu = cli.append_entries(rpc, option);
         let fu = tokio::time::timeout(Duration::from_millis(500), fu);

@@ -6,6 +6,7 @@ use maplit::btreeset;
 use suraft::Config;
 use suraft::ServerState;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -32,8 +33,8 @@ async fn metrics_state_machine_consistency() -> Result<()> {
 
     let mut log_index = 0;
 
-    router.new_raft_node(0).await;
-    router.new_raft_node(1).await;
+    router.new_raft_node(s(0)).await;
+    router.new_raft_node(s(1)).await;
 
     tracing::info!(log_index, "--- initializing single node cluster");
     {
@@ -41,22 +42,22 @@ async fn metrics_state_machine_consistency() -> Result<()> {
         n0.initialize(btreeset! {s(0)}).await?;
         log_index += 1;
 
-        router.wait(&0, timeout()).state(ServerState::Leader, "n0 -> leader").await?;
+        router.wait(&s(0), timeout()).state(ServerState::Leader, "n0 -> leader").await?;
     }
 
     tracing::info!(log_index, "--- add one learner");
-    router.add_learner(0, 1).await?;
+    router.add_learner(s(0), s(1)).await?;
     log_index += 1;
 
     tracing::info!(log_index, "--- write one log");
-    router.client_request(0, "foo", 1).await?;
+    router.client_request(s(0), "foo", 1).await?;
 
     // Wait for metrics to be up to date.
     // Once last_applied updated, the key should be visible in state machine.
     tracing::info!(log_index, "--- wait for log to sync");
     log_index += 1;
-    for node_id in 0..2 {
-        router.wait_for_log(&btreeset![node_id], Some(log_index), None, "write one log").await?;
+    for node_id in [s(0), s(1)] {
+        router.wait_for_log(&btreeset![node_id.clone()], Some(log_index), None, "write one log").await?;
         let (_sto, sm) = router.get_storage_handle(&node_id)?;
         assert!(sm.get_state_machine().await.client_status.contains_key("foo"));
     }

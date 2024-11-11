@@ -26,17 +26,14 @@ use crate::Vote;
 #[test]
 fn test_initialize_single_node() -> anyhow::Result<()> {
     let eng = || {
-        let mut eng = Engine::<UTConfig>::testing_default(0);
+        let mut eng = Engine::<UTConfig>::testing_default(s(0));
         eng.state.enable_validation(false); // Disable validation for incomplete state
 
         eng.state.server_state = eng.calc_server_state();
         eng
     };
 
-    let log_id0 = LogId {
-        term: CommittedLeaderId::new(0, 0),
-        index: 0,
-    };
+    let log_id0 = LogId { term: 0, index: 0 };
 
     let m1 = || Membership::<UTConfig>::new(vec![btreeset! {s(1)}], None);
     let entry = Entry::<UTConfig>::new_membership(LogId::default(), m1());
@@ -45,11 +42,11 @@ fn test_initialize_single_node() -> anyhow::Result<()> {
     tracing::info!("--- expect OK result, check output commands and state changes");
     {
         let mut eng = eng();
-        eng.config.id = 1;
+        eng.config.id = s(1);
 
         eng.initialize(entry)?;
 
-        assert_eq!(Some(log_id0), eng.state.get_log_id(0));
+        assert_eq!(Some(log_id0.clone()), eng.state.get_log_id(0));
         assert_eq!(None, eng.state.get_log_id(1));
         assert_eq!(Some(&log_id0), eng.state.last_log_id());
 
@@ -69,7 +66,7 @@ fn test_initialize_single_node() -> anyhow::Result<()> {
                     vote: Vote::new(1, s(1))
                 },
                 Command::SendVote {
-                    vote_req: VoteRequest::new(Vote::new(1, s(1)), Some(log_id(0, s(0), 0)))
+                    vote_req: VoteRequest::new(Vote::new(1, s(1)), Some(log_id(0, 0)))
                 },
             ],
             eng.output.take_commands()
@@ -81,17 +78,14 @@ fn test_initialize_single_node() -> anyhow::Result<()> {
 #[test]
 fn test_initialize() -> anyhow::Result<()> {
     let eng = || {
-        let mut eng = Engine::<UTConfig>::testing_default(0);
+        let mut eng = Engine::<UTConfig>::testing_default(s(0));
         eng.state.enable_validation(false); // Disable validation for incomplete state
 
         eng.state.server_state = eng.calc_server_state();
         eng
     };
 
-    let log_id0 = LogId {
-        term: CommittedLeaderId::new(0, 0),
-        index: 0,
-    };
+    let log_id0 = LogId { term: 0, index: 0 };
 
     let m12 = || Membership::<UTConfig>::new(vec![btreeset! {s(1),s(2)}], None);
     let entry = || Entry::<UTConfig>::new_membership(LogId::default(), m12());
@@ -100,11 +94,11 @@ fn test_initialize() -> anyhow::Result<()> {
     tracing::info!("--- expect OK result, check output commands and state changes");
     {
         let mut eng = eng();
-        eng.config.id = 1;
+        eng.config.id = s(1);
 
         eng.initialize(entry())?;
 
-        assert_eq!(Some(log_id0), eng.state.get_log_id(0));
+        assert_eq!(Some(log_id0.clone()), eng.state.get_log_id(0));
         assert_eq!(None, eng.state.get_log_id(1));
         assert_eq!(Some(&log_id0), eng.state.last_log_id());
 
@@ -126,10 +120,7 @@ fn test_initialize() -> anyhow::Result<()> {
                 Command::SendVote {
                     vote_req: VoteRequest {
                         vote: Vote::new(1, s(1)),
-                        last_log_id: Some(LogId {
-                            term: CommittedLeaderId::new(0, 0),
-                            index: 0,
-                        },),
+                        last_log_id: Some(LogId { term: 0, index: 0 },),
                     },
                 },
             ],
@@ -140,7 +131,7 @@ fn test_initialize() -> anyhow::Result<()> {
     tracing::info!("--- not allowed because of last_log_id");
     {
         let mut eng = eng();
-        eng.state.log_ids = LogIdList::new(vec![log_id0]);
+        eng.state.log_ids = LogIdList::new(vec![log_id0.clone()]);
 
         assert_eq!(
             Err(InitializeError::NotAllowed(NotAllowed {
@@ -171,7 +162,7 @@ fn test_initialize() -> anyhow::Result<()> {
 
         assert_eq!(
             Err(InitializeError::NotInMembers(NotInMembers {
-                node_id: 0,
+                node_id: s(0),
                 membership: m12()
             })),
             eng.initialize(entry())

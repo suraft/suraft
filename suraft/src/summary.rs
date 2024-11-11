@@ -14,7 +14,7 @@ use std::fmt;
 /// ```rust,ignore
 /// # use suraft::MessageSummary;
 /// # use suraft::testing::log_id;
-/// let lid = log_id(1, s(2), 3);
+/// let lid = log_id(1, 3);
 /// assert_eq!("1-2-3", lid.to_string(), "LogId is Display");
 /// assert_eq!("1-2-3", lid.summary(), "Thus LogId is also MessageSummary");
 /// assert_eq!("Some(1-2-3)", Some(lid).summary(), "Option<LogId> can be displayed too");
@@ -86,13 +86,13 @@ mod tests {
         use crate::engine::testing::s;
         use crate::MessageSummary;
 
-        let lid = crate::testing::log_id(1, s(2), 3);
+        let lid = crate::testing::log_id(1, 3);
         assert_eq!("T1-N2.3", lid.to_string());
         assert_eq!("T1-N2.3", lid.summary());
         assert_eq!("Some(T1-N2.3)", Some(&lid).summary());
-        assert_eq!("Some(T1-N2.3)", Some(lid).summary());
+        assert_eq!("Some(T1-N2.3)", Some(lid.clone()).summary());
 
-        let slc = vec![lid, lid];
+        let slc = vec![lid.clone(), lid.clone()];
         assert_eq!("T1-N2.3,T1-N2.3", slc.as_slice().summary());
 
         let slc = vec![&lid, &lid];

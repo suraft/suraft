@@ -4,6 +4,7 @@ use anyhow::Result;
 use maplit::btreeset;
 use suraft::Config;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -40,8 +41,8 @@ async fn adding_learner_do_not_use_matched_leader_id() -> Result<()> {
 
     tracing::info!("--- add learner: node-1");
     {
-        router.new_raft_node(1).await;
-        router.add_learner(0, 1).await?;
+        router.new_raft_node(s(1)).await;
+        router.add_learner(s(0), s(1)).await?;
     }
 
     Ok(())

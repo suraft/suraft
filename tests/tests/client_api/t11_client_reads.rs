@@ -10,6 +10,7 @@ use suraft::Config;
 use suraft::LogIdOptionExt;
 use suraft::RPCTypes;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RPCRequest;
 use crate::fixtures::RaftRouter;
@@ -41,23 +42,23 @@ async fn client_reads() -> Result<()> {
 
     // Get the ID of the leader, and assert that ensure_linearizable succeeds.
     let leader = router.leader().expect("leader not found");
-    assert_eq!(leader, 0, "expected leader to be node 0, got {}", leader);
+    assert_eq!(leader, s(0), "expected leader to be node 0, got {}", leader);
     router
-        .ensure_linearizable(leader)
+        .ensure_linearizable(leader.clone())
         .await
         .unwrap_or_else(|_| panic!("ensure_linearizable to succeed for cluster leader {}", leader));
 
-    router.ensure_linearizable(1).await.expect_err("ensure_linearizable on follower node 1 to fail");
-    router.ensure_linearizable(2).await.expect_err("ensure_linearizable on follower node 2 to fail");
+    router.ensure_linearizable(s(1)).await.expect_err("ensure_linearizable on follower node 1 to fail");
+    router.ensure_linearizable(s(2)).await.expect_err("ensure_linearizable on follower node 2 to fail");
 
     tracing::info!(log_index, "--- isolate node 1 then ensure_linearizable should work");
 
-    router.set_network_error(1, true);
-    router.ensure_linearizable(leader).await?;
+    router.set_network_error(s(1), true);
+    router.ensure_linearizable(leader.clone()).await?;
 
     tracing::info!(log_index, "--- isolate node 2 then ensure_linearizable should fail");
 
-    router.set_network_error(2, true);
+    router.set_network_error(s(2), true);
     let rst = router.ensure_linearizable(leader).await;
     tracing::debug!(?rst, "ensure_linearizable with majority down");
 
@@ -91,7 +92,7 @@ async fn get_read_log_id() -> Result<()> {
 
     // Blocks append-entries to node 0, but let heartbeat pass.
     let block_to_n0 = |_router: &_, req, _id, target| {
-        if target == 0 {
+        if target == s(0) {
             match req {
                 RPCRequest::AppendEntries(a) => {
                     // Heartbeat is not blocked.
@@ -148,7 +149,7 @@ async fn get_read_log_id() -> Result<()> {
         n1.wait(timeout()).applied_index(Some(log_index + 1), "commit blank log").await?;
         log_index += 1;
 
-        log_index += router.client_request_many(1, "foo", 1).await?;
+        log_index += router.client_request_many(s(1), "foo", 1).await?;
 
         let (read_log_id, applied) = n1.get_read_log_id().await?;
         assert_eq!(read_log_id.index(), Some(log_index), "read-log-id is the committed log");
@@ -166,7 +167,7 @@ async fn get_read_log_id() -> Result<()> {
         let r = router.clone();
         tokio::spawn(async move {
             // This will block for ever
-            let _x = r.client_request_many(1, "foo", 1).await;
+            let _x = r.client_request_many(s(1), "foo", 1).await;
         });
 
         log_index += 1;

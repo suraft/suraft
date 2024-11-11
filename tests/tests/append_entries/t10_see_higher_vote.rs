@@ -45,7 +45,7 @@ async fn append_sees_higher_vote() -> Result<()> {
         let option = RPCOption::new(Duration::from_millis(1_000));
 
         let resp = router
-            .new_client(1, &())
+            .new_client(s(1), &())
             .await
             .vote(
                 VoteRequest {
@@ -64,7 +64,7 @@ async fn append_sees_higher_vote() -> Result<()> {
     // n1: vote=(10,1)
     tracing::info!("--- a write operation will see a higher vote, then the leader revert to follower");
     {
-        router.wait(&0, timeout()).state(ServerState::Leader, "node-0 is leader").await?;
+        router.wait(&s(0), timeout()).state(ServerState::Leader, "node-0 is leader").await?;
 
         let n0 = router.get_raft_handle(&s(0))?;
         tokio::spawn(async move {
@@ -82,11 +82,11 @@ async fn append_sees_higher_vote() -> Result<()> {
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         router
-            .wait(&0, timeout())
+            .wait(&s(0), timeout())
             .state(ServerState::Follower, "node-0 becomes follower due to a higher vote")
             .await?;
 
-        router.external_request(0, |st| {
+        router.external_request(s(0), |st| {
             assert_eq!(&Vote::new(10, s(1)), st.vote_ref(), "higher vote is stored");
         });
     }

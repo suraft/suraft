@@ -14,6 +14,7 @@ use suraft_memstore::ClientRequest;
 use suraft_memstore::IntoMemClientRequest;
 use tokio::sync::oneshot;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -42,7 +43,7 @@ async fn write_when_leader_quit_and_log_revert() -> Result<()> {
     let log_index = router.new_cluster(btreeset! {s(0),s(1)}, btreeset! {}).await?;
 
     tracing::info!(log_index, "--- block replication so that no log will be committed");
-    router.set_unreachable(1, true);
+    router.set_unreachable(s(1), true);
 
     let (tx, rx) = oneshot::channel();
 
@@ -64,10 +65,10 @@ async fn write_when_leader_quit_and_log_revert() -> Result<()> {
         let append_res = n0
             .append_entries(AppendEntriesRequest {
                 // From node 2, with a higher term 10
-                vote: Vote::new_committed(10, 1),
+                vote: Vote::new_committed(10, s(1)),
                 // log_index+1 is the log index the client tries to write, in previous step.
                 // This log conflict with the log the client written, will cause raft to revert log.
-                prev_log_id: Some(log_id(10, 1, log_index + 1)),
+                prev_log_id: Some(log_id(10, log_index + 1)),
 
                 entries: vec![],
                 leader_commit: None,
@@ -84,7 +85,7 @@ async fn write_when_leader_quit_and_log_revert() -> Result<()> {
     assert_eq!(
         raft_err,
         RaftError::APIError(ClientWriteError::ForwardToLeader(ForwardToLeader {
-            leader_id: Some(1),
+            leader_id: Some(s(1)),
             leader_node: Some(()),
         }))
     );
@@ -117,7 +118,7 @@ async fn write_when_leader_switched() -> Result<()> {
     let log_index = router.new_cluster(btreeset! {s(0),s(1)}, btreeset! {}).await?;
 
     tracing::info!(log_index, "--- block replication so that no log will be committed");
-    router.set_unreachable(1, true);
+    router.set_unreachable(s(1), true);
 
     let (tx, rx) = oneshot::channel();
 
@@ -139,15 +140,15 @@ async fn write_when_leader_switched() -> Result<()> {
         let append_res = n0
             .append_entries(AppendEntriesRequest {
                 // From node 2, with a higher term 10
-                vote: Vote::new_committed(10, 1),
+                vote: Vote::new_committed(10, s(1)),
                 // log_index+1 is the log index the client tries to write, in previous step.
                 // This matches the log on node-0.
-                prev_log_id: Some(log_id(1, 0, log_index + 1)),
+                prev_log_id: Some(log_id(1, log_index + 1)),
 
                 entries: vec![],
 
                 // Inform node-0 to commit the pending log.
-                leader_commit: Some(log_id(1, 0, log_index + 1)),
+                leader_commit: Some(log_id(1, log_index + 1)),
             })
             .await?;
 
@@ -159,7 +160,7 @@ async fn write_when_leader_switched() -> Result<()> {
     tracing::info!(log_index, "--- write_res: {:?}", write_res);
 
     let ok_resp = write_res?;
-    assert_eq!(ok_resp.log_id, log_id(1, 0, log_index + 1), "client write committed");
+    assert_eq!(ok_resp.log_id, log_id(1, log_index + 1), "client write committed");
 
     Ok(())
 }

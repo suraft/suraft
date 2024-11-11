@@ -4,6 +4,7 @@ use std::time::Duration;
 use maplit::btreeset;
 use suraft::Config;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -25,13 +26,13 @@ async fn begin_receiving_snapshot() -> anyhow::Result<()> {
     let mut log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {}).await?;
 
     tracing::info!(log_index, "--- isolate node 2 so that it can receive snapshot");
-    router.set_unreachable(2, true);
+    router.set_unreachable(s(2), true);
 
     tracing::info!(log_index, "--- write to make node-0,1 have more logs");
     {
         log_index += router.client_request_many(s(0), "foo", 3).await?;
-        router.wait(&0, timeout()).applied_index(Some(log_index), "write more log").await?;
-        router.wait(&1, timeout()).applied_index(Some(log_index), "write more log").await?;
+        router.wait(&s(0), timeout()).applied_index(Some(log_index), "write more log").await?;
+        router.wait(&s(1), timeout()).applied_index(Some(log_index), "write more log").await?;
     }
 
     tracing::info!(log_index, "--- got a snapshot data");

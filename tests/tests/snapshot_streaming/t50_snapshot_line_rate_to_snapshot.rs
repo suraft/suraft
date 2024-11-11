@@ -3,11 +3,11 @@ use std::time::Duration;
 
 use anyhow::Result;
 use maplit::btreeset;
-use suraft::CommittedLeaderId;
 use suraft::Config;
 use suraft::LogId;
 use suraft::SnapshotPolicy;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -46,7 +46,7 @@ async fn snapshot_line_rate_to_snapshot() -> Result<()> {
 
         router
             .wait_for_log(
-                &btreeset![0, 1],
+                &btreeset! {s(0), s(1)},
                 Some(log_index),
                 timeout(),
                 "send log to trigger snapshot",
@@ -57,31 +57,41 @@ async fn snapshot_line_rate_to_snapshot() -> Result<()> {
     tracing::info!(log_index, "--- stop replication to node 1");
     tracing::info!(log_index, "--- send just enough logs to trigger snapshot");
     {
-        router.set_network_error(1, true);
+        router.set_network_error(s(1), true);
 
         router.client_request_many(s(0), "0", (snapshot_threshold - 1 - log_index) as usize).await?;
         log_index = snapshot_threshold - 1;
 
         router
             .wait_for_log(
-                &btreeset![0],
+                &btreeset![s(0)],
                 Some(log_index),
                 timeout(),
                 "send log to trigger snapshot",
             )
             .await?;
         router
-            .wait_for_snapshot(&btreeset![0], LogId::new(1, log_index), timeout(), "snapshot on node 0")
+            .wait_for_snapshot(
+                &btreeset![s(0)],
+                LogId::new(1, log_index),
+                timeout(),
+                "snapshot on node 0",
+            )
             .await?;
     }
 
     tracing::info!(log_index, "--- restore node 1 and replication");
     {
-        router.set_network_error(1, false);
+        router.set_network_error(s(1), false);
 
-        router.wait_for_log(&btreeset![1], Some(log_index), timeout(), "replicate by snapshot").await?;
+        router.wait_for_log(&btreeset![s(1)], Some(log_index), timeout(), "replicate by snapshot").await?;
         router
-            .wait_for_snapshot(&btreeset![1], LogId::new(1, log_index), timeout(), "snapshot on node 1")
+            .wait_for_snapshot(
+                &btreeset![s(1)],
+                LogId::new(1, log_index),
+                timeout(),
+                "snapshot on node 1",
+            )
             .await?;
     }
 

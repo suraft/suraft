@@ -364,26 +364,28 @@ mod tests {
     #[test]
     fn test_membership_change() -> anyhow::Result<()> {
         let m = || Membership::<UTConfig> {
-            configs: vec![btreeset! {s(1),s(2)}],
-            nodes: btreemap! {1=>(),2=>(),3=>()},
+            configs: vec![btreeset! {s(1), s(2)}],
+            nodes: btreemap! {s(1)=>(), s(2)=>(), s(3)=>()},
         };
 
         // Add: no such learner
         {
-            let res = m().change(ChangeMembers::AddVoterIds(btreeset! {4}), true);
+            let res = m().change(ChangeMembers::AddVoterIds(btreeset! {s(4)}), true);
             assert_eq!(
-                Err(ChangeMembershipError::LearnerNotFound(LearnerNotFound { node_id: 4 })),
+                Err(ChangeMembershipError::LearnerNotFound(LearnerNotFound {
+                    node_id: s(4)
+                })),
                 res
             );
         }
 
         // Add: ok
         {
-            let res = m().change(ChangeMembers::AddVoterIds(btreeset! {3}), true);
+            let res = m().change(ChangeMembers::AddVoterIds(btreeset! {s(3)}), true);
             assert_eq!(
                 Ok(Membership::<UTConfig> {
                     configs: vec![btreeset! {s(1),s(2)}, btreeset! {s(1), s(2), s(3)}],
-                    nodes: btreemap! {1=>(),2=>(),3=>()}
+                    nodes: btreemap! {s(1)=>(),s(2)=>(),s(3)=>()}
                 }),
                 res
             );
@@ -391,11 +393,11 @@ mod tests {
 
         // AddVoters
         {
-            let res = m().change(ChangeMembers::AddVoters(btreemap! {5=>()}), true);
+            let res = m().change(ChangeMembers::AddVoters(btreemap! {s(5)=>()}), true);
             assert_eq!(
                 Ok(Membership::<UTConfig> {
-                    configs: vec![btreeset! {s(1),s(2)}, btreeset! {1,2,5}],
-                    nodes: btreemap! {1=>(),2=>(),3=>(),5=>()}
+                    configs: vec![btreeset! {s(1),s(2)}, btreeset! {s(1),s(2),s(5)}],
+                    nodes: btreemap! {s(1)=>(),s(2)=>(),s(3)=>(),s(5)=>()}
                 }),
                 res
             );
@@ -403,11 +405,11 @@ mod tests {
 
         // Remove: no such voter
         {
-            let res = m().change(ChangeMembers::RemoveVoters(btreeset! {5}), true);
+            let res = m().change(ChangeMembers::RemoveVoters(btreeset! {s(5)}), true);
             assert_eq!(
                 Ok(Membership::<UTConfig> {
                     configs: vec![btreeset! {s(1),s(2)}],
-                    nodes: btreemap! {1=>(),2=>(),3=>()}
+                    nodes: btreemap! {s(1)=>(),s(2)=>(),s(3)=>()}
                 }),
                 res
             );
@@ -424,8 +426,8 @@ mod tests {
             let res = m().change(ChangeMembers::RemoveVoters(btreeset! {s(1)}), true);
             assert_eq!(
                 Ok(Membership::<UTConfig> {
-                    configs: vec![btreeset! {s(1),s(2)}, btreeset! {2}],
-                    nodes: btreemap! {1=>(),2=>(),3=>()}
+                    configs: vec![btreeset! {s(1),s(2)}, btreeset! {s(2)}],
+                    nodes: btreemap! {s(1)=>(),s(2)=>(),s(3)=>()}
                 }),
                 res
             );
@@ -436,8 +438,8 @@ mod tests {
             let res = m().change(ChangeMembers::RemoveVoters(btreeset! {s(1)}), false);
             assert_eq!(
                 Ok(Membership::<UTConfig> {
-                    configs: vec![btreeset! {s(1),s(2)}, btreeset! {2}],
-                    nodes: btreemap! {1=>(),2=>(),3=>()}
+                    configs: vec![btreeset! {s(1),s(2)}, btreeset! {s(2)}],
+                    nodes: btreemap! {s(1)=>(),s(2)=>(),s(3)=>()}
                 }),
                 res
             );
@@ -446,14 +448,14 @@ mod tests {
         // Remove: OK, not retain; learner removed
         {
             let mem = Membership::<UTConfig> {
-                configs: vec![btreeset! {s(1),s(2)}, btreeset! {2}],
-                nodes: btreemap! {1=>(),2=>(),3=>()},
+                configs: vec![btreeset! {s(1),s(2)}, btreeset! {s(2)}],
+                nodes: btreemap! {s(1)=>(),s(2)=>(),s(3)=>()},
             };
             let res = mem.change(ChangeMembers::RemoveVoters(btreeset! {s(1)}), false);
             assert_eq!(
                 Ok(Membership::<UTConfig> {
-                    configs: vec![btreeset! {2}],
-                    nodes: btreemap! {2=>(),3=>()}
+                    configs: vec![btreeset! {s(2)}],
+                    nodes: btreemap! {s(2)=>(),s(3)=>()}
                 }),
                 res
             );
@@ -461,11 +463,11 @@ mod tests {
 
         // Replace:
         {
-            let res = m().change(ChangeMembers::ReplaceAllVoters(btreeset! {2}), false);
+            let res = m().change(ChangeMembers::ReplaceAllVoters(btreeset! {s(2)}), false);
             assert_eq!(
                 Ok(Membership::<UTConfig> {
-                    configs: vec![btreeset! {s(1),s(2)}, btreeset! {2}],
-                    nodes: btreemap! {1=>(),2=>(),3=>()}
+                    configs: vec![btreeset! {s(1),s(2)}, btreeset! {s(2)}],
+                    nodes: btreemap! {s(1)=>(),s(2)=>(),s(3)=>()}
                 }),
                 res
             );
@@ -473,11 +475,11 @@ mod tests {
 
         // AddNodes: existent voter
         {
-            let res = m().change(ChangeMembers::AddNodes(btreemap! {2=>()}), false);
+            let res = m().change(ChangeMembers::AddNodes(btreemap! {s(2)=>()}), false);
             assert_eq!(
                 Ok(Membership::<UTConfig> {
                     configs: vec![btreeset! {s(1),s(2)}],
-                    nodes: btreemap! {1=>(),2=>(),3=>()}
+                    nodes: btreemap! {s(1)=>(),s(2)=>(),s(3)=>()}
                 }),
                 res
             );
@@ -485,11 +487,11 @@ mod tests {
 
         // AddNodes: existent learner
         {
-            let res = m().change(ChangeMembers::AddNodes(btreemap! {3=>()}), false);
+            let res = m().change(ChangeMembers::AddNodes(btreemap! {s(3)=>()}), false);
             assert_eq!(
                 Ok(Membership::<UTConfig> {
                     configs: vec![btreeset! {s(1),s(2)}],
-                    nodes: btreemap! {1=>(),2=>(),3=>()}
+                    nodes: btreemap! {s(1)=>(),s(2)=>(),s(3)=>()}
                 }),
                 res
             );
@@ -497,11 +499,11 @@ mod tests {
 
         // AddNodes: Ok
         {
-            let res = m().change(ChangeMembers::AddNodes(btreemap! {4=>()}), false);
+            let res = m().change(ChangeMembers::AddNodes(btreemap! {s(4)=>()}), false);
             assert_eq!(
                 Ok(Membership::<UTConfig> {
                     configs: vec![btreeset! {s(1),s(2)}],
-                    nodes: btreemap! {1=>(),2=>(),3=>(), 4=>()}
+                    nodes: btreemap! {s(1)=>(),s(2)=>(),s(3)=>(), s(4)=>()}
                 }),
                 res
             );
@@ -511,14 +513,14 @@ mod tests {
         {
             let m = || Membership::<UTConfig<u64>> {
                 configs: vec![btreeset! {s(1),s(2)}],
-                nodes: btreemap! {1=>1,2=>2,3=>3},
+                nodes: btreemap! {s(1)=>1,s(2)=>2,s(3)=>3},
             };
 
-            let res = m().change(ChangeMembers::SetNodes(btreemap! {3=>30, 4=>40}), false);
+            let res = m().change(ChangeMembers::SetNodes(btreemap! {s(3)=>30, s(4)=>40}), false);
             assert_eq!(
                 Ok(Membership::<UTConfig<u64>> {
                     configs: vec![btreeset! {s(1),s(2)}],
-                    nodes: btreemap! {1=>1,2=>2,3=>30, 4=>40}
+                    nodes: btreemap! {s(1)=>1,s(2)=>2,s(3)=>30, s(4)=>40}
                 }),
                 res
             );
@@ -526,20 +528,22 @@ mod tests {
 
         // RemoveNodes: can not remove node for voter
         {
-            let res = m().change(ChangeMembers::RemoveNodes(btreeset! {2}), false);
+            let res = m().change(ChangeMembers::RemoveNodes(btreeset! {s(2)}), false);
             assert_eq!(
-                Err(ChangeMembershipError::LearnerNotFound(LearnerNotFound { node_id: 2 })),
+                Err(ChangeMembershipError::LearnerNotFound(LearnerNotFound {
+                    node_id: s(2)
+                })),
                 res
             );
         }
 
         // RemoveNodes: Ok
         {
-            let res = m().change(ChangeMembers::RemoveNodes(btreeset! {3}), false);
+            let res = m().change(ChangeMembers::RemoveNodes(btreeset! {s(3)}), false);
             assert_eq!(
                 Ok(Membership::<UTConfig> {
                     configs: vec![btreeset! {s(1),s(2)}],
-                    nodes: btreemap! {1=>(),2=>()}
+                    nodes: btreemap! {s(1)=>(),s(2)=>()}
                 }),
                 res
             );
@@ -547,11 +551,14 @@ mod tests {
 
         // ReplaceAllNodes: Ok
         {
-            let res = m().change(ChangeMembers::ReplaceAllNodes(btreemap! {1=>(),2=>(),4=>()}), false);
+            let res = m().change(
+                ChangeMembers::ReplaceAllNodes(btreemap! {s(1)=>(),s(2)=>(),s(4)=>()}),
+                false,
+            );
             assert_eq!(
                 Ok(Membership::<UTConfig> {
                     configs: vec![btreeset! {s(1),s(2)}],
-                    nodes: btreemap! {1=>(),2=>(),4=>()}
+                    nodes: btreemap! {s(1)=>(),s(2)=>(),s(4)=>()}
                 }),
                 res
             );

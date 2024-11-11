@@ -58,7 +58,7 @@ fn test_forward_to_leader_not_a_member() {
 
 #[test]
 fn test_forward_to_leader_has_leader() {
-    let m123 = || Membership::<UTConfig<u64>>::new(vec![btreeset! {s(1),s(2)}], btreemap! {1=>4,2=>5,3=>6});
+    let m123 = || Membership::<UTConfig<u64>>::new(vec![btreeset! {s(1),s(2)}], btreemap! {s(1)=>4,s(2)=>5,s(3)=>6});
 
     let rs = RaftState::<UTConfig<u64>> {
         vote: Leased::new(
@@ -73,5 +73,5 @@ fn test_forward_to_leader_has_leader() {
         ..Default::default()
     };
 
-    assert_eq!(ForwardToLeader::new(3, 6), rs.forward_to_leader());
+    assert_eq!(ForwardToLeader::new(s(3), 6), rs.forward_to_leader());
 }

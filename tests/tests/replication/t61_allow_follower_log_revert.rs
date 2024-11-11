@@ -37,14 +37,14 @@ async fn allow_follower_log_revert() -> Result<()> {
     tracing::info!(log_index, "--- write 10 logs");
     {
         log_index += router.client_request_many(s(0), "0", 10).await?;
-        for i in [0, 1] {
+        for i in [s(0), s(1)] {
             router.wait(&i, timeout()).applied_index(Some(log_index), format!("{} writes", 10)).await?;
         }
     }
     tracing::info!(log_index, "--- allow next detected log revert");
     {
         let n0 = router.get_raft_handle(&s(0))?;
-        n0.trigger().allow_next_revert(&1, true).await??;
+        n0.trigger().allow_next_revert(&s(1), true).await??;
     }
 
     tracing::info!(log_index, "--- erase Learner-1 and restart");
@@ -52,15 +52,15 @@ async fn allow_follower_log_revert() -> Result<()> {
         let (_raft, _ls, _sm) = router.remove_node(s(1)).unwrap();
         let (log, sm) = suraft_memstore::new_mem_store();
 
-        router.new_raft_node_with_sto(1, log, sm).await;
-        router.add_learner(0, 1).await?;
+        router.new_raft_node_with_sto(s(1), log, sm).await;
+        router.add_learner(s(0), s(1)).await?;
         log_index += 1; // add learner
     }
 
     tracing::info!(log_index, "--- write another 10 logs, leader should not panic");
     {
         log_index += router.client_request_many(s(0), "0", 10).await?;
-        for i in [0, 1] {
+        for i in [s(0), s(1)] {
             router.wait(&i, timeout()).applied_index(Some(log_index), format!("{} writes", 10)).await?;
         }
     }
@@ -89,10 +89,10 @@ async fn allow_follower_log_revert_errors() -> Result<()> {
     tracing::info!(log_index, "--- allow next detected log revert to unknown node");
     {
         let n0 = router.get_raft_handle(&s(0))?;
-        let res = n0.trigger().allow_next_revert(&2, true).await?;
+        let res = n0.trigger().allow_next_revert(&s(2), true).await?;
         assert_eq!(
             Err(AllowNextRevertError::NodeNotFound(NodeNotFound::new(
-                2,
+                s(2),
                 Operation::AllowNextRevert
             ))),
             res
@@ -102,9 +102,9 @@ async fn allow_follower_log_revert_errors() -> Result<()> {
     tracing::info!(log_index, "--- allow next detected log revert on non-leader node");
     {
         let n1 = router.get_raft_handle(&s(1))?;
-        let res = n1.trigger().allow_next_revert(&0, true).await?;
+        let res = n1.trigger().allow_next_revert(&s(0), true).await?;
         assert_eq!(
-            Err(AllowNextRevertError::ForwardToLeader(ForwardToLeader::new(0, ()))),
+            Err(AllowNextRevertError::ForwardToLeader(ForwardToLeader::new(s(0), ()))),
             res
         );
     }

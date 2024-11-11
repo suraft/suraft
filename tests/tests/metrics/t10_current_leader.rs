@@ -4,6 +4,7 @@ use anyhow::Result;
 use maplit::btreeset;
 use suraft::Config;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -30,11 +31,11 @@ async fn current_leader() -> Result<()> {
 
     // Get the ID of the leader, and assert that current_leader succeeds.
     let leader = router.leader().expect("leader not found");
-    assert_eq!(leader, 0, "expected leader to be node 0, got {}", leader);
+    assert_eq!(leader, s(0), "expected leader to be node 0, got {}", leader);
 
     for i in 0..3 {
-        let leader = router.current_leader(i).await;
-        assert_eq!(leader, Some(0), "expected leader to be node 0, got {:?}", leader);
+        let leader = router.current_leader(s(i)).await;
+        assert_eq!(leader, Some(s(0)), "expected leader to be node 0, got {:?}", leader);
     }
 
     Ok(())

@@ -41,7 +41,7 @@ fn test_is_initialized() {
     // Logs are non-empty
     {
         let rs = RaftState::<UTConfig> {
-            log_ids: LogIdList::new([log_id(0, s(0), 0)]),
+            log_ids: LogIdList::new([log_id(0, 0)]),
             ..Default::default()
         };
 

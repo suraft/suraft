@@ -109,7 +109,7 @@ mod tests {
             let s = serde_json::to_string(&v)?;
             assert_eq!(r#"{"leader_id":{"term":1,"node_id":2},"committed":false}"#, s);
 
-            let v2: Vote<u64> = serde_json::from_str(&s)?;
+            let v2: Vote = serde_json::from_str(&s)?;
             assert_eq!(v, v2);
 
             Ok(())
@@ -118,10 +118,10 @@ mod tests {
         #[test]
         fn test_vote_total_order() -> anyhow::Result<()> {
             #[allow(clippy::redundant_closure)]
-            let vote = |term, node_id| Vote::<u64>::new(term, node_id);
+            let vote = |term, node_id: u64| Vote::new(term, s(node_id));
 
             #[allow(clippy::redundant_closure)]
-            let committed = |term, node_id| Vote::<u64>::new_committed(term, node_id);
+            let committed = |term, node_id: u64| Vote::new_committed(term, s(node_id));
 
             // Compare term first
             assert!(vote(2, 2) > vote(1, 2));

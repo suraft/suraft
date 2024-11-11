@@ -8,6 +8,7 @@ use suraft::RaftLogReader;
 use suraft::ServerState;
 use suraft::Vote;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -41,7 +42,7 @@ async fn single_follower_restart() -> anyhow::Result<()> {
 
     tracing::info!(log_index, "--- stop and restart node-0");
     {
-        let (node, mut sto, sm) = router.remove_node(0).unwrap();
+        let (node, mut sto, sm) = router.remove_node(s(0)).unwrap();
         node.shutdown().await?;
         let v = sto.read_vote().await?.unwrap_or_default();
 
@@ -50,9 +51,9 @@ async fn single_follower_restart() -> anyhow::Result<()> {
 
         tracing::info!(log_index, "--- restart node-0");
 
-        router.new_raft_node_with_sto(0, sto, sm).await;
+        router.new_raft_node_with_sto(s(0), sto, sm).await;
         router
-            .wait(&0, Some(Duration::from_millis(1_000)))
+            .wait(&s(0), Some(Duration::from_millis(1_000)))
             .state(ServerState::Leader, "single node restarted an became leader quickly")
             .await?;
 
@@ -65,7 +66,7 @@ async fn single_follower_restart() -> anyhow::Result<()> {
         router.client_request_many(s(0), "foo", 1).await?;
         log_index += 1;
 
-        router.wait(&0, timeout()).applied_index(Some(log_index), "node-0 works").await?;
+        router.wait(&s(0), timeout()).applied_index(Some(log_index), "node-0 works").await?;
     }
 
     Ok(())

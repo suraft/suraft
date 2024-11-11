@@ -6,6 +6,7 @@ use maplit::btreeset;
 use suraft::Config;
 use suraft::ServerState;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -19,8 +20,8 @@ use crate::fixtures::RaftRouter;
 #[tracing::instrument]
 #[test_harness::test(harness = ut_harness)]
 async fn add_remove_voter() -> Result<()> {
-    let c01234 = btreeset![0, 1, 2, 3, 4];
-    let c0123 = btreeset![0, 1, 2, 3];
+    let c01234 = btreeset! {s(0), s(1), s(2), s(3), s(4)};
+    let c0123 = btreeset! {s(0), s(1), s(2), s(3)};
 
     let config = Arc::new(
         Config {
@@ -65,7 +66,7 @@ async fn add_remove_voter() -> Result<()> {
     }
 
     router
-        .wait(&4, timeout())
+        .wait(&s(4), timeout())
         .metrics(
             |x| x.state == ServerState::Learner || x.state == ServerState::Candidate,
             "node-4 is left a learner or follower, depending on if it received the uniform config",

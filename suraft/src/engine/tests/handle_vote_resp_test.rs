@@ -32,7 +32,7 @@ fn m12() -> Membership<UTConfig> {
 }
 
 fn m1234() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {1,2,3,4}], None)
+    Membership::<UTConfig>::new(vec![btreeset! {s(1),s(2),s(3),s(4)}], None)
 }
 
 fn eng() -> Engine<UTConfig> {
@@ -52,11 +52,11 @@ fn test_handle_vote_resp() -> anyhow::Result<()> {
         eng.state.vote = Leased::new(UTConfig::<()>::now(), Duration::from_millis(500), Vote::new(2, s(1)));
         eng.state
             .membership_state
-            .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(1, s(1), 1)), m12())));
+            .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(1, 1)), m12())));
 
-        eng.handle_vote_resp(2, VoteResponse::new(Vote::new(2, s(2)), Some(log_id(2, s(1), 2)), true));
+        eng.handle_vote_resp(s(2), VoteResponse::new(Vote::new(2, s(2)), Some(log_id(2, 2)), true));
 
-        assert_eq!(Vote::new(2, s(1)), *eng.state.vote_ref());
+        assert_eq!(Vote::new(2, s(1)), eng.state.vote_ref().clone());
 
         assert!(eng.leader.is_none());
 
@@ -68,22 +68,22 @@ fn test_handle_vote_resp() -> anyhow::Result<()> {
     tracing::info!("--- recv a smaller vote; always keep trying in candidate state");
     {
         let mut eng = eng();
-        eng.config.id = 1;
+        eng.config.id = s(1);
         eng.state.vote = Leased::new(UTConfig::<()>::now(), Duration::from_millis(500), Vote::new(2, s(1)));
         eng.state
             .membership_state
-            .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(1, s(1), 1)), m12())));
-        eng.new_candidate(*eng.state.vote_ref());
+            .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(1, 1)), m12())));
+        eng.new_candidate(eng.state.vote_ref().clone());
         eng.output.take_commands();
 
-        let voting = eng.new_candidate(*eng.state.vote_ref());
-        voting.grant_by(&1);
+        let voting = eng.new_candidate(eng.state.vote_ref().clone());
+        voting.grant_by(&s(1));
 
         eng.state.server_state = ServerState::Candidate;
 
-        eng.handle_vote_resp(2, VoteResponse::new(Vote::new(1, s(1)), Some(log_id(2, s(1), 2)), true));
+        eng.handle_vote_resp(s(2), VoteResponse::new(Vote::new(1, s(1)), Some(log_id(2, 2)), true));
 
-        assert_eq!(Vote::new(2, s(1)), *eng.state.vote_ref());
+        assert_eq!(Vote::new(2, s(1)), eng.state.vote_ref().clone());
 
         assert_eq!(&Vote::new(2, s(1)), eng.candidate_ref().unwrap().vote_ref());
         assert_eq!(
@@ -100,23 +100,23 @@ fn test_handle_vote_resp() -> anyhow::Result<()> {
     tracing::info!("--- seen a higher vote. revert to follower");
     {
         let mut eng = eng();
-        eng.config.id = 1;
+        eng.config.id = s(1);
         eng.state.vote = Leased::new(UTConfig::<()>::now(), Duration::from_millis(500), Vote::new(2, s(1)));
-        eng.state.log_ids = LogIdList::new(vec![log_id(3, s(1), 3)]);
+        eng.state.log_ids = LogIdList::new(vec![log_id(3, 3)]);
         eng.state
             .membership_state
-            .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(1, s(1), 1)), m12())));
-        eng.new_candidate(*eng.state.vote_ref());
+            .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(1, 1)), m12())));
+        eng.new_candidate(eng.state.vote_ref().clone());
         eng.output.take_commands();
 
-        let voting = eng.new_candidate(*eng.state.vote_ref());
-        voting.grant_by(&1);
+        let voting = eng.new_candidate(eng.state.vote_ref().clone());
+        voting.grant_by(&s(1));
 
         eng.state.server_state = ServerState::Candidate;
 
-        eng.handle_vote_resp(2, VoteResponse::new(Vote::new(3, s(2)), Some(log_id(2, s(1), 2)), true));
+        eng.handle_vote_resp(s(2), VoteResponse::new(Vote::new(3, s(2)), Some(log_id(2, 2)), true));
 
-        assert_eq!(Vote::new(3, s(2)), *eng.state.vote_ref());
+        assert_eq!(Vote::new(3, s(2)), eng.state.vote_ref().clone());
 
         assert!(eng.leader.is_none());
 
@@ -137,22 +137,22 @@ fn test_handle_vote_resp() -> anyhow::Result<()> {
     tracing::info!("--- equal vote, granted, but not constitute a quorum. nothing to do");
     {
         let mut eng = eng();
-        eng.config.id = 1;
+        eng.config.id = s(1);
         eng.state.vote = Leased::new(UTConfig::<()>::now(), Duration::from_millis(500), Vote::new(2, s(1)));
         eng.state
             .membership_state
-            .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(1, s(1), 1)), m1234())));
-        eng.new_candidate(*eng.state.vote_ref());
+            .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(1, 1)), m1234())));
+        eng.new_candidate(eng.state.vote_ref().clone());
         eng.output.take_commands();
 
-        let voting = eng.new_candidate(*eng.state.vote_ref());
-        voting.grant_by(&1);
+        let voting = eng.new_candidate(eng.state.vote_ref().clone());
+        voting.grant_by(&s(1));
 
         eng.state.server_state = ServerState::Candidate;
 
-        eng.handle_vote_resp(2, VoteResponse::new(Vote::new(2, s(1)), Some(log_id(2, s(1), 2)), true));
+        eng.handle_vote_resp(s(2), VoteResponse::new(Vote::new(2, s(1)), Some(log_id(2, 2)), true));
 
-        assert_eq!(Vote::new(2, s(1)), *eng.state.vote_ref());
+        assert_eq!(Vote::new(2, s(1)), eng.state.vote_ref().clone());
 
         assert_eq!(&Vote::new(2, s(1)), eng.candidate_ref().unwrap().vote_ref());
         assert_eq!(
@@ -172,31 +172,28 @@ fn test_handle_vote_resp_equal_vote() -> anyhow::Result<()> {
     tracing::info!("--- equal vote, granted, constitute a quorum. become leader");
     {
         let mut eng = eng();
-        eng.config.id = 1;
+        eng.config.id = s(1);
         eng.state.vote = Leased::new(UTConfig::<()>::now(), Duration::from_millis(500), Vote::new(2, s(1)));
         eng.state
             .membership_state
-            .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(1, s(1), 1)), m12())));
-        eng.new_candidate(*eng.state.vote_ref());
+            .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(1, 1)), m12())));
+        eng.new_candidate(eng.state.vote_ref().clone());
 
-        let voting = eng.new_candidate(*eng.state.vote_ref());
-        voting.grant_by(&1);
+        let voting = eng.new_candidate(eng.state.vote_ref().clone());
+        voting.grant_by(&s(1));
 
         eng.state.server_state = ServerState::Candidate;
 
-        eng.handle_vote_resp(2, VoteResponse::new(Vote::new(2, s(1)), Some(log_id(2, s(1), 2)), true));
+        eng.handle_vote_resp(s(2), VoteResponse::new(Vote::new(2, s(1)), Some(log_id(2, 2)), true));
 
-        assert_eq!(Vote::new_committed(2, s(1)), *eng.state.vote_ref(),);
+        assert_eq!(Vote::new_committed(2, s(1)), eng.state.vote_ref().clone(),);
 
-        assert_eq!(Some(log_id(2, s(1), 1)), eng.leader.as_ref().unwrap().noop_log_id);
-        assert_eq!(
-            Some(log_id(2, s(1), 1)),
-            eng.leader.as_ref().unwrap().last_log_id().copied()
-        );
+        assert_eq!(Some(log_id(2, 1)), eng.leader.as_ref().unwrap().noop_log_id);
+        assert_eq!(Some(log_id(2, 1)), eng.leader.as_ref().unwrap().last_log_id().cloned());
         assert_eq!(
             Some(&IOId::new_log_io(
                 Vote::new(2, s(1)).into_committed(),
-                Some(log_id(2, s(1), 1))
+                Some(log_id(2, 1))
             )),
             eng.state.accepted_io()
         );
@@ -210,18 +207,18 @@ fn test_handle_vote_resp_equal_vote() -> anyhow::Result<()> {
         assert_eq!(
             vec![
                 Command::RebuildReplicationStreams {
-                    targets: vec![ReplicationProgress(2, ProgressEntry::empty(1))]
+                    targets: vec![ReplicationProgress(s(2), ProgressEntry::empty(1))]
                 },
                 Command::SaveVote {
                     vote: Vote::new_committed(2, s(1))
                 },
                 Command::AppendInputEntries {
                     committed_vote: Vote::new(2, s(1)).into_committed(),
-                    entries: vec![Entry::<UTConfig>::new_blank(log_id(2, s(1), 1))],
+                    entries: vec![Entry::<UTConfig>::new_blank(log_id(2, 1))],
                 },
                 Command::Replicate {
-                    target: 2,
-                    req: Replicate::logs(LogIdRange::new(None, Some(log_id(2, s(1), 1))))
+                    target: s(2),
+                    req: Replicate::logs(LogIdRange::new(None, Some(log_id(2, 1))))
                 },
             ],
             eng.output.take_commands()

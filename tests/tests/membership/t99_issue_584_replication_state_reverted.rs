@@ -5,6 +5,7 @@ use anyhow::Result;
 use maplit::btreeset;
 use suraft::Config;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -35,7 +36,10 @@ async fn t99_issue_584_replication_state_reverted() -> Result<()> {
         router.client_request_many(s(0), "foo", (n - log_index) as usize).await?;
         log_index = n;
 
-        router.wait(&1, timeout()).applied_index(Some(log_index), "replicate all logs to learner").await?;
+        router
+            .wait(&s(1), timeout())
+            .applied_index(Some(log_index), "replicate all logs to learner")
+            .await?;
     }
 
     tracing::info!(
@@ -44,7 +48,7 @@ async fn t99_issue_584_replication_state_reverted() -> Result<()> {
     );
     {
         let leader = router.get_raft_handle(&s(0))?;
-        leader.change_membership([0, 1], false).await?;
+        leader.change_membership([s(0), s(1)], false).await?;
         log_index += 2; // 2 change_membership log
 
         let _ = log_index;

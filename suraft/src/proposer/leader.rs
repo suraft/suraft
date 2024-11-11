@@ -103,7 +103,7 @@ where
         let first = last_leader_log_id.first();
 
         let noop_log_id = if first.map(|x| x.term()) == Some(vote_term) {
-            // There is already log id proposed by the this leader.
+            // There is already log id proposed by the leader.
             // E.g. the Leader is restarted without losing leadership.
             //
             // Set to the first log id proposed by this Leader.
@@ -137,7 +137,7 @@ where
     /// Return the last log id this leader knows of.
     ///
     /// The leader's last log id may be different from the local RaftState.last_log_id.
-    /// The later is used by the `Acceptor` part of a Raft node.
+    /// The latter is used by the `Acceptor` part of a Raft node.
     pub(crate) fn last_log_id(&self) -> Option<&LogId> {
         self.last_log_id.as_ref()
     }
@@ -182,7 +182,7 @@ where
     /// The acknowledgement by remote nodes are updated when AppendEntries reply is received.
     /// But if the time of the leader itself is not updated.
     ///
-    /// Therefore everytime to retrieve the quorum acked timestamp, it should update with the
+    /// Therefore, everytime to retrieve the quorum acked timestamp, it should update with the
     /// leader's time first.
     /// It does not matter if the leader is not a voter, the QuorumSet will just ignore it.
     ///
@@ -228,6 +228,7 @@ mod tests {
     use crate::Entry;
     use crate::RaftLogId;
     use crate::Vote;
+    use crate::NID;
 
     #[test]
     fn test_leader_new_with_proposed_log_id() {
@@ -236,13 +237,13 @@ mod tests {
             let vote = Vote::new(2, s(2)).into_committed();
             let leader = Leader::<UTConfig, _>::new(
                 vote,
-                vec![1, 2, 3],
+                vec![s(1), s(2), s(3)],
                 vec![],
-                LeaderLogIds::new_start_end(log_id(1, s(2), 1), log_id(1, s(2), 3)),
+                LeaderLogIds::new_start_end(log_id(1, 1), log_id(1, 3)),
             );
 
-            assert_eq!(leader.noop_log_id(), Some(&log_id(2, s(2), 4)));
-            assert_eq!(leader.last_log_id(), Some(&log_id(1, s(2), 3)));
+            assert_eq!(leader.noop_log_id(), Some(&log_id(2, 4)));
+            assert_eq!(leader.last_log_id(), Some(&log_id(1, 3)));
         }
 
         tracing::info!("--- vote equals last log id, reuse noop_log_id");
@@ -250,13 +251,13 @@ mod tests {
             let vote = Vote::new(1, s(2)).into_committed();
             let leader = Leader::<UTConfig, _>::new(
                 vote,
-                vec![1, 2, 3],
+                vec![s(1), s(2), s(3)],
                 vec![],
-                LeaderLogIds::new_start_end(log_id(1, s(2), 1), log_id(1, s(2), 3)),
+                LeaderLogIds::new_start_end(log_id(1, 1), log_id(1, 3)),
             );
 
-            assert_eq!(leader.noop_log_id(), Some(&log_id(1, s(2), 1)));
-            assert_eq!(leader.last_log_id(), Some(&log_id(1, s(2), 3)));
+            assert_eq!(leader.noop_log_id(), Some(&log_id(1, 1)));
+            assert_eq!(leader.last_log_id(), Some(&log_id(1, 3)));
         }
 
         tracing::info!("--- vote equals last log id, reuse noop_log_id, last_leader_log_id.len()==1");
@@ -264,21 +265,21 @@ mod tests {
             let vote = Vote::new(1, s(2)).into_committed();
             let leader = Leader::<UTConfig, _>::new(
                 vote,
-                vec![1, 2, 3],
+                vec![s(1), s(2), s(3)],
                 vec![],
-                LeaderLogIds::new_single(log_id(1, s(2), 3)),
+                LeaderLogIds::new_single(log_id(1, 3)),
             );
 
-            assert_eq!(leader.noop_log_id(), Some(&log_id(1, s(2), 3)));
-            assert_eq!(leader.last_log_id(), Some(&log_id(1, s(2), 3)));
+            assert_eq!(leader.noop_log_id(), Some(&log_id(1, 3)));
+            assert_eq!(leader.last_log_id(), Some(&log_id(1, 3)));
         }
 
         tracing::info!("--- no last log ids, create new noop_log_id, last_leader_log_id.len()==0");
         {
             let vote = Vote::new(1, s(2)).into_committed();
-            let leader = Leader::<UTConfig, _>::new(vote, vec![1, 2, 3], vec![], LeaderLogIds::new(None));
+            let leader = Leader::<UTConfig, _>::new(vote, vec![s(1), s(2), s(3)], vec![], LeaderLogIds::new(None));
 
-            assert_eq!(leader.noop_log_id(), Some(&log_id(1, s(2), 0)));
+            assert_eq!(leader.noop_log_id(), Some(&log_id(1, 0)));
             assert_eq!(leader.last_log_id(), None);
         }
     }
@@ -288,32 +289,32 @@ mod tests {
         let vote = Vote::new(2, s(2)).into_committed();
         let mut leader = Leader::<UTConfig, _>::new(
             vote,
-            vec![1, 2, 3],
+            vec![s(1), s(2), s(3)],
             vec![],
-            LeaderLogIds::new_single(log_id(1, s(2), 3)),
+            LeaderLogIds::new_single(log_id(1, 3)),
         );
 
-        let mut entries = vec![Entry::<UTConfig>::new_blank(log_id(5, s(5), 2))];
+        let mut entries = vec![Entry::<UTConfig>::new_blank(log_id(5, 2))];
         leader.assign_log_ids(&mut entries);
 
         assert_eq!(
             entries[0].get_log_id(),
-            &log_id(2, s(2), 4),
+            &log_id(2, 4),
             "entry log id assigned following last-log-id"
         );
-        assert_eq!(Some(log_id(2, s(2), 4)), leader.last_log_id);
+        assert_eq!(Some(log_id(2, 4)), leader.last_log_id);
     }
 
     #[test]
     fn test_1_entry_none_last_log_id() {
         let vote = Vote::new(0, s(0)).into_committed();
-        let mut leading = Leader::<UTConfig, _>::new(vote, vec![1, 2, 3], vec![], LeaderLogIds::new(None));
+        let mut leading = Leader::<UTConfig, _>::new(vote, vec![s(1), s(2), s(3)], vec![], LeaderLogIds::new(None));
 
         let mut entries: Vec<Entry<UTConfig>> = vec![blank_ent(1, 1)];
         leading.assign_log_ids(&mut entries);
 
-        assert_eq!(entries[0].get_log_id(), &log_id(0, s(0), 0),);
-        assert_eq!(Some(log_id(0, s(0), 0)), leading.last_log_id);
+        assert_eq!(entries[0].get_log_id(), &log_id(0, 0),);
+        assert_eq!(Some(log_id(0, 0)), leading.last_log_id);
     }
 
     #[test]
@@ -321,83 +322,83 @@ mod tests {
         let vote = Vote::new(2, s(2)).into_committed();
         let mut leading = Leader::<UTConfig, _>::new(
             vote,
-            vec![1, 2, 3],
+            vec![s(1), s(2), s(3)],
             vec![],
-            LeaderLogIds::new_single(log_id(1, s(1), 8)),
+            LeaderLogIds::new_single(log_id(1, 8)),
         );
 
         let mut entries: Vec<Entry<UTConfig>> = vec![];
         leading.assign_log_ids(&mut entries);
-        assert_eq!(Some(log_id(1, s(1), 8)), leading.last_log_id);
+        assert_eq!(Some(log_id(1, 8)), leading.last_log_id);
     }
 
     #[test]
     fn test_multiple_entries() {
         let vote = Vote::new(2, s(2)).into_committed();
         let mut leading =
-            Leader::<UTConfig, _>::new(vote, vec![1, 2, 3], [], LeaderLogIds::new_single(log_id(1, s(1), 8)));
+            Leader::<UTConfig, _>::new(vote, vec![s(1), s(2), s(3)], [], LeaderLogIds::new_single(log_id(1, 8)));
 
         let mut entries: Vec<Entry<UTConfig>> = vec![blank_ent(1, 1), blank_ent(1, 1), blank_ent(1, 1)];
 
         leading.assign_log_ids(&mut entries);
-        assert_eq!(entries[0].get_log_id(), &log_id(2, s(2), 9));
-        assert_eq!(entries[1].get_log_id(), &log_id(2, 2, 10));
-        assert_eq!(entries[2].get_log_id(), &log_id(2, 2, 11));
-        assert_eq!(Some(log_id(2, 2, 11)), leading.last_log_id);
+        assert_eq!(entries[0].get_log_id(), &log_id(2, 9));
+        assert_eq!(entries[1].get_log_id(), &log_id(2, 10));
+        assert_eq!(entries[2].get_log_id(), &log_id(2, 11));
+        assert_eq!(Some(log_id(2, 11)), leading.last_log_id);
     }
 
     #[test]
     fn test_leading_last_quorum_acked_time_leader_is_voter() {
-        let mut leading = Leader::<UTConfig, Vec<u64>>::new(
+        let mut leading = Leader::<UTConfig, Vec<NID>>::new(
             Vote::new(2, s(1)).into_committed(),
-            vec![1, 2, 3],
-            [4],
+            vec![s(1), s(2), s(3)],
+            [s(4)],
             LeaderLogIds::new(None),
         );
 
         let now1 = UTConfig::<()>::now();
 
-        let _t2 = leading.clock_progress.increase_to(&2, Some(now1));
+        let _t2 = leading.clock_progress.increase_to(&s(2), Some(now1));
         let t1 = leading.last_quorum_acked_time();
         assert_eq!(Some(now1), t1, "n1(leader) and n2 acked, t1 > t2");
     }
 
     #[test]
     fn test_leading_last_quorum_acked_time_leader_is_learner() {
-        let mut leading = Leader::<UTConfig, Vec<u64>>::new(
+        let mut leading = Leader::<UTConfig, Vec<_>>::new(
             Vote::new(2, s(4)).into_committed(),
-            vec![1, 2, 3],
-            [4],
+            vec![s(1), s(2), s(3)],
+            [s(4)],
             LeaderLogIds::new(None),
         );
 
         let t2 = UTConfig::<()>::now();
-        let _ = leading.clock_progress.increase_to(&2, Some(t2));
+        let _ = leading.clock_progress.increase_to(&s(2), Some(t2));
         let t = leading.last_quorum_acked_time();
         assert!(t.is_none(), "n1(leader+learner) does not count in quorum");
 
         let t3 = UTConfig::<()>::now();
-        let _ = leading.clock_progress.increase_to(&3, Some(t3));
+        let _ = leading.clock_progress.increase_to(&s(3), Some(t3));
         let t = leading.last_quorum_acked_time();
         assert_eq!(Some(t2), t, "n2 and n3 acked");
     }
 
     #[test]
     fn test_leading_last_quorum_acked_time_leader_is_not_member() {
-        let mut leading = Leader::<UTConfig, Vec<u64>>::new(
+        let mut leading = Leader::<UTConfig, Vec<_>>::new(
             Vote::new(2, s(5)).into_committed(),
-            vec![1, 2, 3],
-            [4],
+            vec![s(1), s(2), s(3)],
+            [s(4)],
             LeaderLogIds::new(None),
         );
 
         let t2 = UTConfig::<()>::now();
-        let _ = leading.clock_progress.increase_to(&2, Some(t2));
+        let _ = leading.clock_progress.increase_to(&s(2), Some(t2));
         let t = leading.last_quorum_acked_time();
         assert!(t.is_none(), "n1(leader+learner) does not count in quorum");
 
         let t3 = UTConfig::<()>::now();
-        let _ = leading.clock_progress.increase_to(&3, Some(t3));
+        let _ = leading.clock_progress.increase_to(&s(3), Some(t3));
         let t = leading.last_quorum_acked_time();
         assert_eq!(Some(t2), t, "n2 and n3 acked");
     }

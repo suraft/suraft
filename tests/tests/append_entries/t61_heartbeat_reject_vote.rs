@@ -11,6 +11,7 @@ use suraft::TokioInstant;
 use suraft::Vote;
 use tokio::time::sleep;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -32,14 +33,14 @@ async fn heartbeat_reject_vote() -> Result<()> {
     let now = TokioInstant::now();
     sleep(Duration::from_millis(1)).await;
 
-    let log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {3}).await?;
+    let log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {s(3)}).await?;
 
     let vote_modified_time = Arc::new(Mutex::new(Some(TokioInstant::now())));
     tracing::info!(log_index, "--- leader lease is set by heartbeat");
     {
         let m = vote_modified_time.clone();
 
-        router.external_request(1, move |state| {
+        router.external_request(s(1), move |state| {
             let mut l = m.lock().unwrap();
             *l = state.vote_last_modified();
             assert!(state.vote_last_modified() > Some(now));
@@ -50,7 +51,7 @@ async fn heartbeat_reject_vote() -> Result<()> {
 
         let m = vote_modified_time.clone();
 
-        router.external_request(1, move |state| {
+        router.external_request(s(1), move |state| {
             let l = m.lock().unwrap();
             assert!(state.vote_last_modified() > Some(now));
             assert!(state.vote_last_modified() > *l);
@@ -62,7 +63,7 @@ async fn heartbeat_reject_vote() -> Result<()> {
 
     tracing::info!(log_index, "--- leader lease rejects vote request");
     {
-        let res = node1.vote(VoteRequest::new(Vote::new(10, s(2)), Some(log_id(10, 1, 10)))).await?;
+        let res = node1.vote(VoteRequest::new(Vote::new(10, s(2)), Some(log_id(10, 10)))).await?;
         assert!(!res.is_granted_to(&Vote::new(10, s(2))), "vote is rejected");
     }
 
@@ -70,7 +71,7 @@ async fn heartbeat_reject_vote() -> Result<()> {
     {
         // TODO: this part can be removed when blank-log heartbeat is removed.
         sleep(Duration::from_millis(1500)).await;
-        router.wait(&1, timeout()).applied_index(Some(log_index), "no log is written").await?;
+        router.wait(&s(1), timeout()).applied_index(Some(log_index), "no log is written").await?;
     }
 
     tracing::info!(log_index, "--- disable heartbeat, vote request will be granted");
@@ -78,9 +79,9 @@ async fn heartbeat_reject_vote() -> Result<()> {
         node0.runtime_config().heartbeat(false);
         sleep(Duration::from_millis(1500)).await;
 
-        router.wait(&1, timeout()).applied_index(Some(log_index), "no log is written").await?;
+        router.wait(&s(1), timeout()).applied_index(Some(log_index), "no log is written").await?;
 
-        let res = node1.vote(VoteRequest::new(Vote::new(10, s(2)), Some(log_id(10, 1, 10)))).await?;
+        let res = node1.vote(VoteRequest::new(Vote::new(10, s(2)), Some(log_id(10, 10)))).await?;
         assert!(
             res.is_granted_to(&Vote::new(10, s(2))),
             "vote is granted after leader lease expired"

@@ -6,6 +6,7 @@ use maplit::btreeset;
 use suraft::Config;
 use suraft::LogIdOptionExt;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -21,27 +22,34 @@ async fn stop_replication_to_removed_follower() -> Result<()> {
         .validate()?,
     );
     let mut router = RaftRouter::new(config.clone());
-    router.new_raft_node(0).await;
+    router.new_raft_node(s(0)).await;
 
     let mut log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {}).await?;
 
     tracing::info!(log_index, "--- add node 3,4");
 
-    router.new_raft_node(3).await;
-    router.new_raft_node(4).await;
+    router.new_raft_node(s(3)).await;
+    router.new_raft_node(s(4)).await;
 
-    router.add_learner(0, 3).await?;
-    router.add_learner(0, 4).await?;
+    router.add_learner(s(0), s(3)).await?;
+    router.add_learner(s(0), s(4)).await?;
     log_index += 2;
-    router.wait_for_log(&btreeset![0, 1, 2], Some(log_index), None, "cluster of 2 learners").await?;
+    router
+        .wait_for_log(
+            &btreeset! {s(0), s(1), s(2)},
+            Some(log_index),
+            None,
+            "cluster of 2 learners",
+        )
+        .await?;
 
     tracing::info!(log_index, "--- changing config to 0,3,4");
     {
         let node = router.get_raft_handle(&s(0))?;
-        node.change_membership([0, 3, 4], false).await?;
+        node.change_membership([s(0), s(3), s(4)], false).await?;
         log_index += 2;
 
-        for i in [0, 3, 4] {
+        for i in [s(0), s(3), s(4)] {
             router
                 .wait(&i, timeout())
                 .metrics(
@@ -52,7 +60,7 @@ async fn stop_replication_to_removed_follower() -> Result<()> {
         }
 
         let res1 = router
-            .wait(&1, timeout())
+            .wait(&s(1), timeout())
             .metrics(
                 |x| x.last_log_index >= Some(log_index - 1),
                 "removed node-1 recv at least 1 change-membership log",
@@ -60,7 +68,7 @@ async fn stop_replication_to_removed_follower() -> Result<()> {
             .await;
 
         let res2 = router
-            .wait(&2, timeout())
+            .wait(&s(2), timeout())
             .metrics(
                 |x| x.last_log_index >= Some(log_index - 1),
                 "removed node-2 recv at least 1 change-membership log",
@@ -82,7 +90,7 @@ async fn stop_replication_to_removed_follower() -> Result<()> {
         router.client_request_many(s(0), "after_change", n).await?;
         log_index += n as u64;
 
-        for i in &[0, 3, 4] {
+        for i in &[s(0), s(3), s(4)] {
             router
                 .wait(i, timeout())
                 .metrics(
@@ -93,7 +101,7 @@ async fn stop_replication_to_removed_follower() -> Result<()> {
         }
     }
 
-    for i in &[1, 2] {
+    for i in &[s(1), s(2)] {
         router
             .wait(i, timeout())
             .metrics(

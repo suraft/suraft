@@ -5,6 +5,7 @@ use maplit::btreemap;
 use suraft::ChangeMembers;
 use suraft::Config;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -22,10 +23,10 @@ async fn change_membership_on_uninitialized_node() -> Result<()> {
     );
 
     let mut router = RaftRouter::new(config.clone());
-    router.new_raft_node(0).await;
+    router.new_raft_node(s(0)).await;
 
     let n0 = router.get_raft_handle(&s(0))?;
-    let res = n0.change_membership(ChangeMembers::AddVoters(btreemap! {0=>()}), false).await;
+    let res = n0.change_membership(ChangeMembers::AddVoters(btreemap! {s(0)=>()}), false).await;
     tracing::info!("{:?}", res);
 
     let err = res.unwrap_err();

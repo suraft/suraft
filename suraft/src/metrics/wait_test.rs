@@ -32,13 +32,13 @@ async fn test_wait() -> anyhow::Result<()> {
         let h = tokio::spawn(async move {
             sleep(Duration::from_millis(10)).await;
             let mut update = init.clone();
-            update.current_leader = Some(3);
+            update.current_leader = Some(s(3));
             let rst = tx.send(update);
             assert!(rst.is_ok());
         });
-        let got = w.current_leader(3, "leader").await?;
+        let got = w.current_leader(s(3), "leader").await?;
         h.await?;
-        assert_eq!(Some(3), got.current_leader);
+        assert_eq!(Some(s(3)), got.current_leader);
     }
 
     {
@@ -95,16 +95,16 @@ async fn test_wait() -> anyhow::Result<()> {
             let mut update = init.clone();
             update.membership_config = Arc::new(StoredMembership::new(
                 None,
-                Membership::new(vec![btreeset! {s(1),s(2)}], btreemap! {3=>()}),
+                Membership::new(vec![btreeset! {s(1),s(2)}], btreemap! {s(3)=>()}),
             ));
             let rst = tx.send(update);
             assert!(rst.is_ok());
         });
-        let got = w.voter_ids([1, 2], "members").await?;
+        let got = w.voter_ids([s(1), s(2)], "members").await?;
         h.await?;
 
         assert_eq!(
-            btreeset![1, 2],
+            btreeset![s(1), s(2)],
             got.membership_config.membership().get_joint_config().first().unwrap().clone()
         );
     }
@@ -232,13 +232,13 @@ async fn test_wait_purged() -> anyhow::Result<()> {
     let h = tokio::spawn(async move {
         sleep(Duration::from_millis(10)).await;
         let mut update = init.clone();
-        update.purged = Some(log_id(1, s(2), 3));
+        update.purged = Some(log_id(1, 3));
         let rst = tx.send(update);
         assert!(rst.is_ok());
     });
-    let got = w.purged(Some(log_id(1, s(2), 3)), "purged").await?;
+    let got = w.purged(Some(log_id(1, 3)), "purged").await?;
     h.await?;
-    assert_eq!(Some(log_id(1, s(2), 3)), got.purged);
+    assert_eq!(Some(log_id(1, 3)), got.purged);
 
     Ok(())
 }

@@ -5,6 +5,7 @@ use maplit::btreeset;
 use suraft::Config;
 use suraft::ServerState;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::MemLogStore;
 use crate::fixtures::MemRaft;
@@ -40,7 +41,7 @@ async fn single_leader_restart_re_apply_logs() -> anyhow::Result<()> {
 
     tracing::info!(log_index, "--- stop and restart node-0");
     {
-        let (node, ls, sm): (MemRaft, MemLogStore, MemStateMachine) = router.remove_node(0).unwrap();
+        let (node, ls, sm): (MemRaft, MemLogStore, MemStateMachine) = router.remove_node(s(0)).unwrap();
         node.shutdown().await?;
 
         // Clear state machine, logs should be re-applied upon restart, because it is a leader.
@@ -48,13 +49,13 @@ async fn single_leader_restart_re_apply_logs() -> anyhow::Result<()> {
 
         tracing::info!(log_index, "--- restart node-0");
 
-        router.new_raft_node_with_sto(0, ls, sm).await;
-        router.wait(&0, timeout()).state(ServerState::Leader, "become leader upon restart").await?;
+        router.new_raft_node_with_sto(s(0), ls, sm).await;
+        router.wait(&s(0), timeout()).state(ServerState::Leader, "become leader upon restart").await?;
     }
 
     tracing::info!(log_index, "--- a single leader should re-apply all logs");
     {
-        router.wait(&0, timeout()).applied_index(Some(log_index), "node-0 works").await?;
+        router.wait(&s(0), timeout()).applied_index(Some(log_index), "node-0 works").await?;
     }
 
     Ok(())

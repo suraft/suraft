@@ -28,23 +28,23 @@ async fn total_order_apply() -> Result<()> {
 
     let mut router = RaftRouter::new(config.clone());
 
-    router.new_raft_node(0).await;
-    router.new_raft_node(1).await;
+    router.new_raft_node(s(0)).await;
+    router.new_raft_node(s(1)).await;
 
     tracing::info!("--- initializing single node cluster");
     {
         let n0 = router.get_raft_handle(&s(0))?;
         n0.initialize(btreeset! {s(0)}).await?;
 
-        router.wait(&0, timeout()).state(ServerState::Leader, "n0 -> leader").await?;
+        router.wait(&s(0), timeout()).state(ServerState::Leader, "n0 -> leader").await?;
     }
 
     tracing::info!("--- add one learner");
-    router.add_learner(0, 1).await?;
+    router.add_learner(s(0), s(1)).await?;
 
     let (tx, rx) = watch::channel(false);
 
-    let (_sto1, mut sm1) = router.get_storage_handle(&1)?;
+    let (_sto1, mut sm1) = router.get_storage_handle(&s(1))?;
 
     let mut prev = None;
     let h = tokio::spawn(async move {
@@ -72,7 +72,7 @@ async fn total_order_apply() -> Result<()> {
     let want = n as u64;
     router
         .wait_for_metrics(
-            &1u64,
+            &s(1),
             |x| x.last_applied.index() >= Some(want),
             timeout(),
             &format!("n{}.last_applied -> {}", 1, want),

@@ -9,7 +9,6 @@ use suraft::network::RaftNetworkFactory;
 use suraft::raft::AppendEntriesRequest;
 use suraft::storage::StorageHelper;
 use suraft::testing::blank_ent;
-use suraft::CommittedLeaderId;
 use suraft::Config;
 use suraft::EffectiveMembership;
 use suraft::Entry;
@@ -19,6 +18,7 @@ use suraft::Membership;
 use suraft::SnapshotPolicy;
 use suraft::Vote;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -55,19 +55,19 @@ async fn snapshot_overrides_membership() -> Result<()> {
 
         router
             .wait_for_log(
-                &btreeset![0],
+                &btreeset! {s(0)},
                 Some(log_index),
                 timeout(),
                 "send log to trigger snapshot",
             )
             .await?;
 
-        router.wait_for_snapshot(&btreeset![0], LogId::new(1, log_index), timeout(), "snapshot").await?;
+        router.wait_for_snapshot(&btreeset! {s(0)}, LogId::new(1, log_index), timeout(), "snapshot").await?;
         router
             .assert_storage_state(
                 1,
                 log_index,
-                Some(0),
+                Some(s(0)),
                 LogId::new(1, log_index),
                 Some((log_index.into(), 1)),
             )
@@ -77,8 +77,8 @@ async fn snapshot_overrides_membership() -> Result<()> {
     tracing::info!(log_index, "--- create learner");
     {
         tracing::info!(log_index, "--- create learner");
-        router.new_raft_node(1).await;
-        let (mut sto, mut sm) = router.get_storage_handle(&1)?;
+        router.new_raft_node(s(1)).await;
+        let (mut sto, mut sm) = router.get_storage_handle(&s(1))?;
 
         tracing::info!(log_index, "--- add a membership config log to the learner");
         {
@@ -93,7 +93,7 @@ async fn snapshot_overrides_membership() -> Result<()> {
             };
             let option = RPCOption::new(Duration::from_millis(1_000));
 
-            router.new_client(1, &()).await.append_entries(req, option).await?;
+            router.new_client(s(1), &()).await.append_entries(req, option).await?;
 
             tracing::info!(log_index, "--- check that learner membership is affected");
             {
@@ -114,13 +114,13 @@ async fn snapshot_overrides_membership() -> Result<()> {
         {
             let snapshot_index = log_index;
 
-            router.add_learner(0, 1).await.expect("failed to add new node as learner");
+            router.add_learner(s(0), s(1)).await.expect("failed to add new node as learner");
             log_index += 1;
 
             tracing::info!(log_index, "--- DONE add learner");
 
-            router.wait_for_log(&btreeset![0, 1], Some(log_index), timeout(), "add learner").await?;
-            router.wait_for_snapshot(&btreeset![1], LogId::new(1, snapshot_index), timeout(), "").await?;
+            router.wait_for_log(&btreeset! {s(0), s(1)}, Some(log_index), timeout(), "add learner").await?;
+            router.wait_for_snapshot(&btreeset! {s(1)}, LogId::new(1, snapshot_index), timeout(), "").await?;
 
             let expected_snap = Some((snapshot_index.into(), 1));
 

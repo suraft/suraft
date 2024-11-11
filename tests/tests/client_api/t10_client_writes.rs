@@ -4,7 +4,6 @@ use anyhow::Result;
 use futures::prelude::*;
 use maplit::btreeset;
 use suraft::raft::ClientWriteResponse;
-use suraft::CommittedLeaderId;
 use suraft::Config;
 use suraft::LogId;
 use suraft::SnapshotPolicy;
@@ -42,22 +41,22 @@ async fn client_writes() -> Result<()> {
     // Write a bunch of data and assert that the cluster stayes stable.
     let leader = router.leader().expect("leader not found");
     let mut clients = futures::stream::FuturesUnordered::new();
-    clients.push(router.client_request_many(leader, "0", 100));
-    clients.push(router.client_request_many(leader, "1", 100));
-    clients.push(router.client_request_many(leader, "2", 100));
-    clients.push(router.client_request_many(leader, "3", 100));
-    clients.push(router.client_request_many(leader, "4", 100));
-    clients.push(router.client_request_many(leader, "5", 100));
+    clients.push(router.client_request_many(leader.clone(), "0", 100));
+    clients.push(router.client_request_many(leader.clone(), "1", 100));
+    clients.push(router.client_request_many(leader.clone(), "2", 100));
+    clients.push(router.client_request_many(leader.clone(), "3", 100));
+    clients.push(router.client_request_many(leader.clone(), "4", 100));
+    clients.push(router.client_request_many(leader.clone(), "5", 100));
     while clients.next().await.is_some() {}
 
     log_index += 100 * 6;
-    router.wait_for_log(&btreeset![0, 1, 2], Some(log_index), None, "sync logs").await?;
+    router.wait_for_log(&btreeset! {s(0), s(1), s(2)}, Some(log_index), None, "sync logs").await?;
 
     router
         .assert_storage_state(
             1,
             log_index,
-            Some(0),
+            Some(s(0)),
             LogId::new(1, log_index),
             Some(((499..600).into(), 1)),
         )

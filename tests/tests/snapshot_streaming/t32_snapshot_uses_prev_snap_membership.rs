@@ -3,7 +3,6 @@ use std::time::Duration;
 
 use anyhow::Result;
 use maplit::btreeset;
-use suraft::CommittedLeaderId;
 use suraft::Config;
 use suraft::LogId;
 use suraft::Membership;
@@ -11,6 +10,7 @@ use suraft::RaftLogReader;
 use suraft::SnapshotPolicy;
 use suraft::StorageHelper;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -48,7 +48,7 @@ async fn snapshot_uses_prev_snap_membership() -> Result<()> {
 
     let mut log_index = router.new_cluster(btreeset! {s(0),s(1)}, btreeset! {}).await?;
 
-    let (mut sto0, mut sm0) = router.get_storage_handle(&0)?;
+    let (mut sto0, mut sm0) = router.get_storage_handle(&s(0))?;
 
     tracing::info!(log_index, "--- send just enough logs to trigger snapshot");
     {
@@ -57,13 +57,15 @@ async fn snapshot_uses_prev_snap_membership() -> Result<()> {
 
         router
             .wait_for_log(
-                &btreeset![0, 1],
+                &btreeset! {s(0), s(1)},
                 Some(log_index),
                 timeout(),
                 "send log to trigger snapshot",
             )
             .await?;
-        router.wait_for_snapshot(&btreeset![0], LogId::new(1, log_index), timeout(), "1st snapshot").await?;
+        router
+            .wait_for_snapshot(&btreeset! {s(0)}, LogId::new(1, log_index), timeout(), "1st snapshot")
+            .await?;
 
         {
             let logs = sto0.try_get_log_entries(..).await?;
@@ -88,8 +90,15 @@ async fn snapshot_uses_prev_snap_membership() -> Result<()> {
         router.client_request_many(s(0), "0", (snapshot_threshold * 2 - 1 - log_index) as usize).await?;
         log_index = snapshot_threshold * 2 - 1;
 
-        router.wait_for_log(&btreeset![0, 1], Some(log_index), None, "send log to trigger snapshot").await?;
-        router.wait_for_snapshot(&btreeset![0], LogId::new(1, log_index), None, "2nd snapshot").await?;
+        router
+            .wait_for_log(
+                &btreeset! {s(0), s(1)},
+                Some(log_index),
+                None,
+                "send log to trigger snapshot",
+            )
+            .await?;
+        router.wait_for_snapshot(&btreeset! {s(0)}, LogId::new(1, log_index), None, "2nd snapshot").await?;
     }
 
     tracing::info!(log_index, "--- check membership");

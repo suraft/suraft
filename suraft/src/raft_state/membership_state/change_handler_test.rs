@@ -17,7 +17,7 @@ use crate::MembershipState;
 
 /// Create an Arc<EffectiveMembership>
 fn effmem(term: u64, index: u64, m: Membership<UTConfig>) -> Arc<EffectiveMembership<UTConfig>> {
-    let lid = Some(log_id(term, 1, index));
+    let lid = Some(log_id(term, index));
     Arc::new(EffectiveMembership::new(lid, m))
 }
 
@@ -40,8 +40,8 @@ fn test_apply_not_committed() -> anyhow::Result<()> {
 
     assert_eq!(
         Err(ChangeMembershipError::InProgress(InProgress {
-            committed: Some(log_id(2, s(1), 2)),
-            membership_log_id: Some(log_id(3, s(1), 4))
+            committed: Some(log_id(2, 2)),
+            membership_log_id: Some(log_id(3, 4))
         })),
         res
     );
@@ -62,10 +62,12 @@ fn test_apply_empty_voters() -> anyhow::Result<()> {
 #[test]
 fn test_apply_learner_not_found() -> anyhow::Result<()> {
     let new = || MembershipState::<UTConfig>::new(effmem(3, 4, m1()), effmem(3, 4, m1()));
-    let res = new().change_handler().apply(ChangeMembers::AddVoterIds(btreeset! {2}), false);
+    let res = new().change_handler().apply(ChangeMembers::AddVoterIds(btreeset! {s(2)}), false);
 
     assert_eq!(
-        Err(ChangeMembershipError::LearnerNotFound(LearnerNotFound { node_id: 2 })),
+        Err(ChangeMembershipError::LearnerNotFound(LearnerNotFound {
+            node_id: s(2)
+        })),
         res
     );
 
@@ -81,7 +83,7 @@ fn test_apply_retain_learner() -> anyhow::Result<()> {
     assert_eq!(
         Ok(Membership::new(
             vec![btreeset! {s(3), s(4), s(5)}],
-            btreemap! {3=>(),4=>(),5=>()}
+            btreemap! {s(3)=>(),s(4)=>(),s(5)=>()}
         )),
         res
     );
@@ -91,7 +93,7 @@ fn test_apply_retain_learner() -> anyhow::Result<()> {
     assert_eq!(
         Ok(Membership::new(
             vec![btreeset! {s(3), s(4), s(5)}],
-            btreemap! {1=>(),2=>(),3=>(),4=>(),5=>()}
+            btreemap! {s(1)=>(),s(2)=>(),s(3)=>(),s(4)=>(),s(5)=>()}
         )),
         res
     );

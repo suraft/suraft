@@ -37,7 +37,7 @@ async fn append_entries_with_bigger_term() -> Result<()> {
     let log_index = router.new_cluster(btreeset! {s(0)}, btreeset! {s(1)}).await?;
 
     // before append entries, check hard state in term 1 and vote for node 0
-    router.assert_storage_state(1, log_index, Some(0), LogId::new(1, log_index), None).await?;
+    router.assert_storage_state(1, log_index, Some(s(0)), LogId::new(1, log_index), None).await?;
 
     // append entries with term 2 and leader_id, this MUST cause hard state changed in node 0
     let req = AppendEntriesRequest::<suraft_memstore::TypeConfig> {
@@ -53,16 +53,16 @@ async fn append_entries_with_bigger_term() -> Result<()> {
     assert!(resp.is_success());
 
     // after append entries, check hard state in term 2 and vote for node 1
-    let (mut store, mut sm) = router.get_storage_handle(&0)?;
+    let (mut store, mut sm) = router.get_storage_handle(&s(0))?;
 
     router
         .assert_storage_state_with_sto(
             &mut store,
             &mut sm,
-            &0,
+            &s(0),
             2,
             log_index,
-            Some(1),
+            Some(s(1)),
             LogId::new(1, log_index),
             &None,
         )

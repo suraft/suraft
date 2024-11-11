@@ -14,6 +14,7 @@ use suraft::LogId;
 use suraft::ServerState;
 use tokio::time::sleep;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -28,8 +29,8 @@ use crate::fixtures::RaftRouter;
 #[tracing::instrument]
 #[test_harness::test(harness = ut_harness)]
 async fn leader_metrics() -> Result<()> {
-    let c01234 = btreeset![0, 1, 2, 3, 4];
-    let c0123 = btreeset![0, 1, 2, 3];
+    let c01234 = btreeset! {s(0), s(1), s(2), s(3), s(4)};
+    let c0123 = btreeset![s(0), s(1), s(2), s(3)];
 
     // Setup test dependencies.
     let config = Arc::new(
@@ -47,11 +48,11 @@ async fn leader_metrics() -> Result<()> {
 
     router
         .wait_for_metrics(
-            &0,
+            &s(0),
             |x| {
                 if let Some(ref q) = x.replication {
                     q == &btreemap! {
-                        0u64 => Some(log_id(1,0,1)),
+                        s(0) => Some(log_id(1,1)),
                     }
                 } else {
                     false
@@ -63,17 +64,17 @@ async fn leader_metrics() -> Result<()> {
         .await?;
 
     // Sync some new nodes.
-    router.new_raft_node(1).await;
-    router.new_raft_node(2).await;
-    router.new_raft_node(3).await;
-    router.new_raft_node(4).await;
+    router.new_raft_node(s(1)).await;
+    router.new_raft_node(s(2)).await;
+    router.new_raft_node(s(3)).await;
+    router.new_raft_node(s(4)).await;
 
     tracing::info!(log_index, "--- adding 4 new nodes to cluster");
     {
-        router.add_learner(0, 1).await?;
-        router.add_learner(0, 2).await?;
-        router.add_learner(0, 3).await?;
-        router.add_learner(0, 4).await?;
+        router.add_learner(s(0), s(1)).await?;
+        router.add_learner(s(0), s(2)).await?;
+        router.add_learner(s(0), s(3)).await?;
+        router.add_learner(s(0), s(4)).await?;
     }
     log_index += 4; // 4 add_learner log
     router.wait_for_log(&c01234, Some(log_index), timeout(), "add learner 1,2,3,4").await?;
@@ -87,10 +88,11 @@ async fn leader_metrics() -> Result<()> {
     router.wait_for_log(&c01234, Some(log_index), timeout(), "change members to 0,1,2,3,4").await?;
 
     let ww = Some(LogId::new(1, log_index));
-    let want_repl = btreemap! { 0u64=>ww, 1u64=>ww, 2=>ww, 3=>ww, 4=>ww, };
+    let want_repl =
+        btreemap! { s(0)=>ww.clone(), s(1)=>ww.clone(), s(2)=>ww.clone(), s(3)=>ww.clone(), s(4)=>ww.clone(), };
     router
         .wait_for_metrics(
-            &0,
+            &s(0),
             |x| {
                 if let Some(ref q) = x.replication {
                     q == &want_repl
@@ -129,10 +131,10 @@ async fn leader_metrics() -> Result<()> {
     );
     {
         let ww = Some(LogId::new(1, log_index));
-        let want_repl = btreemap! { 0=>ww, 1=>ww, 2=>ww, 3=>ww};
+        let want_repl = btreemap! { s(0)=>ww.clone(), s(1)=>ww.clone(), s(2)=>ww.clone(), s(3)=>ww.clone()};
         router
             .wait_for_metrics(
-                &0,
+                &s(0),
                 |x| {
                     if let Some(ref q) = x.replication {
                         q == &want_repl
@@ -160,7 +162,7 @@ async fn leader_metrics() -> Result<()> {
 
         n0.wait(timeout()).metrics(|x| x.replication.is_none(), "node-0 stopped replication").await?;
         n0.wait(timeout())
-            .metrics(|x| x.current_leader == Some(1), "node-0 receives leader-1 message")
+            .metrics(|x| x.current_leader == Some(s(1)), "node-0 receives leader-1 message")
             .await?;
     }
 

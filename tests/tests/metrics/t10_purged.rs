@@ -7,6 +7,7 @@ use suraft::storage::RaftLogStorage;
 use suraft::testing::log_id;
 use suraft::Config;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -48,7 +49,7 @@ async fn metrics_purged() -> Result<()> {
             .await?;
 
         tracing::info!(log_index, "--- check storage at once to ensure purged log is removed");
-        let (mut sto0, _sm0) = router.get_storage_handle(&0)?;
+        let (mut sto0, _sm0) = router.get_storage_handle(&s(0))?;
         let state = sto0.get_log_state().await?;
         assert_eq!(state.last_purged_log_id, Some(log_id(1, log_index)));
     }

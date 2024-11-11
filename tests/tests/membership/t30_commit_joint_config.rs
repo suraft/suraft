@@ -7,6 +7,7 @@ use suraft::Config;
 use suraft::LogIdOptionExt;
 use tracing::Instrument;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -30,36 +31,36 @@ async fn commit_joint_config_during_0_to_012() -> Result<()> {
     );
 
     let mut router = RaftRouter::new(config.clone());
-    router.new_raft_node(0).await;
+    router.new_raft_node(s(0)).await;
 
     // Initialize the cluster, then assert that a stable cluster was formed & held.
     tracing::info!("--- initializing cluster");
-    router.initialize(0).await?;
+    router.initialize(s(0)).await?;
     // Assert all nodes are in learner state & have no entries.
     let mut log_index = 1;
 
-    router.wait_for_log(&btreeset![0], Some(log_index), timeout(), "init node 0").await?;
+    router.wait_for_log(&btreeset! {s(0)}, Some(log_index), timeout(), "init node 0").await?;
 
     // Sync some new nodes.
-    router.new_raft_node(1).await;
-    router.new_raft_node(2).await;
+    router.new_raft_node(s(1)).await;
+    router.new_raft_node(s(2)).await;
 
     tracing::info!(log_index, "--- adding new nodes 1,2 to cluster");
     {
-        router.add_learner(0, 1).await?;
-        router.add_learner(0, 2).await?;
+        router.add_learner(s(0), s(1)).await?;
+        router.add_learner(s(0), s(2)).await?;
     }
     log_index += 2;
 
-    router.wait_for_log(&btreeset![0], Some(log_index), timeout(), "init node 0").await?;
+    router.wait_for_log(&btreeset! {s(0)}, Some(log_index), timeout(), "init node 0").await?;
 
     tracing::info!(
         log_index,
         "--- isolate node 1,2, so that membership [0,1,2] wont commit"
     );
 
-    router.set_network_error(1, true);
-    router.set_network_error(2, true);
+    router.set_network_error(s(1), true);
+    router.set_network_error(s(2), true);
 
     tracing::info!(log_index, "--- changing cluster config, should timeout");
 
@@ -67,14 +68,14 @@ async fn commit_joint_config_during_0_to_012() -> Result<()> {
         let router = router.clone();
         async move {
             let node = router.get_raft_handle(&s(0)).unwrap();
-            let _x = node.change_membership([0, 1, 2], false).await;
+            let _x = node.change_membership([s(0), s(1), s(2)], false).await;
         }
         .instrument(tracing::debug_span!("spawn-change-membership"))
     });
 
     let res = router
         .wait_for_metrics(
-            &0,
+            &s(0),
             |x| x.last_applied.index() > Some(log_index),
             timeout(),
             "the next joint log should not commit",
@@ -104,21 +105,23 @@ async fn commit_joint_config_during_012_to_234() -> Result<()> {
         .validate()?,
     );
     let mut router = RaftRouter::new(config.clone());
-    router.new_raft_node(0).await;
+    router.new_raft_node(s(0)).await;
 
-    let mut log_index = router.new_cluster(btreeset! {0,1,2,3,4}, btreeset! {}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0), s(1), s(2), s(3), s(4)}, btreeset! {}).await?;
 
     tracing::info!(log_index, "--- isolate 3,4");
 
-    router.set_network_error(3, true);
-    router.set_network_error(4, true);
+    router.set_network_error(s(3), true);
+    router.set_network_error(s(4), true);
 
     tracing::info!(log_index, "--- changing config to 0,1,2");
     let node = router.get_raft_handle(&s(0))?;
-    node.change_membership([0, 1, 2], false).await?;
+    node.change_membership([s(0), s(1), s(2)], false).await?;
     log_index += 2;
 
-    router.wait_for_log(&btreeset![0, 1, 2], Some(log_index), None, "cluster of 0,1,2").await?;
+    router
+        .wait_for_log(&btreeset! {s(0), s(1), s(2)}, Some(log_index), None, "cluster of 0,1,2")
+        .await?;
 
     tracing::info!(log_index, "--- changing config to 2,3,4");
     {
@@ -127,7 +130,7 @@ async fn commit_joint_config_during_012_to_234() -> Result<()> {
         tokio::spawn(
             async move {
                 let node = router.get_raft_handle(&s(0))?;
-                node.change_membership([2, 3, 4], false).await?;
+                node.change_membership([s(2), s(3), s(4)], false).await?;
                 Ok::<(), anyhow::Error>(())
             }
             .instrument(tracing::debug_span!("spawn-change-membership")),
@@ -135,7 +138,7 @@ async fn commit_joint_config_during_012_to_234() -> Result<()> {
     }
     log_index += 2;
 
-    let wait_rst = router.wait_for_log(&btreeset![0], Some(log_index), timeout(), "cluster of joint").await;
+    let wait_rst = router.wait_for_log(&btreeset! {s(0)}, Some(log_index), timeout(), "cluster of joint").await;
 
     // the first step of joint should not pass because the new config can not constitute a quorum
     assert!(wait_rst.is_err());

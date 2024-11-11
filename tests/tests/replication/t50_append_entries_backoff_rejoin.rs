@@ -37,9 +37,9 @@ async fn append_entries_backoff_rejoin() -> Result<()> {
     let n = 10;
 
     tracing::info!(log_index, "--- set node 0 to unreachable and remove it");
-    router.set_unreachable(0, true);
+    router.set_unreachable(s(0), true);
 
-    let (_, ls0, sm0) = router.remove_node(0).unwrap();
+    let (_, ls0, sm0) = router.remove_node(s(0)).unwrap();
     let n1 = router.get_raft_handle(&s(1))?;
 
     tracing::info!(log_index, "--- elect node-1");
@@ -53,7 +53,7 @@ async fn append_entries_backoff_rejoin() -> Result<()> {
 
     tracing::info!(log_index, "--- write {} entries to node-1", n);
     {
-        log_index += router.client_request_many(1, "1", n as usize).await?;
+        log_index += router.client_request_many(s(1), "1", n as usize).await?;
         n1.wait(timeout())
             .applied_index_at_least(Some(log_index), format!("node-1 commit {} writes", n))
             .await?;
@@ -61,11 +61,11 @@ async fn append_entries_backoff_rejoin() -> Result<()> {
 
     tracing::info!(log_index, "--- restart node-0, check replication");
     {
-        router.new_raft_node_with_sto(0, ls0, sm0).await;
-        router.set_unreachable(0, false);
+        router.new_raft_node_with_sto(s(0), ls0, sm0).await;
+        router.set_unreachable(s(0), false);
 
         router
-            .wait(&0, timeout())
+            .wait(&s(0), timeout())
             .applied_index_at_least(Some(log_index), format!("node-0 commit {} writes", n))
             .await?;
     }

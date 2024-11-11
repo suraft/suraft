@@ -11,6 +11,7 @@ use suraft::testing::log_id;
 use suraft::Config;
 use suraft::Vote;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -34,12 +35,12 @@ async fn install_snapshot_lower_vote() -> Result<()> {
     tracing::info!(log_index, "--- initializing cluster");
     log_index = router.new_cluster(btreeset! {s(0)}, btreeset! {}).await?;
 
-    let (n0, _, _) = router.remove_node(0).unwrap();
+    let (n0, _, _) = router.remove_node(s(0)).unwrap();
     let make_req = || InstallSnapshotRequest {
         vote: Vote::new_committed(2, s(1)),
         meta: SnapshotMeta {
             snapshot_id: "ss1".into(),
-            last_log_id: Some(log_id(1, s(0), 0)),
+            last_log_id: Some(log_id(1, 0)),
             last_membership: Default::default(),
         },
         offset: 0,
@@ -57,7 +58,7 @@ async fn install_snapshot_lower_vote() -> Result<()> {
                 leader_commit: None,
             })
             .await;
-        let vote = n0.with_raft_state(|st| *st.vote_ref()).await?;
+        let vote = n0.with_raft_state(|st| st.vote_ref().clone()).await?;
         assert_eq!(Vote::new_committed(2, s(1)), vote);
     }
 

@@ -28,7 +28,7 @@ async fn shutdown() -> Result<()> {
     tracing::info!("--- performing node shutdowns");
     {
         for i in [s(0), s(1), s(2)] {
-            let (node, _, _) = router.remove_node(i).unwrap();
+            let (node, _, _) = router.remove_node(i.clone()).unwrap();
             node.shutdown().await?;
             let m = node.metrics();
             assert_eq!(ServerState::Shutdown, m.borrow().state, "shutdown node-{}", i);
@@ -58,7 +58,7 @@ async fn return_error_after_panic() -> Result<()> {
 
     tracing::info!(log_index, "--- panic the RaftCore");
     {
-        router.external_request(0, |_s| {
+        router.external_request(s(0), |_s| {
             panic!("foo");
         });
     }
@@ -68,7 +68,7 @@ async fn return_error_after_panic() -> Result<()> {
         "--- calls the panicked raft should get a Fatal::Panicked error"
     );
     {
-        let res = router.client_request(0, "foo", 2).await;
+        let res = router.client_request(s(0), "foo", 2).await;
         let err = res.unwrap_err();
         assert_eq!(Fatal::Panicked, err.into_fatal().unwrap());
     }
@@ -105,7 +105,7 @@ async fn return_error_after_shutdown() -> Result<()> {
         "--- calls the panicked raft should get a Fatal::Panicked error"
     );
     {
-        let res = router.client_request(0, "foo", 2).await;
+        let res = router.client_request(s(0), "foo", 2).await;
         let err = res.unwrap_err();
         assert_eq!(Fatal::Stopped, err.into_fatal().unwrap());
     }

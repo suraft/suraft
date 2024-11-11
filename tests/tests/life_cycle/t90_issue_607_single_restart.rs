@@ -4,6 +4,7 @@ use std::time::Duration;
 use maplit::btreeset;
 use suraft::Config;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -36,12 +37,12 @@ async fn single_restart() -> anyhow::Result<()> {
 
     tracing::info!(log_index, "--- stop and restart node 0");
     {
-        let (node, sto, sm) = router.remove_node(0).unwrap();
+        let (node, sto, sm) = router.remove_node(s(0)).unwrap();
         node.shutdown().await?;
 
         tracing::info!(log_index, "--- restart node 0");
 
-        router.new_raft_node_with_sto(0, sto, sm).await;
+        router.new_raft_node_with_sto(s(0), sto, sm).await;
     }
 
     tracing::info!(log_index, "--- write to 1 log after restart");
@@ -49,7 +50,7 @@ async fn single_restart() -> anyhow::Result<()> {
         router.client_request_many(s(0), "foo", 1).await?;
         log_index += 1;
 
-        router.wait(&0, timeout()).applied_index(Some(log_index), "node-0 works").await?;
+        router.wait(&s(0), timeout()).applied_index(Some(log_index), "node-0 works").await?;
     }
 
     Ok(())

@@ -37,12 +37,12 @@ async fn server_metrics_and_data_metrics() -> Result<()> {
     let mut server_metrics = node.server_metrics();
     let data_metrics = node.data_metrics();
 
-    let current_leader = router.current_leader(0).await;
+    let current_leader = router.current_leader(s(0)).await;
     let server_metrics_1 = {
         let sm = server_metrics.borrow_and_update();
         sm.clone()
     };
-    let leader = server_metrics_1.current_leader;
+    let leader = server_metrics_1.current_leader.clone();
     assert_eq!(leader, current_leader, "current_leader should be {:?}", current_leader);
 
     // Write some logs.
@@ -50,9 +50,9 @@ async fn server_metrics_and_data_metrics() -> Result<()> {
     tracing::info!(log_index, "--- write {} logs", n);
     log_index += router.client_request_many(s(0), "foo", n).await?;
 
-    router.wait(&0, timeout()).applied_index(Some(log_index), "applied log index").await?;
+    router.wait(&s(0), timeout()).applied_index(Some(log_index), "applied log index").await?;
 
-    let last_log_index = data_metrics.borrow().last_log.unwrap_or_default().index;
+    let last_log_index = data_metrics.borrow().last_log.clone().unwrap_or_default().index;
     assert_eq!(last_log_index, log_index, "last_log_index should be {:?}", log_index);
 
     let sm = server_metrics.borrow();
@@ -104,8 +104,8 @@ async fn heartbeat_metrics() -> Result<()> {
                         .heartbeat
                         .as_ref()
                         .expect("expect heartbeat to be Some as metrics come from the leader node");
-                    let node1 = heartbeat.get(&1).unwrap().unwrap();
-                    let node2 = heartbeat.get(&2).unwrap().unwrap();
+                    let node1 = heartbeat.get(&s(1)).unwrap().unwrap();
+                    let node2 = heartbeat.get(&s(2)).unwrap().unwrap();
 
                     (*node1 >= now) && (*node2 >= now)
                 },
@@ -117,8 +117,8 @@ async fn heartbeat_metrics() -> Result<()> {
             .heartbeat
             .as_ref()
             .expect("expect heartbeat to be Some as metrics come from the leader node");
-        refreshed_node1 = heartbeat.get(&1).unwrap().unwrap();
-        refreshed_node2 = heartbeat.get(&2).unwrap().unwrap();
+        refreshed_node1 = heartbeat.get(&s(1)).unwrap().unwrap();
+        refreshed_node2 = heartbeat.get(&s(2)).unwrap().unwrap();
     }
 
     tracing::info!(log_index, "--- sleep 500 ms, the acked time should not change");

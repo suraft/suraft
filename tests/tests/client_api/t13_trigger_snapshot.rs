@@ -2,10 +2,10 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use maplit::btreeset;
-use suraft::CommittedLeaderId;
 use suraft::Config;
 use suraft::LogId;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -31,7 +31,7 @@ async fn trigger_snapshot() -> anyhow::Result<()> {
         let n1 = router.get_raft_handle(&s(1))?;
         n1.trigger().snapshot().await?;
 
-        router.wait(&1, timeout()).snapshot(LogId::new(1, log_index), "node-1 snapshot").await?;
+        router.wait(&s(1), timeout()).snapshot(LogId::new(1, log_index), "node-1 snapshot").await?;
     }
 
     tracing::info!(log_index, "--- send some logs");
@@ -39,8 +39,8 @@ async fn trigger_snapshot() -> anyhow::Result<()> {
         router.client_request_many(s(0), "0", 10).await?;
         log_index += 10;
 
-        router.wait(&0, timeout()).applied_index(Some(log_index), "node-0 write logs").await?;
-        router.wait(&1, timeout()).applied_index(Some(log_index), "node-1 write logs").await?;
+        router.wait(&s(0), timeout()).applied_index(Some(log_index), "node-0 write logs").await?;
+        router.wait(&s(1), timeout()).applied_index(Some(log_index), "node-1 write logs").await?;
     }
 
     tracing::info!(log_index, "--- trigger snapshot for node-0");
@@ -48,7 +48,7 @@ async fn trigger_snapshot() -> anyhow::Result<()> {
         let n0 = router.get_raft_handle(&s(0))?;
         n0.trigger().snapshot().await?;
 
-        router.wait(&0, timeout()).snapshot(LogId::new(1, log_index), "node-0 snapshot").await?;
+        router.wait(&s(0), timeout()).snapshot(LogId::new(1, log_index), "node-0 snapshot").await?;
     }
 
     Ok(())

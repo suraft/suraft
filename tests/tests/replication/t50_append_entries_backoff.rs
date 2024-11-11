@@ -38,7 +38,7 @@ async fn append_entries_backoff() -> Result<()> {
     tracing::info!(log_index, "--- set node 2 to unreachable, and write 10 entries");
     {
         router.set_rpc_pre_hook(RPCTypes::AppendEntries, |_router, _req, _id, target| {
-            if target == 2 {
+            if target == s(2) {
                 let any_err = AnyError::error("unreachable");
                 Err(RPCError::Unreachable(Unreachable::new(&any_err)))
             } else {
@@ -46,12 +46,12 @@ async fn append_entries_backoff() -> Result<()> {
             }
         });
         // The above is equivalent to the following:
-        // router.set_unreachable(2, true);
+        // router.set_unreachable(s(2), true);
 
         router.client_request_many(s(0), "0", n as usize).await?;
         log_index += n;
 
-        router.wait(&0, timeout()).applied_index(Some(log_index), format!("{} writes", n)).await?;
+        router.wait(&s(0), timeout()).applied_index(Some(log_index), format!("{} writes", n)).await?;
     }
 
     let counts1 = router.get_rpc_count();

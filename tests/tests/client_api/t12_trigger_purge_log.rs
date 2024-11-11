@@ -6,6 +6,7 @@ use suraft::testing::log_id;
 use suraft::Config;
 use suraft::SnapshotPolicy;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -47,7 +48,7 @@ async fn trigger_purge_log() -> anyhow::Result<()> {
         let n0 = router.get_raft_handle(&s(0))?;
         n0.trigger().snapshot().await?;
 
-        router.wait(&0, timeout()).snapshot(log_id(1, log_index), "node-1 snapshot").await?;
+        router.wait(&s(0), timeout()).snapshot(log_id(1, log_index), "node-1 snapshot").await?;
     }
 
     let snapshot_index = log_index;
@@ -70,16 +71,16 @@ async fn trigger_purge_log() -> anyhow::Result<()> {
         n0.trigger().purge_log(snapshot_index).await?;
 
         router
-            .wait(&0, timeout())
+            .wait(&s(0), timeout())
             .purged(
-                Some(log_id(1, 0, snapshot_index)),
+                Some(log_id(1, snapshot_index)),
                 format_args!("node-0 purged upto {}", snapshot_index),
             )
             .await?;
 
         n0.trigger().purge_log(log_index).await?;
         let res = router
-            .wait(&0, timeout())
+            .wait(&s(0), timeout())
             .purged(
                 Some(log_id(1, log_index)),
                 format_args!("node-0 wont purged upto {}", log_index),

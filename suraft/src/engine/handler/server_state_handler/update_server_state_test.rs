@@ -28,15 +28,15 @@ fn eng() -> Engine<UTConfig> {
     let mut eng = Engine::testing_default(s(0));
     eng.state.enable_validation(false); // Disable validation for incomplete state
 
-    eng.config.id = 2;
+    eng.config.id = s(2);
     eng.state.vote = Leased::new(
         UTConfig::<()>::now(),
         Duration::from_millis(500),
         Vote::new_committed(2, s(2)),
     );
     eng.state.membership_state = MembershipState::new(
-        Arc::new(EffectiveMembership::new(Some(log_id(1, s(1), 1)), m01())),
-        Arc::new(EffectiveMembership::new(Some(log_id(2, s(1), 3)), m123())),
+        Arc::new(EffectiveMembership::new(Some(log_id(1, 1)), m01())),
+        Arc::new(EffectiveMembership::new(Some(log_id(2, 3)), m123())),
     );
     eng.state.server_state = eng.state.calc_server_state(&eng.config.id);
 
@@ -52,7 +52,7 @@ fn test_update_server_state_if_changed() -> anyhow::Result<()> {
     {
         assert_eq!(ServerState::Leader, ssh.state.server_state);
 
-        ssh.state.vote = Leased::new(UTConfig::<()>::now(), Duration::from_millis(500), Vote::new(2, 100));
+        ssh.state.vote = Leased::new(UTConfig::<()>::now(), Duration::from_millis(500), Vote::new(2, s(100)));
         ssh.update_server_state_if_changed();
 
         assert_eq!(ServerState::Follower, ssh.state.server_state);

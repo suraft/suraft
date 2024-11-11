@@ -56,7 +56,7 @@ async fn snapshot_policy_never() -> Result<()> {
         let r = router.clone();
         clients.push(async move {
             let client_id = format!("{}", i);
-            r.client_request_many(0, &client_id, per_client as usize).await
+            r.client_request_many(s(0), &client_id, per_client as usize).await
         });
         log_index += per_client;
     }
@@ -65,12 +65,12 @@ async fn snapshot_policy_never() -> Result<()> {
 
     tracing::info!(log_index, "--- log_index: {}", log_index);
     router
-        .wait(&0, timeout())
+        .wait(&s(0), timeout())
         .applied_index(Some(log_index), format_args!("write log upto {}", log_index))
         .await?;
 
     let wait_snapshot_res = router
-        .wait(&0, Some(Duration::from_millis(3_000)))
+        .wait(&s(0), Some(Duration::from_millis(3_000)))
         .metrics(|m| m.snapshot.is_some(), "no snapshot will be built")
         .await;
 

@@ -7,6 +7,7 @@ use suraft::Config;
 use suraft::LogIdOptionExt;
 use tokio::time::sleep;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -35,11 +36,11 @@ async fn leader_election_after_changing_0_to_01234() -> Result<()> {
     let mut router = RaftRouter::new(config.clone());
 
     tracing::info!("--- initializing cluster");
-    let mut log_index = router.new_cluster(btreeset! {0,1,2,3,4}, btreeset! {}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0), s(1), s(2), s(3), s(4)}, btreeset! {}).await?;
 
     // Isolate old leader and assert that a new leader takes over.
     tracing::info!(log_index, "--- isolating leader node 0");
-    router.set_network_error(0, true);
+    router.set_network_error(s(0), true);
 
     // Wait for leader lease to expire
     sleep(Duration::from_millis(700)).await;
@@ -50,24 +51,29 @@ async fn leader_election_after_changing_0_to_01234() -> Result<()> {
     log_index += 1; // leader initial blank log
 
     router
-        .wait_for_metrics(&1, |x| x.current_leader == Some(1), timeout(), "wait for new leader")
+        .wait_for_metrics(
+            &s(1),
+            |x| x.current_leader == Some(s(1)),
+            timeout(),
+            "wait for new leader",
+        )
         .await?;
 
-    for node_id in [1, 2, 3, 4] {
+    for node_id in [s(1), s(2), s(3), s(4)] {
         router
             .wait(&node_id, timeout())
             .applied_index(Some(log_index), "replicate and apply log to every node")
             .await?;
     }
 
-    let leader_id = 1;
+    let leader_id = s(1);
 
     tracing::info!(log_index, "--- restore node 0, log_index:{}", log_index);
-    router.set_network_error(0, false);
+    router.set_network_error(s(0), false);
     router
-        .wait(&0, timeout())
+        .wait(&s(0), timeout())
         .metrics(
-            |x| x.current_leader == Some(leader_id) && x.last_applied.index() == Some(log_index),
+            |x| x.current_leader == Some(leader_id.clone()) && x.last_applied.index() == Some(log_index),
             "wait for restored node-0 to sync",
         )
         .await?;

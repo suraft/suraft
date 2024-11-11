@@ -27,12 +27,12 @@ fn eng() -> Engine<UTConfig> {
     let mut eng = Engine::testing_default(s(0));
     eng.state.enable_validation(false); // Disable validation for incomplete state
 
-    eng.config.id = 0;
+    eng.config.id = s(0);
     eng.state.vote = Leased::new(UTConfig::<()>::now(), Duration::from_millis(500), Vote::new(2, s(1)));
     eng.state.server_state = ServerState::Candidate;
     eng.state
         .membership_state
-        .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(1, s(1), 1)), m01())));
+        .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(1, 1)), m01())));
 
     eng.output.take_commands();
     eng
@@ -50,7 +50,7 @@ fn test_handle_message_vote_reject_smaller_vote() -> anyhow::Result<()> {
 
     let resp = eng.vote_handler().update_vote(&Vote::new(1, s(2)));
 
-    assert_eq!(Err(RejectVoteRequest::ByVote(Vote::new_committed(2, 1))), resp);
+    assert_eq!(Err(RejectVoteRequest::ByVote(Vote::new_committed(2, s(1)))), resp);
 
     assert_eq!(Vote::new_committed(2, s(1)), *eng.state.vote_ref());
     assert!(eng.leader.is_some());
@@ -65,10 +65,10 @@ fn test_handle_message_vote_reject_smaller_vote() -> anyhow::Result<()> {
 #[test]
 fn test_handle_message_vote_committed_vote() -> anyhow::Result<()> {
     let mut eng = eng();
-    eng.state.log_ids = LogIdList::new(vec![log_id(2, s(1), 3)]);
+    eng.state.log_ids = LogIdList::new(vec![log_id(2, 3)]);
     let now = TokioInstant::now();
 
-    let resp = eng.vote_handler().update_vote(&Vote::new_committed(3, 2));
+    let resp = eng.vote_handler().update_vote(&Vote::new_committed(3, s(2)));
 
     assert_eq!(Ok(()), resp);
 
@@ -94,7 +94,7 @@ fn test_handle_message_vote_granted_equal_vote() -> anyhow::Result<()> {
     // Equal vote should not emit a SaveVote command.
 
     let mut eng = eng();
-    eng.state.log_ids = LogIdList::new(vec![log_id(2, s(1), 3)]);
+    eng.state.log_ids = LogIdList::new(vec![log_id(2, 3)]);
     let now = TokioInstant::now();
 
     let resp = eng.vote_handler().update_vote(&Vote::new(2, s(1)));
@@ -118,7 +118,7 @@ fn test_handle_message_vote_granted_greater_vote() -> anyhow::Result<()> {
     // A greater vote should emit a SaveVote command.
 
     let mut eng = eng();
-    eng.state.log_ids = LogIdList::new(vec![log_id(2, s(1), 3)]);
+    eng.state.log_ids = LogIdList::new(vec![log_id(2, 3)]);
 
     let resp = eng.vote_handler().update_vote(&Vote::new(3, s(1)));
 
@@ -146,7 +146,7 @@ fn test_handle_message_vote_granted_follower_learner_does_not_emit_update_server
         let st = ServerState::Learner;
 
         let mut eng = eng();
-        eng.config.id = 100; // make it a non-voter
+        eng.config.id = s(100); // make it a non-voter
         eng.vote_handler().become_following();
         eng.state.server_state = st;
         eng.output.clear_commands();
@@ -171,7 +171,7 @@ fn test_handle_message_vote_granted_follower_learner_does_not_emit_update_server
         let st = ServerState::Follower;
 
         let mut eng = eng();
-        eng.config.id = 0; // make it a voter
+        eng.config.id = s(0); // make it a voter
         eng.vote_handler().become_following();
         eng.state.server_state = st;
         eng.output.clear_commands();

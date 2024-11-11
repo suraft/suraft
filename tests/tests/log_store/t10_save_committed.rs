@@ -35,7 +35,7 @@ async fn write_committed_log_id_to_log_store() -> Result<()> {
     }
 
     for id in [s(0), s(1), s(2)] {
-        let (_, mut ls, _) = router.remove_node(id).unwrap();
+        let (_, mut ls, _) = router.remove_node(id.clone()).unwrap();
         let committed = ls.read_committed().await?;
         assert_eq!(Some(log_id(1, log_index)), committed, "node-{} committed", id);
     }

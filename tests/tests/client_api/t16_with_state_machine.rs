@@ -16,9 +16,9 @@ use suraft::RaftTypeConfig;
 use suraft::StorageError;
 use suraft::StoredMembership;
 use suraft_memstore::ClientResponse;
-use suraft_memstore::MemNodeId;
 use suraft_memstore::TypeConfig;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::MemStateMachine;
 use crate::fixtures::RaftRouter;
@@ -89,7 +89,7 @@ async fn with_state_machine_wrong_sm_type() -> Result<()> {
     tracing::info!("--- use wrong type SM");
     {
         type TC = TypeConfig;
-        type Err = StorageError<TC>;
+        type Err = StorageError;
         struct FooSM;
         impl RaftSnapshotBuilder<TC> for FooSM {
             async fn build_snapshot(&mut self) -> Result<Snapshot<TC>, Err> {

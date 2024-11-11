@@ -7,6 +7,7 @@ use suraft::storage::RaftStateMachine;
 use suraft::testing::log_id;
 use suraft::Config;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -33,14 +34,14 @@ async fn startup_build_snapshot() -> anyhow::Result<()> {
     {
         log_index += router.client_request_many(s(0), "0", (20 - 1 - log_index) as usize).await?;
 
-        router.wait(&0, timeout()).applied_index(Some(log_index), "node-0 applied all requests").await?;
+        router.wait(&s(0), timeout()).applied_index(Some(log_index), "node-0 applied all requests").await?;
         router.get_raft_handle(&s(0))?.trigger().snapshot().await?;
-        router.wait(&0, timeout()).snapshot(log_id(1, log_index), "node-0 snapshot").await?;
+        router.wait(&s(0), timeout()).snapshot(log_id(1, log_index), "node-0 snapshot").await?;
     }
 
     tracing::info!(log_index, "--- shut down and purge to log index: {}", 5);
-    let (_, mut log_store, mut sm) = router.remove_node(0).unwrap();
-    log_store.purge(log_id(1, 0, 19)).await?;
+    let (_, mut log_store, mut sm) = router.remove_node(s(0)).unwrap();
+    log_store.purge(log_id(1, 19)).await?;
 
     tracing::info!(log_index, "--- drop current snapshot");
     {
@@ -55,8 +56,8 @@ async fn startup_build_snapshot() -> anyhow::Result<()> {
         log_index
     );
     {
-        router.new_raft_node_with_sto(0, log_store, sm).await;
-        router.wait(&0, timeout()).snapshot(log_id(1, log_index), "node-1 snapshot").await?;
+        router.new_raft_node_with_sto(s(0), log_store, sm).await;
+        router.wait(&s(0), timeout()).snapshot(log_id(1, log_index), "node-1 snapshot").await?;
     }
 
     Ok(())

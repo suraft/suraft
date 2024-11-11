@@ -13,7 +13,6 @@ use suraft::storage::RaftStateMachine;
 use suraft::testing::blank_ent;
 use suraft::testing::log_id;
 use suraft::testing::membership_ent;
-use suraft::CommittedLeaderId;
 use suraft::Config;
 use suraft::Entry;
 use suraft::EntryPayload;
@@ -26,6 +25,7 @@ use suraft::SnapshotPolicy;
 use suraft::StorageHelper;
 use suraft::Vote;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -63,15 +63,15 @@ async fn snapshot_delete_conflicting_logs() -> Result<()> {
         sto0.save_vote(&Vote::new(4, s(0))).await?;
         sto0.blocking_append([
             // manually insert the initializing log
-            membership_ent(0, 0, 0, vec![btreeset! {s(0)}]),
+            membership_ent(0, 0, vec![btreeset! {s(0)}]),
         ])
         .await?;
         log_index = 1;
 
-        router.new_raft_node_with_sto(0, sto0, sm0).await;
+        router.new_raft_node_with_sto(s(0), sto0, sm0).await;
 
-        router.wait(&0, timeout()).state(ServerState::Leader, "init node-0 server-state").await?;
-        router.wait(&0, timeout()).applied_index(Some(log_index), "init node-0 log").await?;
+        router.wait(&s(0), timeout()).state(ServerState::Leader, "init node-0 server-state").await?;
+        router.wait(&s(0), timeout()).applied_index(Some(log_index), "init node-0 log").await?;
     }
 
     tracing::info!(log_index, "--- send just enough logs to trigger snapshot");
@@ -79,13 +79,13 @@ async fn snapshot_delete_conflicting_logs() -> Result<()> {
         router.client_request_many(s(0), "0", (snapshot_threshold - 1 - log_index) as usize).await?;
         log_index = snapshot_threshold - 1;
 
-        router.wait(&0, timeout()).applied_index(Some(log_index), "trigger snapshot").await?;
-        router.wait(&0, timeout()).snapshot(LogId::new(5, log_index), "build snapshot").await?;
+        router.wait(&s(0), timeout()).applied_index(Some(log_index), "trigger snapshot").await?;
+        router.wait(&s(0), timeout()).snapshot(LogId::new(5, log_index), "build snapshot").await?;
     }
 
     tracing::info!(log_index, "--- create node-1 and add conflicting logs");
     {
-        router.new_raft_node(1).await;
+        router.new_raft_node(s(1)).await;
 
         let req = AppendEntriesRequest {
             vote: Vote::new_committed(1, s(0)),
@@ -105,22 +105,22 @@ async fn snapshot_delete_conflicting_logs() -> Result<()> {
                 blank_ent(1, 7),
                 blank_ent(1, 8),
                 blank_ent(1, 9),
-                blank_ent(1, 0, 10),
+                blank_ent(1, 10),
                 // another conflict membership, will be removed
                 Entry {
                     log_id: LogId::new(1, 11),
-                    payload: EntryPayload::Membership(Membership::new(vec![btreeset! {4,5}], None)),
+                    payload: EntryPayload::Membership(Membership::new(vec![btreeset! {s(4),s(5)}], None)),
                 },
             ],
             leader_commit: Some(LogId::new(1, 2)),
         };
         let option = RPCOption::new(Duration::from_millis(1_000));
 
-        router.new_client(1, &()).await.append_entries(req, option).await?;
+        router.new_client(s(1), &()).await.append_entries(req, option).await?;
 
         tracing::info!(log_index, "--- check that learner membership is affected");
         {
-            let (mut sto1, mut sm1) = router.get_storage_handle(&1)?;
+            let (mut sto1, mut sm1) = router.get_storage_handle(&s(1))?;
             let m = StorageHelper::new(&mut sto1, &mut sm1).get_membership().await?;
 
             tracing::info!("got membership of node-1: {:?}", m);
@@ -129,7 +129,7 @@ async fn snapshot_delete_conflicting_logs() -> Result<()> {
                 m.committed().membership()
             );
             assert_eq!(
-                &Membership::new(vec![btreeset! {4,5}], None),
+                &Membership::new(vec![btreeset! {s(4),s(5)}], None),
                 m.effective().membership()
             );
         }
@@ -137,7 +137,7 @@ async fn snapshot_delete_conflicting_logs() -> Result<()> {
 
     tracing::info!(log_index, "--- manually build and install snapshot to node-1");
     {
-        let (mut sto0, mut sm0) = router.get_storage_handle(&0)?;
+        let (mut sto0, mut sm0) = router.get_storage_handle(&s(0))?;
 
         let snap = {
             let mut b = sm0.get_snapshot_builder().await;
@@ -149,14 +149,14 @@ async fn snapshot_delete_conflicting_logs() -> Result<()> {
 
         #[allow(deprecated)]
         router
-            .new_client(1, &())
+            .new_client(s(1), &())
             .await
             .full_snapshot(vote, snap, futures::future::pending(), option)
             .await?;
 
         tracing::info!(log_index, "--- DONE installing snapshot");
 
-        router.wait(&1, timeout()).snapshot(log_id(5, 0, log_index), "node-1 snapshot").await?;
+        router.wait(&s(1), timeout()).snapshot(log_id(5, log_index), "node-1 snapshot").await?;
     }
 
     tracing::info!(
@@ -164,7 +164,7 @@ async fn snapshot_delete_conflicting_logs() -> Result<()> {
         "--- check that learner membership is affected, conflict log are deleted"
     );
     {
-        let (mut sto1, mut sm1) = router.get_storage_handle(&1)?;
+        let (mut sto1, mut sm1) = router.get_storage_handle(&s(1))?;
 
         let m = StorageHelper::new(&mut sto1, &mut sm1).get_membership().await?;
 

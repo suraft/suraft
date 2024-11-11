@@ -66,7 +66,7 @@ async fn build_snapshot() -> Result<()> {
         .assert_storage_state(
             1,
             log_index,
-            Some(0),
+            Some(s(0)),
             LogId::new(1, log_index),
             Some((log_index.into(), 1)),
         )
@@ -80,8 +80,8 @@ async fn build_snapshot() -> Result<()> {
     }])
     .await?;
 
-    router.new_raft_node_with_sto(1, sto1.clone(), sm1.clone()).await;
-    router.add_learner(0, 1).await.expect("failed to add new node as learner");
+    router.new_raft_node_with_sto(s(1), sto1.clone(), sm1.clone()).await;
+    router.add_learner(s(0), s(1)).await.expect("failed to add new node as learner");
     log_index += 1; // add_learner log
 
     tracing::info!(log_index, "--- add 1 log after snapshot, log_index: {}", log_index);
@@ -92,14 +92,14 @@ async fn build_snapshot() -> Result<()> {
 
     tracing::info!(log_index, "--- log_index: {}", log_index);
 
-    router.wait_for_log(&btreeset![0, 1], Some(log_index), timeout(), "add follower").await?;
+    router.wait_for_log(&btreeset! {s(0), s(1)}, Some(log_index), timeout(), "add follower").await?;
 
     tracing::info!(
         log_index,
         "--- logs should be deleted after installing snapshot; left only the last one"
     );
     {
-        let (mut sto, _sm) = router.get_storage_handle(&1)?;
+        let (mut sto, _sm) = router.get_storage_handle(&s(1))?;
         let logs = sto.try_get_log_entries(..).await?;
         assert_eq!(2, logs.len());
         assert_eq!(LogId::new(1, log_index - 1), logs[0].log_id)
@@ -124,7 +124,7 @@ async fn build_snapshot() -> Result<()> {
         let option = RPCOption::new(Duration::from_millis(1_000));
 
         let res = router
-            .new_client(1, &())
+            .new_client(s(1), &())
             .await
             .append_entries(
                 AppendEntriesRequest {

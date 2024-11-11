@@ -8,6 +8,7 @@ use suraft::Config;
 use suraft::ServerState;
 use suraft_memstore::MemNodeId;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -28,43 +29,47 @@ async fn m0_change_m123() -> anyhow::Result<()> {
 #[tracing::instrument]
 #[test_harness::test(harness = ut_harness)]
 async fn m01_change_m12() -> anyhow::Result<()> {
-    change_from_to(btreeset! {0, 1}, btreeset! {s(1),s(2)}).await
+    change_from_to(btreeset! {s(0), s(1)}, btreeset! {s(1),s(2)}).await
 }
 
 #[tracing::instrument]
 #[test_harness::test(harness = ut_harness)]
 async fn m01_change_m1() -> anyhow::Result<()> {
-    change_from_to(btreeset! {0, 1}, btreeset! {s(1)}).await
+    change_from_to(btreeset! {s(0), s(1)}, btreeset! {s(1)}).await
 }
 
 #[tracing::instrument]
 #[test_harness::test(harness = ut_harness)]
 async fn m01_change_m2() -> anyhow::Result<()> {
-    change_from_to(btreeset! {0, 1}, btreeset! {2}).await
+    change_from_to(btreeset! {s(0), s(1)}, btreeset! {s(2)}).await
 }
 
 #[tracing::instrument]
 #[test_harness::test(harness = ut_harness)]
 async fn m01_change_m3() -> anyhow::Result<()> {
-    change_from_to(btreeset! {0, 1}, btreeset! {3}).await
+    change_from_to(btreeset! {s(0), s(1)}, btreeset! {s(3)}).await
 }
 
 #[tracing::instrument]
 #[test_harness::test(harness = ut_harness)]
 async fn m012_change_m4() -> anyhow::Result<()> {
-    change_from_to(btreeset! {0, 1, 2}, btreeset! {4}).await
+    change_from_to(btreeset! {s(0), s(1), s(2)}, btreeset! {s(4)}).await
 }
 
 #[tracing::instrument]
 #[test_harness::test(harness = ut_harness)]
 async fn m012_change_m456() -> anyhow::Result<()> {
-    change_from_to(btreeset! {0, 1, 2}, btreeset! {4,5,6}).await
+    change_from_to(btreeset! {s(0), s(1), s(2)}, btreeset! {s(4), s(5), s(6)}).await
 }
 
 #[tracing::instrument]
 #[test_harness::test(harness = ut_harness)]
 async fn m01234_change_m0123() -> anyhow::Result<()> {
-    change_from_to(btreeset! {0, 1, 2, 3, 4}, btreeset! {0,1,2,3}).await
+    change_from_to(
+        btreeset! {s(0), s(1), s(2), s(3), s(4)},
+        btreeset! {s(0), s(1), s(2), s(3)},
+    )
+    .await
 }
 
 // --- add ---
@@ -72,13 +77,13 @@ async fn m01234_change_m0123() -> anyhow::Result<()> {
 #[tracing::instrument]
 #[test_harness::test(harness = ut_harness)]
 async fn m0_add_m01() -> anyhow::Result<()> {
-    change_by_add(btreeset! {s(0)}, &[0, 1]).await
+    change_by_add(btreeset! {s(0)}, &[s(0), s(1)]).await
 }
 
 #[tracing::instrument]
 #[test_harness::test(harness = ut_harness)]
 async fn m0_add_m12() -> anyhow::Result<()> {
-    change_by_add(btreeset! {s(0)}, &[1, 2]).await
+    change_by_add(btreeset! {s(0)}, &[s(1), s(2)]).await
 }
 
 #[tracing::instrument]
@@ -92,13 +97,13 @@ async fn m01_add_m() -> anyhow::Result<()> {
 #[tracing::instrument]
 #[test_harness::test(harness = ut_harness)]
 async fn m012_remove_m01() -> anyhow::Result<()> {
-    change_by_remove(btreeset! {s(0),s(1),s(2)}, &[0, 1]).await
+    change_by_remove(btreeset! {s(0),s(1),s(2)}, &[s(0), s(1)]).await
 }
 
 #[tracing::instrument]
 #[test_harness::test(harness = ut_harness)]
 async fn m012_remove_m3() -> anyhow::Result<()> {
-    change_by_remove(btreeset! {s(0),s(1),s(2)}, &[3]).await
+    change_by_remove(btreeset! {s(0),s(1),s(2)}, &[s(3)]).await
 }
 
 #[tracing::instrument]
@@ -110,7 +115,7 @@ async fn m012_remove_m() -> anyhow::Result<()> {
 #[tracing::instrument]
 #[test_harness::test(harness = ut_harness)]
 async fn m012_remove_m13() -> anyhow::Result<()> {
-    change_by_remove(btreeset! {s(0),s(1),s(2)}, &[1, 3]).await
+    change_by_remove(btreeset! {s(0),s(1),s(2)}, &[s(1), s(3)]).await
 }
 
 #[tracing::instrument(level = "debug")]
@@ -147,8 +152,8 @@ async fn change_from_to(old: BTreeSet<MemNodeId>, change_members: BTreeSet<MemNo
     tracing::info!(log_index, "--- change to {:?}", new);
     {
         for id in only_in_new {
-            router.new_raft_node(*id).await;
-            router.add_learner(0, *id).await?;
+            router.new_raft_node(id.clone()).await;
+            router.add_learner(s(0), id.clone()).await?;
             log_index += 1;
             router.wait_for_log(&old, Some(log_index), timeout(), &format!("add learner, {}", mes)).await?;
         }
@@ -173,7 +178,7 @@ async fn change_from_to(old: BTreeSet<MemNodeId>, change_members: BTreeSet<MemNo
                 router
                     .wait(id, Some(Duration::from_millis(5_000)))
                     .metrics(
-                        |x| x.current_leader.is_some() && new.contains(&x.current_leader.unwrap()),
+                        |x| x.current_leader.is_some() && new.contains(&x.current_leader.clone().unwrap()),
                         format!("node {} in new cluster has leader in new cluster, {}", id, mes),
                     )
                     .await?;
@@ -263,11 +268,11 @@ async fn change_from_to(old: BTreeSet<MemNodeId>, change_members: BTreeSet<MemNo
 /// Test change-membership by adding voters.
 #[tracing::instrument(level = "debug")]
 async fn change_by_add(old: BTreeSet<MemNodeId>, add: &[MemNodeId]) -> anyhow::Result<()> {
-    let change = ChangeMembers::AddVoterIds(add.iter().copied().collect());
+    let change = ChangeMembers::AddVoterIds(add.iter().cloned().collect());
 
     let mes = format!("from {:?} {:?}", old, change);
 
-    let new = old.clone().union(&add.iter().copied().collect()).copied().collect::<BTreeSet<_>>();
+    let new = old.clone().union(&add.iter().cloned().collect()).cloned().collect::<BTreeSet<_>>();
     let only_in_new = new.difference(&old);
 
     let config = Arc::new(
@@ -294,8 +299,8 @@ async fn change_by_add(old: BTreeSet<MemNodeId>, add: &[MemNodeId]) -> anyhow::R
     tracing::info!(log_index, "--- add learner before change-membership");
     {
         for id in only_in_new {
-            router.new_raft_node(*id).await;
-            router.add_learner(0, *id).await?;
+            router.new_raft_node(id.clone()).await;
+            router.add_learner(s(0), id.clone()).await?;
             log_index += 1;
             router.wait(id, timeout()).applied_index(Some(log_index), format!("add learner, {}", mes)).await?;
         }
@@ -334,11 +339,11 @@ async fn change_by_add(old: BTreeSet<MemNodeId>, add: &[MemNodeId]) -> anyhow::R
 
 #[tracing::instrument(level = "debug")]
 async fn change_by_remove(old: BTreeSet<MemNodeId>, remove: &[MemNodeId]) -> anyhow::Result<()> {
-    let change = ChangeMembers::RemoveVoters(remove.iter().copied().collect());
+    let change = ChangeMembers::RemoveVoters(remove.iter().cloned().collect());
 
     let mes = format!("from {:?} {:?}", old, change);
 
-    let new = old.clone().difference(&remove.iter().copied().collect()).copied().collect::<BTreeSet<_>>();
+    let new = old.clone().difference(&remove.iter().cloned().collect()).cloned().collect::<BTreeSet<_>>();
     let only_in_old = old.difference(&new);
 
     let config = Arc::new(
@@ -385,7 +390,7 @@ async fn change_by_remove(old: BTreeSet<MemNodeId>, remove: &[MemNodeId]) -> any
                 router
                     .wait(id, Some(Duration::from_millis(5_000)))
                     .metrics(
-                        |x| x.current_leader.is_some() && new.contains(&x.current_leader.unwrap()),
+                        |x| x.current_leader.is_some() && new.contains(x.current_leader.as_ref().unwrap()),
                         format!("node {} in new cluster has leader in new cluster, {}", id, mes),
                     )
                     .await?;

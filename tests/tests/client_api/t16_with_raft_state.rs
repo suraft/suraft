@@ -6,6 +6,7 @@ use suraft::error::Fatal;
 use suraft::testing::log_id;
 use suraft::Config;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -28,13 +29,13 @@ async fn with_raft_state() -> Result<()> {
 
     let n0 = router.get_raft_handle(&s(0))?;
 
-    let committed = n0.with_raft_state(|st| st.committed).await?;
+    let committed = n0.with_raft_state(|st| st.committed.clone()).await?;
     assert_eq!(committed, Some(log_id(1, log_index)));
 
     tracing::info!("--- shutting down node 0");
     n0.shutdown().await?;
 
-    let res = n0.with_raft_state(|st| st.committed).await;
+    let res = n0.with_raft_state(|st| st.committed.clone()).await;
     assert_eq!(Err(Fatal::Stopped), res);
 
     Ok(())

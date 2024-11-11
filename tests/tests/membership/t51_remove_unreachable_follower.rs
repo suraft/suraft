@@ -6,6 +6,7 @@ use maplit::btreeset;
 use suraft::Config;
 use suraft::ServerState;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -22,13 +23,13 @@ async fn stop_replication_to_removed_unreachable_follower_network_failure() -> R
     );
 
     let mut router = RaftRouter::new(config.clone());
-    router.new_raft_node(0).await;
+    router.new_raft_node(s(0)).await;
 
-    let mut log_index = router.new_cluster(btreeset! {0,1,2,3,4}, btreeset! {}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0), s(1), s(2), s(3), s(4)}, btreeset! {}).await?;
 
     tracing::info!(log_index, "--- isolate node 4");
     {
-        router.set_network_error(4, true);
+        router.set_network_error(s(4), true);
     }
 
     // logs on node 4 will stop here:
@@ -37,10 +38,10 @@ async fn stop_replication_to_removed_unreachable_follower_network_failure() -> R
     tracing::info!(log_index, "--- changing config to 0,1,2");
     {
         let node = router.get_raft_handle(&s(0))?;
-        node.change_membership([0, 1, 2], false).await?;
+        node.change_membership([s(0), s(1), s(2)], false).await?;
         log_index += 2;
 
-        for i in &[0, 1, 2] {
+        for i in &[s(0), s(1), s(2)] {
             router
                 .wait(i, timeout())
                 .metrics(
@@ -51,7 +52,7 @@ async fn stop_replication_to_removed_unreachable_follower_network_failure() -> R
         }
 
         router
-            .wait(&3, timeout())
+            .wait(&s(3), timeout())
             .metrics(
                 |x| x.last_log_index >= Some(log_index - 1),
                 "node-3 recv at least 1 change-membership log",
@@ -62,9 +63,9 @@ async fn stop_replication_to_removed_unreachable_follower_network_failure() -> R
     tracing::info!(log_index, "--- replication to node 4 will be removed");
     {
         router
-            .wait(&0, timeout())
+            .wait(&s(0), timeout())
             .metrics(
-                |x| x.replication.as_ref().map(|y| y.contains_key(&4)) == Some(false),
+                |x| x.replication.as_ref().map(|y| y.contains_key(&s(4))) == Some(false),
                 "stopped replication to node 4",
             )
             .await?;
@@ -75,10 +76,10 @@ async fn stop_replication_to_removed_unreachable_follower_network_failure() -> R
         "--- restore network isolation, node 4 won't catch up log and will enter candidate state"
     );
     {
-        router.set_network_error(4, false);
+        router.set_network_error(s(4), false);
 
         router
-            .wait(&4, timeout())
+            .wait(&s(4), timeout())
             .metrics(
                 |x| {
                     x.last_log_index == Some(node4_log_index)

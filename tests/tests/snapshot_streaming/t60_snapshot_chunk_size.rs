@@ -8,6 +8,7 @@ use suraft::Config;
 use suraft::ServerState;
 use suraft::SnapshotPolicy;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -39,15 +40,15 @@ async fn snapshot_chunk_size() -> Result<()> {
 
     tracing::info!(log_index, "--- initializing cluster");
     {
-        router.new_raft_node(0).await;
+        router.new_raft_node(s(0)).await;
 
-        router.wait_for_log(&btreeset![0], None, timeout(), "empty").await?;
-        router.wait_for_state(&btreeset![0], ServerState::Learner, timeout(), "empty").await?;
+        router.wait_for_log(&btreeset! {s(0)}, None, timeout(), "empty").await?;
+        router.wait_for_state(&btreeset! {s(0)}, ServerState::Learner, timeout(), "empty").await?;
 
-        router.initialize(0).await?;
+        router.initialize(s(0)).await?;
         log_index += 1;
 
-        router.wait_for_log(&btreeset![0], Some(log_index), timeout(), "init leader").await?;
+        router.wait_for_log(&btreeset! {s(0)}, Some(log_index), timeout(), "init leader").await?;
     }
 
     tracing::info!(log_index, "--- send just enough logs to trigger snapshot");
@@ -59,58 +60,58 @@ async fn snapshot_chunk_size() -> Result<()> {
 
         router
             .wait_for_log(
-                &btreeset![0],
+                &btreeset! {s(0)},
                 Some(log_index),
                 timeout(),
                 "send log to trigger snapshot",
             )
             .await?;
-        router.wait_for_snapshot(&btreeset![0], log_id(1, log_index), timeout(), "snapshot").await?;
-        router.assert_storage_state(1, log_index, Some(0), log_id(1, log_index), want_snap).await?;
+        router.wait_for_snapshot(&btreeset! {s(0)}, log_id(1, log_index), timeout(), "snapshot").await?;
+        router.assert_storage_state(1, log_index, Some(s(0)), log_id(1, log_index), want_snap).await?;
 
         let n0 = router.get_raft_handle(&s(0))?;
         n0.trigger().purge_log(log_index).await?;
         router
-            .wait(&0, timeout())
-            .purged(Some(log_id(1, s(0), 9)), "purge Leader-0 all in snapshot logs")
+            .wait(&s(0), timeout())
+            .purged(Some(log_id(1, 9)), "purge Leader-0 all in snapshot logs")
             .await?;
     }
 
     tracing::info!(log_index, "--- add learner to receive snapshot and logs");
     {
-        router.new_raft_node(1).await;
-        router.add_learner(0, 1).await.expect("failed to add new node as learner");
+        router.new_raft_node(s(1)).await;
+        router.add_learner(s(0), s(1)).await.expect("failed to add new node as learner");
         log_index += 1;
 
-        router.wait_for_log(&btreeset![0, 1], Some(log_index), timeout(), "add learner").await?;
-        router.wait(&1, timeout()).applied_index(Some(log_index), "sync all data to learner-1").await?;
-        router.wait(&1, timeout()).snapshot(log_id(1, 0, log_index - 1), "learner-1 snapshot").await?;
+        router.wait_for_log(&btreeset! {s(0), s(1)}, Some(log_index), timeout(), "add learner").await?;
+        router.wait(&s(1), timeout()).applied_index(Some(log_index), "sync all data to learner-1").await?;
+        router.wait(&s(1), timeout()).snapshot(log_id(1, log_index - 1), "learner-1 snapshot").await?;
 
         // after add_learner, log_index + 1,
         // leader has only log_index log in snapshot, cause it has compacted before add_learner
-        let (mut store, mut sm) = router.get_storage_handle(&0)?;
+        let (mut store, mut sm) = router.get_storage_handle(&s(0))?;
         router
             .assert_storage_state_with_sto(
                 &mut store,
                 &mut sm,
-                &0,
+                &s(0),
                 1,
                 log_index,
-                Some(0),
+                Some(s(0)),
                 log_id(1, log_index),
                 &Some(((log_index - 1).into(), 1)),
             )
             .await?;
 
-        let (mut store, mut sm) = router.get_storage_handle(&1)?;
+        let (mut store, mut sm) = router.get_storage_handle(&s(1))?;
         router
             .assert_storage_state_with_sto(
                 &mut store,
                 &mut sm,
-                &1,
+                &s(1),
                 1,
                 log_index,
-                Some(0),
+                Some(s(0)),
                 log_id(1, log_index),
                 &Some(((log_index - 1).into(), 1)),
             )

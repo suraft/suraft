@@ -34,12 +34,12 @@ fn eng() -> Engine<UTConfig> {
     let mut eng = Engine::testing_default(s(0));
     eng.state.enable_validation(false); // Disable validation for incomplete state
 
-    eng.config.id = 0;
+    eng.config.id = s(0);
     eng.state.vote = Leased::new(UTConfig::<()>::now(), Duration::from_millis(500), Vote::new(2, s(1)));
     eng.state.server_state = ServerState::Candidate;
     eng.state
         .membership_state
-        .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(1, s(1), 1)), m01())));
+        .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(1, 1)), m01())));
 
     eng
 }

@@ -4,13 +4,13 @@ use std::time::Duration;
 use anyhow::Result;
 use maplit::btreeset;
 use suraft::error::ClientWriteError;
-use suraft::CommittedLeaderId;
 use suraft::Config;
 use suraft::LogId;
 use suraft::ServerState;
 use suraft_memstore::ClientRequest;
 use suraft_memstore::IntoMemClientRequest;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -39,11 +39,11 @@ async fn remove_leader() -> Result<()> {
 
     // Submit a config change which adds two new nodes and removes the current leader.
     let orig_leader = router.leader().expect("expected the cluster to have a leader");
-    assert_eq!(0, orig_leader, "expected original leader to be node 0");
-    router.wait_for_log(&btreeset![0, 1], Some(log_index), timeout(), "add learner").await?;
+    assert_eq!(s(0), orig_leader, "expected original leader to be node 0");
+    router.wait_for_log(&btreeset! {s(0), s(1)}, Some(log_index), timeout(), "add learner").await?;
 
     let node = router.get_raft_handle(&orig_leader)?;
-    node.change_membership([1, 2, 3], false).await?;
+    node.change_membership([s(1), s(2), s(3)], false).await?;
     // 2 for change_membership
     log_index += 2;
 
@@ -59,7 +59,7 @@ async fn remove_leader() -> Result<()> {
     // Because to commit the 2nd log it only need a quorum of the new cluster.
 
     router
-        .wait(&1, timeout())
+        .wait(&s(1), timeout())
         .applied_index_at_least(Some(log_index), "node in old cluster commits at least 1 membership log")
         .await?;
 
@@ -69,7 +69,7 @@ async fn remove_leader() -> Result<()> {
         log_index += 1;
         tracing::debug!("--- expect log_index:{}", log_index);
 
-        for id in [2, 3] {
+        for id in [s(2), s(3)] {
             router
                 .wait(&id, timeout())
                 .applied_index_at_least(
@@ -82,7 +82,7 @@ async fn remove_leader() -> Result<()> {
 
     tracing::info!(log_index, "--- check term in new cluster");
     {
-        for id in [1, 2, 3] {
+        for id in [s(1), s(2), s(3)] {
             router
                 .wait(&id, timeout())
                 .metrics(
@@ -95,7 +95,7 @@ async fn remove_leader() -> Result<()> {
 
     tracing::info!(log_index, "--- check state of the old leader");
     {
-        let metrics = router.wait(&0, timeout()).state(ServerState::Learner, "old leader steps down").await?;
+        let metrics = router.wait(&s(0), timeout()).state(ServerState::Learner, "old leader steps down").await?;
         let cfg = &metrics.membership_config.membership();
 
         assert_eq!(metrics.current_term, 1);
@@ -130,12 +130,12 @@ async fn remove_leader_and_convert_to_learner() -> Result<()> {
 
     let mut log_index = router.new_cluster(btreeset! {s(0),s(1)}, btreeset! {s(2), s(3)}).await?;
 
-    let old_leader = 0;
+    let old_leader = s(0);
 
     tracing::info!(log_index, "--- change membership and retain removed node as learner");
     {
         let node = router.get_raft_handle(&old_leader)?;
-        node.change_membership([1, 2, 3], true).await?;
+        node.change_membership([s(1), s(2), s(3)], true).await?;
         log_index += 2;
     }
 
@@ -151,7 +151,7 @@ async fn remove_leader_and_convert_to_learner() -> Result<()> {
     // Because to commit the 2nd log it only need a quorum of the new cluster.
 
     router
-        .wait(&1, timeout())
+        .wait(&s(1), timeout())
         .applied_index_at_least(
             Some(log_index - 1),
             "node in old cluster commits at least 1 membership log",
@@ -163,7 +163,7 @@ async fn remove_leader_and_convert_to_learner() -> Result<()> {
         tokio::time::sleep(Duration::from_millis(1_000)).await;
 
         router
-            .wait(&0, timeout())
+            .wait(&s(0), timeout())
             .state(
                 ServerState::Leader,
                 "old leader is not removed from membership, it is still a leader",
@@ -193,17 +193,17 @@ async fn remove_leader_access_new_cluster() -> Result<()> {
 
     let mut log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {}).await?;
 
-    let orig_leader = 0;
+    let orig_leader = s(0);
 
     tracing::info!(log_index, "--- change membership 012 to 2");
     {
         let node = router.get_raft_handle(&orig_leader)?;
-        node.change_membership([2], false).await?;
+        node.change_membership([s(2)], false).await?;
         // 2 change_membership logs
         log_index += 2;
 
         router
-            .wait(&2, timeout())
+            .wait(&s(2), timeout())
             // The last_applied may not be updated on follower nodes:
             // because leader node-0 will steps down at once when the second membership log is
             // committed.
@@ -222,7 +222,7 @@ async fn remove_leader_access_new_cluster() -> Result<()> {
             .await?;
     }
 
-    let res = router.send_client_request(2, ClientRequest::make_request("foo", 1)).await;
+    let res = router.send_client_request(s(2), ClientRequest::make_request("foo", 1)).await;
     match res {
         Ok(_) => {
             unreachable!("expect error");
@@ -245,7 +245,7 @@ async fn remove_leader_access_new_cluster() -> Result<()> {
         n2.wait(timeout()).state(ServerState::Leader, "node-2 elect itself").await?;
         log_index += 1;
 
-        router.send_client_request(2, ClientRequest::make_request("foo", 1)).await?;
+        router.send_client_request(s(2), ClientRequest::make_request("foo", 1)).await?;
         log_index += 1;
 
         n2.wait(timeout())

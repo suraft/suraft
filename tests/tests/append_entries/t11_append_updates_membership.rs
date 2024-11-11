@@ -33,14 +33,14 @@ async fn append_updates_membership() -> Result<()> {
     );
 
     let mut router = RaftRouter::new(config.clone());
-    router.new_raft_node(0).await;
+    router.new_raft_node(s(0)).await;
 
     tracing::info!("--- wait for init node to ready");
 
-    router.wait_for_log(&btreeset![0], None, None, "empty").await?;
-    router.wait_for_state(&btreeset![0], ServerState::Learner, None, "empty").await?;
+    router.wait_for_log(&btreeset! {s(0)}, None, None, "empty").await?;
+    router.wait_for_state(&btreeset! {s(0)}, ServerState::Learner, None, "empty").await?;
 
-    let (r0, _sto0, _sm0) = router.remove_node(0).unwrap();
+    let (r0, _sto0, _sm0) = router.remove_node(s(0)).unwrap();
 
     tracing::info!("--- append-entries update membership");
     {
@@ -57,7 +57,7 @@ async fn append_updates_membership() -> Result<()> {
                 blank_ent(1, 3),
                 Entry {
                     log_id: LogId::new(1, 4),
-                    payload: EntryPayload::Membership(Membership::new(vec![btreeset! {1,2,3,4}], None)),
+                    payload: EntryPayload::Membership(Membership::new(vec![btreeset! {s(1), s(2), s(3), s(4)}], None)),
                 },
                 blank_ent(1, 5),
             ],
@@ -68,7 +68,7 @@ async fn append_updates_membership() -> Result<()> {
         assert!(resp.is_success());
         assert!(!resp.is_conflict());
 
-        r0.wait(timeout()).voter_ids([1, 2, 3, 4], "append-entries update membership").await?;
+        r0.wait(timeout()).voter_ids([s(1), s(2), s(3), s(4)], "append-entries update membership").await?;
     }
 
     tracing::info!("--- delete inconsistent logs update membership");
@@ -84,7 +84,7 @@ async fn append_updates_membership() -> Result<()> {
         assert!(resp.is_success());
         assert!(!resp.is_conflict());
 
-        r0.wait(timeout()).voter_ids([1, 2], "deleting inconsistent logs updates membership").await?;
+        r0.wait(timeout()).voter_ids([s(1), s(2)], "deleting inconsistent logs updates membership").await?;
     }
 
     Ok(())

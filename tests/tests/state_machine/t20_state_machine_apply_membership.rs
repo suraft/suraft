@@ -37,7 +37,7 @@ async fn state_machine_apply_membership() -> Result<()> {
     let mut log_index = router.new_cluster(btreeset! {s(0)}, btreeset! {}).await?;
 
     for i in 0..=0 {
-        let (_sto, mut sm) = router.get_storage_handle(&i)?;
+        let (_sto, mut sm) = router.get_storage_handle(&s(i))?;
         assert_eq!(
             StoredMembership::new(Some(LogId::new(0, 0)), Membership::new(vec![btreeset! {s(0)}], None)),
             sm.applied_state().await?.1
@@ -45,31 +45,31 @@ async fn state_machine_apply_membership() -> Result<()> {
     }
 
     // Sync some new nodes.
-    router.new_raft_node(1).await;
-    router.new_raft_node(2).await;
-    router.new_raft_node(3).await;
-    router.new_raft_node(4).await;
+    router.new_raft_node(s(1)).await;
+    router.new_raft_node(s(2)).await;
+    router.new_raft_node(s(3)).await;
+    router.new_raft_node(s(4)).await;
 
     tracing::info!(log_index, "--- adding new nodes to cluster");
     {
-        router.add_learner(0, 1).await?;
-        router.add_learner(0, 2).await?;
-        router.add_learner(0, 3).await?;
-        router.add_learner(0, 4).await?;
+        router.add_learner(s(0), s(1)).await?;
+        router.add_learner(s(0), s(2)).await?;
+        router.add_learner(s(0), s(3)).await?;
+        router.add_learner(s(0), s(4)).await?;
     }
     log_index += 4;
-    router.wait_for_log(&btreeset![0], Some(log_index), None, "add learner").await?;
+    router.wait_for_log(&btreeset! {s(0)}, Some(log_index), None, "add learner").await?;
 
     tracing::info!(log_index, "--- changing cluster config");
     let node = router.get_raft_handle(&s(0))?;
-    node.change_membership([0, 1, 2], false).await?;
+    node.change_membership([s(0), s(1), s(2)], false).await?;
 
     log_index += 2;
 
     tracing::info!(log_index, "--- every node receives joint log");
     for i in 0..5 {
         router
-            .wait(&i, None)
+            .wait(&s(i), None)
             .metrics(|x| x.last_applied.index() >= Some(log_index - 1), "joint log applied")
             .await?;
     }
@@ -77,16 +77,16 @@ async fn state_machine_apply_membership() -> Result<()> {
     tracing::info!(log_index, "--- only 3 node applied membership config");
     for i in 0..3 {
         router
-            .wait(&i, None)
+            .wait(&s(i), None)
             .metrics(|x| x.last_applied.index() == Some(log_index), "uniform log applied")
             .await?;
 
-        let (_sto, mut sm) = router.get_storage_handle(&i)?;
+        let (_sto, mut sm) = router.get_storage_handle(&s(i))?;
         let (_, last_membership) = sm.applied_state().await?;
         assert_eq!(
             StoredMembership::new(
                 Some(LogId::new(1, log_index)),
-                Membership::new(vec![btreeset! {0, 1, 2}], Some(btreeset! {s(3),s(4)}))
+                Membership::new(vec![btreeset! {s(0), s(1), s(2)}], Some(btreeset! {s(3),s(4)}))
             ),
             last_membership
         );

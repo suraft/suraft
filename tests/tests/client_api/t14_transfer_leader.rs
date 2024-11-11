@@ -6,6 +6,7 @@ use suraft::raft::TransferLeaderRequest;
 use suraft::Config;
 use suraft::ServerState;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -38,7 +39,7 @@ async fn transfer_leader() -> anyhow::Result<()> {
     let leader_vote = metrics.vote;
     let last_log_id = metrics.last_applied;
 
-    let req = TransferLeaderRequest::new(leader_vote, 2, last_log_id);
+    let req = TransferLeaderRequest::new(leader_vote.clone(), s(2), last_log_id.clone());
 
     tracing::info!("--- transfer Leader from 0 to 2");
     {
@@ -51,7 +52,7 @@ async fn transfer_leader() -> anyhow::Result<()> {
 
     tracing::info!("--- can NOT transfer Leader from 2 to 0 with an old vote");
     {
-        let req = TransferLeaderRequest::new(leader_vote, 0, last_log_id);
+        let req = TransferLeaderRequest::new(leader_vote, s(0), last_log_id);
 
         n0.handle_transfer_leader(req.clone()).await?;
         n1.handle_transfer_leader(req.clone()).await?;
@@ -94,7 +95,7 @@ async fn trigger_transfer_leader() -> anyhow::Result<()> {
 
     tracing::info!("--- trigger transfer Leader from 0 to 2");
     {
-        n0.trigger().transfer_leader(2).await?;
+        n0.trigger().transfer_leader(s(2)).await?;
 
         n2.wait(timeout()).state(ServerState::Leader, "node-2 become leader").await?;
         n0.wait(timeout()).state(ServerState::Follower, "node-0 become follower").await?;

@@ -27,7 +27,7 @@ async fn feature_loosen_follower_log_revert() -> Result<()> {
     let mut router = RaftRouter::new(config.clone());
 
     tracing::info!("--- initializing cluster");
-    let mut log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {3}).await?;
+    let mut log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {s(3)}).await?;
 
     tracing::info!(log_index, "--- write 10 logs");
     {
@@ -39,11 +39,11 @@ async fn feature_loosen_follower_log_revert() -> Result<()> {
 
     tracing::info!(log_index, "--- erase node 3 and restart");
     {
-        let (_raft, _ls, _sm) = router.remove_node(3).unwrap();
+        let (_raft, _ls, _sm) = router.remove_node(s(3)).unwrap();
         let (log, sm) = suraft_memstore::new_mem_store();
 
-        router.new_raft_node_with_sto(3, log, sm).await;
-        router.add_learner(0, 3).await?;
+        router.new_raft_node_with_sto(s(3), log, sm).await;
+        router.add_learner(s(0), s(3)).await?;
         log_index += 1; // add learner
     }
 

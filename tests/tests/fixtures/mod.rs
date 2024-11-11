@@ -382,7 +382,7 @@ impl TypedRaftRouter {
         let leader_id = MemNodeId::default();
         assert!(voter_ids.contains(&leader_id));
 
-        self.new_raft_node(leader_id).await;
+        self.new_raft_node(leader_id.clone()).await;
 
         tracing::info!("--- wait for init node to ready");
 
@@ -405,16 +405,16 @@ impl TypedRaftRouter {
                 assert_eq!(s.server_state, ServerState::Learner);
             });
         }
-        self.wait_for_log(&btreeset![leader_id], None, timeout(), "empty").await?;
+        self.wait_for_log(&btreeset![leader_id.clone()], None, timeout(), "empty").await?;
 
         tracing::info!("--- initializing single node cluster: {}", 0);
 
-        self.initialize(leader_id).await?;
+        self.initialize(leader_id.clone()).await?;
         let mut log_index = 1; // log 0: initial membership log; log 1: leader initial log
 
         tracing::info!(log_index, "--- wait for init node to become leader");
 
-        self.wait_for_log(&btreeset![leader_id], Some(log_index), timeout(), "init").await?;
+        self.wait_for_log(&btreeset![leader_id.clone()], Some(log_index), timeout(), "init").await?;
         self.wait(&leader_id, timeout()).vote(Vote::new_committed(1, s(0)), "init vote").await?;
 
         for id in voter_ids.iter() {
@@ -423,11 +423,11 @@ impl TypedRaftRouter {
             }
             tracing::info!(log_index, "--- add voter: {}", id);
 
-            self.new_raft_node(*id).await;
-            self.add_learner(leader_id, *id).await?;
+            self.new_raft_node(id.clone()).await;
+            self.add_learner(leader_id.clone(), id.clone()).await?;
             log_index += 1;
 
-            self.wait_for_state(&btreeset![*id], ServerState::Learner, timeout(), "empty node").await?;
+            self.wait_for_state(&btreeset![id.clone()], ServerState::Learner, timeout(), "empty node").await?;
         }
 
         self.wait_for_log(
@@ -456,7 +456,7 @@ impl TypedRaftRouter {
 
         for id in learners.clone() {
             tracing::info!(log_index, "--- add learner: {}", id);
-            self.new_raft_node(id).await;
+            self.new_raft_node(id.clone()).await;
             self.add_learner(MemNodeId::default(), id).await?;
             log_index += 1;
         }
@@ -485,7 +485,15 @@ impl TypedRaftRouter {
 
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn new_raft_node_with_sto(&mut self, id: MemNodeId, log_store: MemLogStore, sm: MemStateMachine) {
-        let node = Raft::new(id, self.config.clone(), self.clone(), log_store.clone(), sm.clone()).await.unwrap();
+        let node = Raft::new(
+            id.clone(),
+            self.config.clone(),
+            self.clone(),
+            log_store.clone(),
+            sm.clone(),
+        )
+        .await
+        .unwrap();
         let mut rt = self.nodes.lock().unwrap();
         rt.insert(id, (node, log_store, sm));
     }
@@ -497,7 +505,7 @@ impl TypedRaftRouter {
             rt.remove(&id)
         };
 
-        self.set_network_error(id, false);
+        self.set_network_error(id.clone(), false);
         self.set_unreachable(id, false);
 
         opt_handles
@@ -511,7 +519,7 @@ impl TypedRaftRouter {
         };
 
         tracing::info!(
-            node_id = display(node_id),
+            node_id = display(&node_id),
             members = debug(&members),
             "initializing cluster"
         );
@@ -530,7 +538,7 @@ impl TypedRaftRouter {
             None
         };
 
-        self.set_rpc_failure(id, NetRecv, v);
+        self.set_rpc_failure(id.clone(), NetRecv, v);
         self.set_rpc_failure(id, NetSend, v);
     }
 
@@ -542,7 +550,7 @@ impl TypedRaftRouter {
         } else {
             None
         };
-        self.set_rpc_failure(id, NetRecv, v);
+        self.set_rpc_failure(id.clone(), NetRecv, v);
         self.set_rpc_failure(id, NetSend, v);
     }
 
@@ -731,7 +739,7 @@ impl TypedRaftRouter {
         msg: &str,
     ) -> anyhow::Result<()> {
         for i in node_ids.iter() {
-            self.wait(i, timeout).snapshot(want, msg).await?;
+            self.wait(i, timeout).snapshot(want.clone(), msg).await?;
         }
         Ok(())
     }
@@ -739,7 +747,7 @@ impl TypedRaftRouter {
     /// Get the ID of the current leader.
     pub fn leader(&self) -> Option<MemNodeId> {
         self.latest_metrics().into_iter().find_map(|node| {
-            if node.current_leader == Some(node.id) {
+            if node.current_leader == Some(node.id.clone()) {
                 Some(node.id)
             } else {
                 None
@@ -770,7 +778,7 @@ impl TypedRaftRouter {
         mut target: MemNodeId,
         client_id: &str,
         serial: u64,
-    ) -> Result<(), RaftError<MemConfig, ClientWriteError<MemConfig>>> {
+    ) -> Result<(), RaftError<ClientWriteError<MemConfig>>> {
         for ith in 0..3 {
             let req = ClientRequest::make_request(client_id, serial);
             if let Err(err) = self.send_client_request(target, req).await {
@@ -784,7 +792,7 @@ impl TypedRaftRouter {
                             ith,
                             e.leader_id
                         );
-                        if let Some(l) = e.leader_id {
+                        if let Some(l) = e.leader_id.clone() {
                             target = l;
                             continue;
                         }
@@ -804,7 +812,7 @@ impl TypedRaftRouter {
     }
 
     /// Send external request to the particular node.
-    pub async fn with_raft_state<V, F>(&self, target: MemNodeId, func: F) -> Result<V, Fatal<MemConfig>>
+    pub async fn with_raft_state<V, F>(&self, target: MemNodeId, func: F) -> Result<V, Fatal>
     where
         F: FnOnce(&RaftState<MemConfig>) -> V + Send + 'static,
         V: Send + 'static,
@@ -832,9 +840,9 @@ impl TypedRaftRouter {
         target: MemNodeId,
         client_id: &str,
         count: usize,
-    ) -> Result<u64, RaftError<MemConfig, ClientWriteError<MemConfig>>> {
+    ) -> Result<u64, RaftError<ClientWriteError<MemConfig>>> {
         for idx in 0..count {
-            self.client_request(target, client_id, idx as u64).await?;
+            self.client_request(target.clone(), client_id, idx as u64).await?;
         }
 
         Ok(count as u64)
@@ -844,7 +852,7 @@ impl TypedRaftRouter {
         &self,
         target: MemNodeId,
         req: ClientRequest,
-    ) -> Result<ClientResponse, RaftError<MemConfig, ClientWriteError<MemConfig>>> {
+    ) -> Result<ClientResponse, RaftError<ClientWriteError<MemConfig>>> {
         let node = {
             let rt = self.nodes.lock().unwrap();
             rt.get(&target)
@@ -892,7 +900,7 @@ impl TypedRaftRouter {
         if let Some(voted_for) = &expect_voted_for {
             assert_eq!(
                 vote.leader_id().voted_for(),
-                Some(*voted_for),
+                Some(voted_for.clone()),
                 "expected node {} to have voted for {}, got {:?}",
                 id,
                 voted_for,
@@ -927,7 +935,7 @@ impl TypedRaftRouter {
             }
 
             assert_eq!(
-                &snap.meta.last_log_id.unwrap_or_default().term.term,
+                &snap.meta.last_log_id.clone().unwrap_or_default().term,
                 term,
                 "expected node {} to have snapshot with term {}, got {:?}",
                 id,
@@ -940,7 +948,7 @@ impl TypedRaftRouter {
 
         assert_eq!(
             &last_applied,
-            &Some(expect_sm_last_applied_log),
+            &Some(expect_sm_last_applied_log.clone()),
             "expected node {} to have state machine last_applied_log {}, got {:?}",
             id,
             expect_sm_last_applied_log,
@@ -974,8 +982,8 @@ impl TypedRaftRouter {
                 &id,
                 expect_term,
                 expect_last_log,
-                expect_voted_for,
-                expect_sm_last_applied_log,
+                expect_voted_for.clone(),
+                expect_sm_last_applied_log.clone(),
                 &expect_snapshot,
             )
             .await?;
@@ -1020,13 +1028,13 @@ impl RaftNetworkV2<MemConfig> for RaftRouterNetwork {
         &mut self,
         mut rpc: AppendEntriesRequest<MemConfig>,
         _option: RPCOption,
-    ) -> Result<AppendEntriesResponse<MemConfig>, RPCError<MemConfig>> {
+    ) -> Result<AppendEntriesResponse, RPCError<MemConfig>> {
         let from_id = rpc.vote.leader_id().voted_for().unwrap();
 
         tracing::debug!("append_entries to id={} {}", self.target, rpc);
         self.owner.count_rpc(RPCTypes::AppendEntries);
-        self.owner.call_rpc_pre_hook(rpc.clone(), from_id, self.target)?;
-        self.owner.emit_rpc_error(from_id, self.target)?;
+        self.owner.call_rpc_pre_hook(rpc.clone(), from_id.clone(), self.target.clone())?;
+        self.owner.emit_rpc_error(from_id.clone(), self.target.clone())?;
         self.owner.rand_send_delay().await;
 
         // decrease quota if quota is set
@@ -1042,9 +1050,9 @@ impl RaftNetworkV2<MemConfig> for RaftRouterNetwork {
                     rpc.entries.truncate(quota as usize);
                     *x = Some(0);
                     if let Some(last) = rpc.entries.last() {
-                        Some(Some(*last.get_log_id()))
+                        Some(Some(last.get_log_id().clone()))
                     } else {
-                        Some(rpc.prev_log_id)
+                        Some(rpc.prev_log_id.clone())
                     }
                 } else {
                     *x = Some(quota - n);
@@ -1090,12 +1098,12 @@ impl RaftNetworkV2<MemConfig> for RaftRouterNetwork {
         snapshot: Snapshot<MemConfig>,
         _cancel: impl Future<Output = ReplicationClosed> + OptionalSend + 'static,
         _option: RPCOption,
-    ) -> Result<SnapshotResponse<MemConfig>, StreamingError<MemConfig>> {
+    ) -> Result<SnapshotResponse, StreamingError<MemConfig>> {
         let from_id = vote.leader_id().voted_for().unwrap();
 
         self.owner.count_rpc(RPCTypes::InstallSnapshot);
-        self.owner.call_rpc_pre_hook(snapshot.clone(), from_id, self.target)?;
-        self.owner.emit_rpc_error(from_id, self.target)?;
+        self.owner.call_rpc_pre_hook(snapshot.clone(), from_id.clone(), self.target.clone())?;
+        self.owner.emit_rpc_error(from_id.clone(), self.target.clone())?;
         self.owner.rand_send_delay().await;
 
         let node = self.owner.get_raft_handle(&self.target)?;
@@ -1112,16 +1120,12 @@ impl RaftNetworkV2<MemConfig> for RaftRouterNetwork {
     }
 
     /// Send a RequestVote RPC to the target Raft node (§5).
-    async fn vote(
-        &mut self,
-        rpc: VoteRequest<MemConfig>,
-        _option: RPCOption,
-    ) -> Result<VoteResponse<MemConfig>, RPCError<MemConfig>> {
+    async fn vote(&mut self, rpc: VoteRequest, _option: RPCOption) -> Result<VoteResponse, RPCError<MemConfig>> {
         let from_id = rpc.vote.leader_id().voted_for().unwrap();
 
         self.owner.count_rpc(RPCTypes::Vote);
-        self.owner.call_rpc_pre_hook(rpc.clone(), from_id, self.target)?;
-        self.owner.emit_rpc_error(from_id, self.target)?;
+        self.owner.call_rpc_pre_hook(rpc.clone(), from_id.clone(), self.target.clone())?;
+        self.owner.emit_rpc_error(from_id.clone(), self.target.clone())?;
         self.owner.rand_send_delay().await;
 
         let node = self.owner.get_raft_handle(&self.target)?;
@@ -1139,14 +1143,14 @@ impl RaftNetworkV2<MemConfig> for RaftRouterNetwork {
 
     async fn transfer_leader(
         &mut self,
-        rpc: TransferLeaderRequest<MemConfig>,
+        rpc: TransferLeaderRequest,
         _option: RPCOption,
     ) -> Result<(), RPCError<MemConfig>> {
         let from_id = rpc.from_leader().leader_id().voted_for().unwrap();
 
         self.owner.count_rpc(RPCTypes::TransferLeader);
-        self.owner.call_rpc_pre_hook(rpc.clone(), from_id, self.target)?;
-        self.owner.emit_rpc_error(from_id, self.target)?;
+        self.owner.call_rpc_pre_hook(rpc.clone(), from_id.clone(), self.target.clone())?;
+        self.owner.emit_rpc_error(from_id, self.target.clone())?;
         self.owner.rand_send_delay().await;
 
         let node = self.owner.get_raft_handle(&self.target)?;

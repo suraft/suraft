@@ -132,14 +132,14 @@ fn test_raft_state_last_purged_log_id() -> anyhow::Result<()> {
         purged_next: 3,
         ..Default::default()
     };
-    assert_eq!(Some(log_id(1, 2)), rs.last_purged_log_id().copied());
+    assert_eq!(Some(log_id(1, 2)), rs.last_purged_log_id().cloned());
 
     let rs = RaftState::<UTConfig> {
         log_ids: LogIdList::new(vec![log_id(1, 2), log_id(3, 4)]),
         purged_next: 3,
         ..Default::default()
     };
-    assert_eq!(Some(log_id(1, 2)), rs.last_purged_log_id().copied());
+    assert_eq!(Some(log_id(1, 2)), rs.last_purged_log_id().cloned());
 
     Ok(())
 }

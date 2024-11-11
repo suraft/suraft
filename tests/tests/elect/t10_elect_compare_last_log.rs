@@ -42,7 +42,7 @@ async fn elect_compare_last_log() -> Result<()> {
         sto0.blocking_append([
             //
             blank_ent(0, 0),
-            membership_ent(2, 0, 1, vec![btreeset! {s(0),s(1)}]),
+            membership_ent(2, 1, vec![btreeset! {s(0),s(1)}]),
         ])
         .await?;
     }
@@ -53,7 +53,7 @@ async fn elect_compare_last_log() -> Result<()> {
 
         sto1.blocking_append([
             blank_ent(0, 0),
-            membership_ent(1, 0, 1, vec![btreeset! {s(0),s(1)}]),
+            membership_ent(1, 1, vec![btreeset! {s(0),s(1)}]),
             blank_ent(1, 2),
         ])
         .await?;
@@ -61,10 +61,10 @@ async fn elect_compare_last_log() -> Result<()> {
 
     tracing::info!("--- bring up cluster and elect");
 
-    router.new_raft_node_with_sto(0, sto0.clone(), sm0.clone()).await;
-    router.new_raft_node_with_sto(1, sto1.clone(), sm1.clone()).await;
+    router.new_raft_node_with_sto(s(0), sto0.clone(), sm0.clone()).await;
+    router.new_raft_node_with_sto(s(1), sto1.clone(), sm1.clone()).await;
 
-    router.wait(&0, timeout()).state(ServerState::Leader, "only node 0 becomes leader").await?;
+    router.wait(&s(0), timeout()).state(ServerState::Leader, "only node 0 becomes leader").await?;
 
     Ok(())
 }

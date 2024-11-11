@@ -37,12 +37,12 @@ async fn new_leader_auto_commit_uniform_config() -> Result<()> {
 
     let mut log_index = router.new_cluster(btreeset! {s(0)}, btreeset! {}).await?;
 
-    let (mut sto, sm) = router.get_storage_handle(&0)?;
-    router.remove_node(0);
+    let (mut sto, sm) = router.get_storage_handle(&s(0))?;
+    router.remove_node(s(0));
 
     {
         sto.blocking_append([Entry {
-            log_id: log_id(1, 0, log_index + 1),
+            log_id: log_id(1, log_index + 1),
             payload: EntryPayload::Membership(Membership::new(
                 vec![btreeset! {s(0)}, btreeset! {s(0),s(1),s(2)}],
                 Some(btreeset! {}),

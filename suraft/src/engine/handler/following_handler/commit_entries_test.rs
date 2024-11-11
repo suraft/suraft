@@ -34,10 +34,10 @@ fn eng() -> Engine<UTConfig> {
         Duration::from_millis(500),
         Vote::new_committed(2, s(1)),
     );
-    eng.state.committed = Some(log_id(1, s(1), 1));
+    eng.state.committed = Some(log_id(1, 1));
     eng.state.membership_state = MembershipState::new(
-        Arc::new(EffectiveMembership::new(Some(log_id(1, s(1), 1)), m01())),
-        Arc::new(EffectiveMembership::new(Some(log_id(2, s(1), 3)), m23())),
+        Arc::new(EffectiveMembership::new(Some(log_id(1, 1)), m01())),
+        Arc::new(EffectiveMembership::new(Some(log_id(2, 3)), m23())),
     );
     eng
 }
@@ -48,11 +48,11 @@ fn test_following_handler_commit_entries_empty() -> anyhow::Result<()> {
 
     eng.following_handler().commit_entries(None);
 
-    assert_eq!(Some(&log_id(1, s(1), 1)), eng.state.committed());
+    assert_eq!(Some(&log_id(1, 1)), eng.state.committed());
     assert_eq!(
         MembershipState::new(
-            Arc::new(EffectiveMembership::new(Some(log_id(1, s(1), 1)), m01())),
-            Arc::new(EffectiveMembership::new(Some(log_id(2, s(1), 3)), m23())),
+            Arc::new(EffectiveMembership::new(Some(log_id(1, 1)), m01())),
+            Arc::new(EffectiveMembership::new(Some(log_id(2, 3)), m23())),
         ),
         eng.state.membership_state
     );
@@ -64,27 +64,27 @@ fn test_following_handler_commit_entries_empty() -> anyhow::Result<()> {
 #[test]
 fn test_following_handler_commit_entries_ge_accepted() -> anyhow::Result<()> {
     let mut eng = eng();
-    let committed_vote = eng.state.vote_ref().into_committed();
-    eng.state.io_state.io_progress.accept(IOId::new_log_io(committed_vote, Some(log_id(1, s(1), 2))));
+    let committed_vote = eng.state.vote_ref().clone().into_committed();
+    eng.state.io_state.io_progress.accept(IOId::new_log_io(committed_vote, Some(log_id(1, 2))));
 
-    eng.following_handler().commit_entries(Some(log_id(2, s(1), 3)));
+    eng.following_handler().commit_entries(Some(log_id(2, 3)));
 
-    assert_eq!(Some(&log_id(1, s(1), 2)), eng.state.committed());
+    assert_eq!(Some(&log_id(1, 2)), eng.state.committed());
     assert_eq!(
         MembershipState::new(
-            Arc::new(EffectiveMembership::new(Some(log_id(1, s(1), 1)), m01())),
-            Arc::new(EffectiveMembership::new(Some(log_id(2, s(1), 3)), m23())),
+            Arc::new(EffectiveMembership::new(Some(log_id(1, 1)), m01())),
+            Arc::new(EffectiveMembership::new(Some(log_id(2, 3)), m23())),
         ),
         eng.state.membership_state
     );
     assert_eq!(
         vec![
             Command::SaveCommitted {
-                committed: log_id(1, s(1), 2)
+                committed: log_id(1, 2)
             },
             Command::Apply {
-                already_committed: Some(log_id(1, s(1), 1)),
-                upto: log_id(1, s(1), 2),
+                already_committed: Some(log_id(1, 1)),
+                upto: log_id(1, 2),
             }
         ],
         eng.output.take_commands()
@@ -96,16 +96,16 @@ fn test_following_handler_commit_entries_ge_accepted() -> anyhow::Result<()> {
 #[test]
 fn test_following_handler_commit_entries_le_accepted() -> anyhow::Result<()> {
     let mut eng = eng();
-    let committed_vote = eng.state.vote_ref().into_committed();
-    eng.state.io_state.io_progress.accept(IOId::new_log_io(committed_vote, Some(log_id(3, s(1), 4))));
+    let committed_vote = eng.state.vote_ref().clone().into_committed();
+    eng.state.io_state.io_progress.accept(IOId::new_log_io(committed_vote, Some(log_id(3, 4))));
 
-    eng.following_handler().commit_entries(Some(log_id(2, s(1), 3)));
+    eng.following_handler().commit_entries(Some(log_id(2, 3)));
 
-    assert_eq!(Some(&log_id(2, s(1), 3)), eng.state.committed());
+    assert_eq!(Some(&log_id(2, 3)), eng.state.committed());
     assert_eq!(
         MembershipState::new(
-            Arc::new(EffectiveMembership::new(Some(log_id(2, s(1), 3)), m23())),
-            Arc::new(EffectiveMembership::new(Some(log_id(2, s(1), 3)), m23()))
+            Arc::new(EffectiveMembership::new(Some(log_id(2, 3)), m23())),
+            Arc::new(EffectiveMembership::new(Some(log_id(2, 3)), m23()))
         ),
         eng.state.membership_state
     );
@@ -113,11 +113,11 @@ fn test_following_handler_commit_entries_le_accepted() -> anyhow::Result<()> {
         vec![
             //
             Command::SaveCommitted {
-                committed: log_id(2, s(1), 3)
+                committed: log_id(2, 3)
             },
             Command::Apply {
-                already_committed: Some(log_id(1, s(1), 1)),
-                upto: log_id(2, s(1), 3)
+                already_committed: Some(log_id(1, 1)),
+                upto: log_id(2, 3)
             },
         ],
         eng.output.take_commands()

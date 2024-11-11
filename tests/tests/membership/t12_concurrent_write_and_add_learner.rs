@@ -8,8 +8,10 @@ use suraft::Config;
 use suraft::LogIdOptionExt;
 use suraft::ServerState;
 use suraft::Vote;
+use suraft::NID;
 use tracing::Instrument;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -39,7 +41,7 @@ use crate::fixtures::RaftRouter;
 #[tracing::instrument]
 #[test_harness::test(harness = ut_harness)]
 async fn concurrent_write_and_add_learner() -> Result<()> {
-    let candidates = btreeset![0, 1, 2];
+    let candidates = btreeset! {s(0), s(1), s(2)};
 
     // Setup test dependencies.
     let config = Arc::new(
@@ -51,25 +53,25 @@ async fn concurrent_write_and_add_learner() -> Result<()> {
     );
     let mut router = RaftRouter::new(config.clone());
 
-    router.new_raft_node(0).await;
+    router.new_raft_node(s(0)).await;
 
     let mut log_index;
 
     tracing::info!("--- initializing cluster of 1 node");
     {
-        router.initialize(0).await?;
+        router.initialize(s(0)).await?;
         log_index = 1;
 
-        wait_log(&router, &btreeset![0], log_index).await?;
+        wait_log(&router, &btreeset! {s(0)}, log_index).await?;
     }
 
     tracing::info!(log_index, "--- adding two candidate nodes");
     {
         // Sync some new nodes.
-        router.new_raft_node(1).await;
-        router.new_raft_node(2).await;
-        router.add_learner(0, 1).await?;
-        router.add_learner(0, 2).await?;
+        router.new_raft_node(s(1)).await;
+        router.new_raft_node(s(2)).await;
+        router.add_learner(s(0), s(1)).await?;
+        router.add_learner(s(0), s(2)).await?;
         log_index += 2; // two add_learner logs
 
         tracing::info!(log_index, "--- changing cluster config");
@@ -88,7 +90,7 @@ async fn concurrent_write_and_add_learner() -> Result<()> {
 
     tracing::info!(log_index, "--- write one log");
     {
-        router.client_request_many(leader, "client", 1).await?;
+        router.client_request_many(leader.clone(), "client", 1).await?;
         log_index += 1;
 
         wait_log(&router, &candidates, log_index).await?;
@@ -97,13 +99,14 @@ async fn concurrent_write_and_add_learner() -> Result<()> {
     // Concurrently add Learner and write another log.
     tracing::info!(log_index, "--- concurrently add learner and write another log");
     {
-        router.new_raft_node(3).await;
+        router.new_raft_node(s(3)).await;
         let r = router.clone();
 
         let handle = {
+            let leader = leader.clone();
             tokio::spawn(
                 async move {
-                    r.add_learner(leader, 3).await.unwrap();
+                    r.add_learner(leader.clone(), s(3)).await.unwrap();
                     Ok::<(), anyhow::Error>(())
                 }
                 .instrument(tracing::debug_span!("spawn-add-learner")),
@@ -119,7 +122,7 @@ async fn concurrent_write_and_add_learner() -> Result<()> {
     wait_log(&router, &candidates, log_index).await?;
     router
         .wait_for_metrics(
-            &3u64,
+            &s(3),
             |x| x.state == ServerState::Learner,
             timeout(),
             &format!("n{}.state -> {:?}", 3, ServerState::Learner),
@@ -129,7 +132,7 @@ async fn concurrent_write_and_add_learner() -> Result<()> {
     // THe learner should receive the last written log
     router
         .wait_for_metrics(
-            &3u64,
+            &s(3),
             |x| x.last_log_index == Some(log_index),
             timeout(),
             &format!("n{}.last_log_index -> {}", 3, log_index),
@@ -139,7 +142,7 @@ async fn concurrent_write_and_add_learner() -> Result<()> {
     Ok(())
 }
 
-async fn wait_log(router: &RaftRouter, node_ids: &BTreeSet<u64>, want_log: u64) -> anyhow::Result<()> {
+async fn wait_log(router: &RaftRouter, node_ids: &BTreeSet<NID>, want_log: u64) -> anyhow::Result<()> {
     for i in node_ids.iter() {
         router
             .wait_for_metrics(

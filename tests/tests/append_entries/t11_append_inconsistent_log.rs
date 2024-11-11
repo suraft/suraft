@@ -11,6 +11,7 @@ use suraft::RaftLogReader;
 use suraft::ServerState;
 use suraft::Vote;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -43,23 +44,23 @@ async fn append_inconsistent_log() -> Result<()> {
         .validate()?,
     );
     let mut router = RaftRouter::new(config.clone());
-    router.new_raft_node(0).await;
+    router.new_raft_node(s(0)).await;
 
     let mut log_index = router.new_cluster(btreeset! {s(0),s(1),s(2)}, btreeset! {}).await?;
 
     tracing::info!(log_index, "--- remove all nodes and fake the logs");
 
-    let (r0, mut sto0, sm0) = router.remove_node(0).unwrap();
+    let (r0, mut sto0, sm0) = router.remove_node(s(0)).unwrap();
     let (r1, sto1, sm1) = router.remove_node(s(1)).unwrap();
-    let (r2, mut sto2, sm2) = router.remove_node(2).unwrap();
+    let (r2, mut sto2, sm2) = router.remove_node(s(2)).unwrap();
 
     r0.shutdown().await?;
     r1.shutdown().await?;
     r2.shutdown().await?;
 
     for i in log_index + 1..=100 {
-        sto0.blocking_append([blank_ent(2, 1, i)]).await?;
-        sto2.blocking_append([blank_ent(3, 3, i)]).await?;
+        sto0.blocking_append([blank_ent(2, i)]).await?;
+        sto2.blocking_append([blank_ent(3, i)]).await?;
     }
 
     sto0.save_vote(&Vote::new(4, s(1))).await?;
@@ -72,14 +73,14 @@ async fn append_inconsistent_log() -> Result<()> {
         "--- restart node 1 and isolate. To let node-2 to become leader, node-1 should not vote for node-0"
     );
     {
-        router.new_raft_node_with_sto(1, sto1.clone(), sm1.clone()).await;
-        router.set_network_error(1, true);
+        router.new_raft_node_with_sto(s(1), sto1.clone(), sm1.clone()).await;
+        router.set_network_error(s(1), true);
     }
 
     tracing::info!(log_index, "--- restart node 0 and 2");
     {
-        router.new_raft_node_with_sto(0, sto0.clone(), sm0.clone()).await;
-        router.new_raft_node_with_sto(2, sto2.clone(), sm2.clone()).await;
+        router.new_raft_node_with_sto(s(0), sto0.clone(), sm0.clone()).await;
+        router.new_raft_node_with_sto(s(2), sto2.clone(), sm2.clone()).await;
     }
 
     // leader appends at least one blank log. There may be more than one transient leaders
@@ -98,7 +99,7 @@ async fn append_inconsistent_log() -> Result<()> {
 
         router
             .wait_for_state(
-                &btreeset! {2},
+                &btreeset! {s(2)},
                 ServerState::Leader,
                 Some(Duration::from_millis(5000)),
                 "node 2 become leader",
@@ -107,17 +108,13 @@ async fn append_inconsistent_log() -> Result<()> {
     }
 
     router
-        .wait(&0, Some(Duration::from_millis(2000)))
+        .wait(&s(0), Some(Duration::from_millis(2000)))
         // leader appends at least one blank log. There may be more than one transient leaders
         .applied_index_at_least(Some(log_index), "sync log to node 0")
         .await?;
 
     let logs = sto0.try_get_log_entries(60..=60).await?;
-    assert_eq!(
-        3,
-        logs.first().unwrap().log_id.term.term,
-        "log is overridden by leader logs"
-    );
+    assert_eq!(3, logs.first().unwrap().log_id.term, "log is overridden by leader logs");
 
     Ok(())
 }

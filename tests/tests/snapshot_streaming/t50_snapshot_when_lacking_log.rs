@@ -2,11 +2,11 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use maplit::btreeset;
-use suraft::CommittedLeaderId;
 use suraft::Config;
 use suraft::LogId;
 use suraft::SnapshotPolicy;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -40,14 +40,14 @@ async fn switch_to_snapshot_replication_when_lacking_log() -> Result<()> {
         router.client_request_many(s(0), "0", (snapshot_threshold - 1 - log_index) as usize).await?;
         log_index = snapshot_threshold - 1;
 
-        router.wait_for_log(&btreeset![0], Some(log_index), None, "send log to trigger snapshot").await?;
+        router.wait_for_log(&btreeset![s(0)], Some(log_index), None, "send log to trigger snapshot").await?;
 
-        router.wait_for_snapshot(&btreeset![0], LogId::new(1, log_index), None, "snapshot").await?;
+        router.wait_for_snapshot(&btreeset![s(0)], LogId::new(1, log_index), None, "snapshot").await?;
         router
             .assert_storage_state(
                 1,
                 log_index,
-                Some(0),
+                Some(s(0)),
                 LogId::new(1, log_index),
                 Some((log_index.into(), 1)),
             )
@@ -65,12 +65,12 @@ async fn switch_to_snapshot_replication_when_lacking_log() -> Result<()> {
 
     tracing::info!(log_index, "--- add learner to receive snapshot and logs");
     {
-        router.new_raft_node(1).await;
-        router.add_learner(0, 1).await.expect("failed to add new node as learner");
+        router.new_raft_node(s(1)).await;
+        router.add_learner(s(0), s(1)).await.expect("failed to add new node as learner");
         log_index += 1;
 
-        router.wait_for_log(&btreeset![0, 1], Some(log_index), None, "add learner").await?;
-        router.wait_for_snapshot(&btreeset![1], LogId::new(1, snapshot_threshold - 1), None, "").await?;
+        router.wait_for_log(&btreeset! {s(0), s(1)}, Some(log_index), None, "add learner").await?;
+        router.wait_for_snapshot(&btreeset![s(1)], LogId::new(1, snapshot_threshold - 1), None, "").await?;
         let expected_snap = Some(((snapshot_threshold - 1).into(), 1));
         router
             .assert_storage_state(

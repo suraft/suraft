@@ -4,11 +4,11 @@ use std::time::Duration;
 use anyhow::Result;
 use maplit::btreeset;
 use suraft::testing::log_id;
-use suraft::CommittedLeaderId;
 use suraft::Config;
 use suraft::LogId;
 use suraft::SnapshotPolicy;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -42,7 +42,7 @@ async fn after_snapshot_add_learner_and_request_a_log() -> Result<()> {
 
         router
             .wait_for_log(
-                &btreeset![0],
+                &btreeset! {s(0)},
                 Some(log_index),
                 timeout(),
                 "send log to trigger snapshot",
@@ -50,12 +50,18 @@ async fn after_snapshot_add_learner_and_request_a_log() -> Result<()> {
             .await?;
 
         router
-            .wait(&0, timeout())
-            .snapshot(log_id(1, 0, snapshot_index), "leader-0 has built snapshot")
+            .wait(&s(0), timeout())
+            .snapshot(log_id(1, snapshot_index), "leader-0 has built snapshot")
             .await?;
 
         router
-            .assert_storage_state(1, log_index, Some(0), log_id(1, log_index), Some((log_index.into(), 1)))
+            .assert_storage_state(
+                1,
+                log_index,
+                Some(s(0)),
+                log_id(1, log_index),
+                Some((log_index.into(), 1)),
+            )
             .await?;
     }
 
@@ -64,14 +70,14 @@ async fn after_snapshot_add_learner_and_request_a_log() -> Result<()> {
         "--- add learner to the cluster to receive snapshot, which overrides the learner storage"
     );
     {
-        router.new_raft_node(1).await;
-        router.add_learner(0, 1).await.expect("failed to add new node as learner");
+        router.new_raft_node(s(1)).await;
+        router.add_learner(s(0), s(1)).await.expect("failed to add new node as learner");
         log_index += 1;
 
         tracing::info!(log_index, "--- DONE add learner");
 
         router
-            .wait(&1, timeout())
+            .wait(&s(1), timeout())
             .snapshot(LogId::new(1, snapshot_index), "learner-1 receives snapshot")
             .await?;
 
@@ -80,7 +86,7 @@ async fn after_snapshot_add_learner_and_request_a_log() -> Result<()> {
 
         router
             .wait_for_log(
-                &btreeset![0, 1],
+                &btreeset! {s(0), s(1)},
                 Some(log_index),
                 timeout(),
                 "learner-1 receives client-write log",

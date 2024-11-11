@@ -59,11 +59,11 @@ fn test_calc_purge_upto() -> anyhow::Result<()> {
         eng.config.max_in_snapshot_log_to_keep = max_keep;
         eng.config.purge_batch_size = 1;
 
-        if let Some(last_purged) = last_purged {
+        if let Some(last_purged) = last_purged.clone() {
             eng.state.log_ids.purge(&last_purged);
             eng.state.purged_next = last_purged.index + 1;
         }
-        eng.state.snapshot_meta.last_log_id = snapshot_last_log_id;
+        eng.state.snapshot_meta.last_log_id = snapshot_last_log_id.clone();
         let got = eng.log_handler().calc_purge_upto();
 
         assert_eq!(

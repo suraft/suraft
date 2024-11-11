@@ -3,12 +3,12 @@ use std::time::Duration;
 
 use anyhow::Result;
 use maplit::btreeset;
-use suraft::CommittedLeaderId;
 use suraft::Config;
 use suraft::LogId;
 use suraft::RaftLogReader;
 use tokio::time::sleep;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -40,8 +40,8 @@ async fn replication_does_not_block_purge() -> Result<()> {
 
     let leader = router.get_raft_handle(&s(0))?;
 
-    router.set_network_error(1, true);
-    router.set_network_error(2, true);
+    router.set_network_error(s(1), true);
+    router.set_network_error(s(2), true);
 
     tracing::info!(log_index, "--- build snapshot on leader, check purged log");
     {
@@ -52,7 +52,7 @@ async fn replication_does_not_block_purge() -> Result<()> {
 
         sleep(Duration::from_millis(500)).await;
 
-        let (mut sto0, mut _sm0) = router.get_storage_handle(&0)?;
+        let (mut sto0, mut _sm0) = router.get_storage_handle(&s(0))?;
         let logs = sto0.try_get_log_entries(..).await?;
         assert_eq!(max_keep as usize, logs.len(), "leader's local logs are purged");
     }

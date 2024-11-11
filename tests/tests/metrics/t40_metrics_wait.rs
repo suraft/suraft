@@ -7,6 +7,7 @@ use suraft::metrics::WaitError;
 use suraft::Config;
 use suraft::ServerState;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -30,21 +31,21 @@ async fn metrics_wait() -> Result<()> {
     );
     let mut router = RaftRouter::new(config.clone());
 
-    let cluster = btreeset![0];
-    router.new_raft_node(0).await;
+    let cluster = btreeset![s(0)];
+    router.new_raft_node(s(0)).await;
     {
         let n0 = router.get_raft_handle(&s(0))?;
         n0.initialize(cluster.clone()).await?;
 
-        router.wait(&0, timeout()).state(ServerState::Leader, "n0 -> leader").await?;
+        router.wait(&s(0), timeout()).state(ServerState::Leader, "n0 -> leader").await?;
     }
 
-    router.wait(&0, None).current_leader(0, "become leader").await?;
+    router.wait(&s(0), None).current_leader(s(0), "become leader").await?;
     router.wait_for_log(&cluster, Some(1), None, "initial log").await?;
 
     tracing::info!("--- wait and timeout");
 
-    let rst = router.wait(&0, timeout()).applied_index(Some(2), "timeout waiting for log 2").await;
+    let rst = router.wait(&s(0), timeout()).applied_index(Some(2), "timeout waiting for log 2").await;
 
     match rst {
         Ok(_) => {

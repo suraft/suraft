@@ -7,6 +7,7 @@ use suraft::type_config::TypeConfigExt;
 use suraft::Config;
 use suraft_memstore::TypeConfig;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -86,7 +87,7 @@ async fn leader_last_ack_3_nodes() -> Result<()> {
     tracing::info!(log_index, "--- remove node 1 and node 2");
     {
         router.remove_node(s(1));
-        router.remove_node(2);
+        router.remove_node(s(2));
     }
 
     tracing::info!(
@@ -188,7 +189,7 @@ async fn leader_last_ack_3_nodes_abs_time() -> Result<()> {
     tracing::info!(log_index, "--- remove node 1 and node 2");
     {
         router.remove_node(s(1));
-        router.remove_node(2);
+        router.remove_node(s(2));
     }
 
     tracing::info!(

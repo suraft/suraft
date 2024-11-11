@@ -14,7 +14,7 @@ fn m12() -> Membership<UTConfig> {
 }
 
 fn m1234() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {1,2,3,4}], None)
+    Membership::<UTConfig>::new(vec![btreeset! {s(1),s(2),s(3),s(4)}], None)
 }
 
 fn eng() -> Engine<UTConfig> {
@@ -22,8 +22,8 @@ fn eng() -> Engine<UTConfig> {
     eng.state.enable_validation(false); // Disable validation for incomplete state
 
     eng.state.snapshot_meta = SnapshotMeta {
-        last_log_id: Some(log_id(2, s(1), 2)),
-        last_membership: StoredMembership::new(Some(log_id(1, s(1), 1)), m12()),
+        last_log_id: Some(log_id(2, 2)),
+        last_membership: StoredMembership::new(Some(log_id(1, 1)), m12()),
         snapshot_id: "1-2-3-4".to_string(),
     };
     eng
@@ -35,8 +35,8 @@ fn test_update_snapshot_no_update() -> anyhow::Result<()> {
     let mut eng = eng();
 
     let got = eng.snapshot_handler().update_snapshot(SnapshotMeta {
-        last_log_id: Some(log_id(2, s(1), 2)),
-        last_membership: StoredMembership::new(Some(log_id(1, s(1), 1)), m1234()),
+        last_log_id: Some(log_id(2, 2)),
+        last_membership: StoredMembership::new(Some(log_id(1, 1)), m1234()),
         snapshot_id: "1-2-3-4".to_string(),
     });
 
@@ -44,8 +44,8 @@ fn test_update_snapshot_no_update() -> anyhow::Result<()> {
 
     assert_eq!(
         SnapshotMeta {
-            last_log_id: Some(log_id(2, s(1), 2)),
-            last_membership: StoredMembership::new(Some(log_id(1, s(1), 1)), m12()),
+            last_log_id: Some(log_id(2, 2)),
+            last_membership: StoredMembership::new(Some(log_id(1, 1)), m12()),
             snapshot_id: "1-2-3-4".to_string(),
         },
         eng.state.snapshot_meta
@@ -62,8 +62,8 @@ fn test_update_snapshot_updated() -> anyhow::Result<()> {
     let mut eng = eng();
 
     let got = eng.snapshot_handler().update_snapshot(SnapshotMeta {
-        last_log_id: Some(log_id(2, s(1), 3)),
-        last_membership: StoredMembership::new(Some(log_id(2, s(1), 2)), m1234()),
+        last_log_id: Some(log_id(2, 3)),
+        last_membership: StoredMembership::new(Some(log_id(2, 2)), m1234()),
         snapshot_id: "1-2-3-4".to_string(),
     });
 
@@ -71,8 +71,8 @@ fn test_update_snapshot_updated() -> anyhow::Result<()> {
 
     assert_eq!(
         SnapshotMeta {
-            last_log_id: Some(log_id(2, s(1), 3)),
-            last_membership: StoredMembership::new(Some(log_id(2, s(1), 2)), m1234()),
+            last_log_id: Some(log_id(2, 3)),
+            last_membership: StoredMembership::new(Some(log_id(2, 2)), m1234()),
             snapshot_id: "1-2-3-4".to_string(),
         },
         eng.state.snapshot_meta

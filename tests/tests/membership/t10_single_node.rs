@@ -3,10 +3,10 @@ use std::time::Duration;
 
 use anyhow::Result;
 use maplit::btreeset;
-use suraft::CommittedLeaderId;
 use suraft::Config;
 use suraft::LogId;
 
+use crate::fixtures::s;
 use crate::fixtures::ut_harness;
 use crate::fixtures::RaftRouter;
 
@@ -37,11 +37,11 @@ async fn single_node() -> Result<()> {
 
     // Write some data to the single node cluster.
     log_index += router.client_request_many(s(0), "0", 1000).await?;
-    router.wait_for_log(&btreeset![0], Some(log_index), timeout(), "client_request_many").await?;
-    router.assert_storage_state(1, log_index, Some(0), LogId::new(1, log_index), None).await?;
+    router.wait_for_log(&btreeset! {s(0)}, Some(log_index), timeout(), "client_request_many").await?;
+    router.assert_storage_state(1, log_index, Some(s(0)), LogId::new(1, log_index), None).await?;
 
     // Read some data from the single node cluster.
-    router.ensure_linearizable(0).await?;
+    router.ensure_linearizable(s(0)).await?;
 
     Ok(())
 }

@@ -59,8 +59,10 @@ async fn initialization() -> anyhow::Result<()> {
     let mut log_index = 0;
 
     // Assert all nodes are in learner state & have no entries.
-    router.wait_for_log(&btreeset![0, 1, 2], None, timeout(), "empty").await?;
-    router.wait_for_state(&btreeset![0, 1, 2], ServerState::Learner, timeout(), "empty").await?;
+    router.wait_for_log(&btreeset! {s(0), s(1), s(2)}, None, timeout(), "empty").await?;
+    router
+        .wait_for_state(&btreeset! {s(0), s(1), s(2)}, ServerState::Learner, timeout(), "empty")
+        .await?;
 
     // Sending an external requests will also find all nodes in Learner state.
     //
@@ -75,7 +77,7 @@ async fn initialization() -> anyhow::Result<()> {
     // Also, this external request will be definitely executed, since it's ordered
     // before other requests in the Raft core API queue, which definitely are executed
     // (since they are awaited).
-    for node in [0, 1, 2] {
+    for node in [s(0), s(1), s(2)] {
         router.external_request(node, |s| {
             assert_eq!(s.server_state, ServerState::Learner);
         });
@@ -102,20 +104,20 @@ async fn initialization() -> anyhow::Result<()> {
 
     tracing::info!(log_index, "--- check membership state");
     for node_id in [s(0), s(1), s(2)] {
-        router.external_request(node_id, move |s| {
+        router.external_request(node_id.clone(), move |sto| {
             let want = EffectiveMembership::new(
                 Some(LogId::new(0, 0)),
                 Membership::new(vec![btreeset! {s(0),s(1),s(2)}], None),
             );
             let want = Arc::new(want);
             assert_eq!(
-                s.membership_state.effective(),
+                sto.membership_state.effective(),
                 &want,
                 "node-{}: effective membership",
                 node_id
             );
             assert_eq!(
-                s.membership_state.committed(),
+                sto.membership_state.committed(),
                 &want,
                 "node-{}: committed membership",
                 node_id
@@ -124,7 +126,7 @@ async fn initialization() -> anyhow::Result<()> {
     }
 
     for i in [s(0), s(1), s(2)] {
-        let (mut sto, mut sm) = router.get_storage_handle(&1)?;
+        let (mut sto, mut sm) = router.get_storage_handle(&s(1))?;
         let first = sto.try_get_log_entries(0..2).await?.into_iter().next();
 
         tracing::info!(
@@ -139,7 +141,7 @@ async fn initialization() -> anyhow::Result<()> {
                 panic!("expect Membership payload")
             }
         };
-        assert_eq!(btreeset![0, 1, 2], mem.get_joint_config()[0].clone());
+        assert_eq!(btreeset! {s(0), s(1), s(2)}, mem.get_joint_config()[0].clone());
 
         let sm_mem = sm.applied_state().await?.1;
         assert_eq!(
@@ -159,8 +161,8 @@ async fn initialization() -> anyhow::Result<()> {
     // request by using a oneshot channel.
     let mut found_leader = false;
     let mut follower_count = 0;
-    for node in [0, 1, 2] {
-        let server_state = router.with_raft_state(node, |s| s.server_state).await?;
+    for node in [s(0), s(1), s(2)] {
+        let server_state = router.with_raft_state(node.clone(), |s| s.server_state).await?;
         match server_state {
             ServerState::Leader => {
                 assert!(!found_leader);
@@ -186,18 +188,18 @@ async fn initialize_err_target_not_include_target() -> anyhow::Result<()> {
 
     let config = Arc::new(Config::default().validate()?);
     let mut router = RaftRouter::new(config.clone());
-    router.new_raft_node(0).await;
-    router.new_raft_node(1).await;
+    router.new_raft_node(s(0)).await;
+    router.new_raft_node(s(1)).await;
 
-    for node in [0, 1] {
+    for node in [s(0), s(1)] {
         router.external_request(node, |s| {
             assert_eq!(s.server_state, ServerState::Learner);
         });
     }
 
-    for node_id in 0..2 {
+    for node_id in [s(0), s(1)] {
         let n = router.get_raft_handle(&node_id)?;
-        let res = n.initialize(btreeset! {9}).await;
+        let res = n.initialize(btreeset! {s(9)}).await;
 
         assert!(res.is_err(), "expect error but: {:?}", res);
         let err = res.unwrap_err();
@@ -205,7 +207,7 @@ async fn initialize_err_target_not_include_target() -> anyhow::Result<()> {
         assert_eq!(
             InitializeError::NotInMembers(NotInMembers {
                 node_id,
-                membership: Membership::new(vec![btreeset! {9}], None)
+                membership: Membership::new(vec![btreeset! {s(9)}], None)
             }),
             err.into_api_error().unwrap()
         );
@@ -222,9 +224,9 @@ async fn initialize_err_not_allowed() -> anyhow::Result<()> {
 
     let config = Arc::new(Config::default().validate()?);
     let mut router = RaftRouter::new(config.clone());
-    router.new_raft_node(0).await;
+    router.new_raft_node(s(0)).await;
 
-    for node in [0] {
+    for node in [s(0)] {
         router.external_request(node, |s| {
             assert_eq!(s.server_state, ServerState::Learner);
         });
@@ -247,10 +249,7 @@ async fn initialize_err_not_allowed() -> anyhow::Result<()> {
 
         assert_eq!(
             InitializeError::NotAllowed(NotAllowed {
-                last_log_id: Some(LogId {
-                    term: CommittedLeaderId::new(1, 0),
-                    index: 1
-                }),
+                last_log_id: Some(LogId { term: 1, index: 1 }),
                 vote: Vote::new_committed(1, s(0))
             }),
             err.into_api_error().unwrap()
