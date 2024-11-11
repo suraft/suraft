@@ -1,0 +1,33 @@
+[package]
+name = "suraft-sledstore"
+description = "A sled based implementation of the `suraft::RaftLogStorage` and `suraft::RaftStateMachine` trait."
+documentation = "https://docs.rs/suraft-sledstore"
+readme = "README.md"
+
+version       = { workspace = true }
+edition       = { workspace = true }
+authors       = { workspace = true }
+categories    = { workspace = true }
+homepage      = { workspace = true }
+keywords      = { workspace = true }
+license       = { workspace = true }
+repository    = { workspace = true }
+
+[dependencies]
+suraft = { path= "../../suraft", version = "0.10.0", features=["serde", "type-alias"] }
+
+sled = "0.34.7"
+byteorder = "1.4.3"
+async-std = { version = "1.12.0", features = ["attributes", "tokio1"] }
+serde           = { workspace = true, features = ["derive"] }
+serde_json      = { workspace = true }
+tracing         = { workspace = true }
+
+[dev-dependencies]
+tempfile = { version = "3.4.0" }
+
+[features]
+bt = ["suraft/bt"]
+
+[package.metadata.docs.rs]
+all-features = true

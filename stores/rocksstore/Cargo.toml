@@ -1,0 +1,39 @@
+[package]
+name = "suraft-rocksstore"
+description = "A rocksdb based implementation of the `suraft::RaftLogStorage` and `suraft::RaftStateMachine` trait."
+documentation = "https://docs.rs/suraft-rocksstore"
+readme = "README.md"
+
+version = "0.1.0"
+edition = "2021"
+authors = [
+    "drdr xp <drdr.xp@gmail.com>",
+]
+categories = ["algorithms", "asynchronous", "data-structures"]
+homepage = "https://github.com/suraft/suraft"
+keywords = ["raft", "consensus"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/suraft/suraft"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+suraft = { path= "../../suraft", version = "0.10.0", features=["serde", "type-alias"] }
+
+rocksdb = "0.22.0"
+rand = "*"
+byteorder = "1.4.3"
+
+serde           = { workspace = true, features = ["derive"] }
+serde_json      = { workspace = true }
+tokio           = { workspace = true }
+tracing         = { workspace = true }
+
+[dev-dependencies]
+tempfile = { version = "3.4.0" }
+
+[features]
+bt = ["suraft/bt"]
+
+[package.metadata.docs.rs]
+all-features = true
