@@ -822,7 +822,6 @@ where
 
         let membership_log_id = self.engine.state.membership_state.effective().log_id();
         let network = self.network_factory.new_client(target.clone(), target_node).await;
-        let snapshot_network = self.network_factory.new_client(target.clone(), target_node).await;
 
         let leader = self.engine.leader.as_ref().unwrap();
 
@@ -835,9 +834,7 @@ where
             self.engine.state.committed().cloned(),
             progress_entry.matching,
             network,
-            snapshot_network,
             self.log_store.get_log_reader().await,
-            self.sm_handle.new_snapshot_reader(),
             self.tx_notification.clone(),
             tracing::span!(parent: &self.span, Level::DEBUG, "replication", id=display(&self.id), target=display(&target)),
         )

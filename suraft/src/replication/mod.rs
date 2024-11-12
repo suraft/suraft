@@ -1,6 +1,5 @@
 //! Replication stream.
 
-pub(crate) mod callbacks;
 pub(crate) mod hint;
 mod replication_session_id;
 pub(crate) mod request;
@@ -21,7 +20,6 @@ use crate::async_runtime::MpscUnboundedReceiver;
 use crate::async_runtime::MpscUnboundedSender;
 use crate::config::Config;
 use crate::core::notification::Notification;
-use crate::core::sm::handle::SnapshotReader;
 use crate::display_ext::DisplayInstantExt;
 use crate::display_ext::DisplayOptionExt;
 use crate::error::HigherVote;
@@ -45,10 +43,7 @@ use crate::type_config::alias::InstantOf;
 use crate::type_config::alias::JoinHandleOf;
 use crate::type_config::alias::MpscUnboundedReceiverOf;
 use crate::type_config::alias::MpscUnboundedSenderOf;
-use crate::type_config::alias::MpscUnboundedWeakSenderOf;
-use crate::type_config::alias::MutexOf;
 use crate::type_config::alias::OneshotSenderOf;
-use crate::type_config::async_runtime::mutex::Mutex;
 use crate::type_config::TypeConfigExt;
 use crate::LogId;
 use crate::NodeId;
@@ -91,20 +86,8 @@ where
     /// A channel for receiving events from the RaftCore and snapshot transmitting task.
     rx_event: MpscUnboundedReceiverOf<C, Replicate>,
 
-    /// A weak reference to the Sender for the separate sending-snapshot task to send callback.
-    ///
-    /// Because 1) ReplicationCore replies on the `close` event to shutdown.
-    /// 2) ReplicationCore holds this tx; It is made a weak so that when
-    /// RaftCore drops the only non-weak tx, the Receiver `rx_repl` will be closed.
-    weak_tx_event: MpscUnboundedWeakSenderOf<C, Replicate>,
-
     /// The `RaftNetwork` interface for replicating logs and heartbeat.
     network: N::Network,
-
-    /// Another `RaftNetwork` specific for snapshot replication.
-    ///
-    /// Snapshot transmitting is a long running task, and is processed in a separate task.
-    snapshot_network: Arc<MutexOf<C, N::Network>>,
 
     /// The current snapshot replication state.
     ///
@@ -119,9 +102,6 @@ where
 
     /// The [`RaftLogStorage::LogReader`] interface.
     log_reader: LS::LogReader,
-
-    /// The handle to get a snapshot directly from state machine.
-    snapshot_reader: SnapshotReader<C>,
 
     /// The Raft's runtime config.
     config: Arc<Config>,
@@ -157,9 +137,7 @@ where
         committed: Option<LogId>,
         matching: Option<LogId>,
         network: N::Network,
-        snapshot_network: N::Network,
         log_reader: LS::LogReader,
-        snapshot_reader: SnapshotReader<C>,
         tx_raft_core: MpscUnboundedSenderOf<C, Notification<C>>,
         span: tracing::Span,
     ) -> ReplicationHandle<C> {
@@ -178,17 +156,14 @@ where
             target,
             session_id,
             network,
-            snapshot_network: Arc::new(C::mutex(snapshot_network)),
             snapshot_state: None,
             backoff: None,
             log_reader,
-            snapshot_reader,
             config,
             committed,
             matching,
             tx_raft_core,
             rx_event,
-            weak_tx_event: tx_event.downgrade(),
             next_action: None,
             entries_hint: Default::default(),
         };

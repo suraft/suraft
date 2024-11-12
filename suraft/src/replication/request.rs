@@ -15,10 +15,6 @@ impl Replicate {
     pub(crate) fn logs(log_id_range: LogIdRange) -> Self {
         Self::Data(Data::new_logs(log_id_range))
     }
-
-    pub(crate) fn new_data(data: Data) -> Self {
-        Self::Data(data)
-    }
 }
 
 impl fmt::Display for Replicate {
