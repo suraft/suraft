@@ -9,7 +9,6 @@ use std::collections::BTreeSet;
 use std::collections::HashMap;
 use std::env;
 use std::fmt;
-use std::future::Future;
 use std::panic::PanicHookInfo;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
@@ -35,8 +34,6 @@ use suraft::error::NetworkError;
 use suraft::error::PayloadTooLarge;
 use suraft::error::RPCError;
 use suraft::error::RaftError;
-use suraft::error::ReplicationClosed;
-use suraft::error::StreamingError;
 use suraft::error::Unreachable;
 use suraft::metrics::Wait;
 use suraft::network::RPCOption;
@@ -45,7 +42,6 @@ use suraft::raft::AppendEntriesRequest;
 use suraft::raft::AppendEntriesResponse;
 use suraft::raft::ClientWriteResponse;
 use suraft::raft::InstallSnapshotRequest;
-use suraft::raft::SnapshotResponse;
 use suraft::raft::TransferLeaderRequest;
 use suraft::raft::VoteRequest;
 use suraft::raft::VoteResponse;
@@ -57,7 +53,6 @@ use suraft::LogId;
 use suraft::LogIdOptionExt;
 use suraft::Node;
 use suraft::NodeId;
-use suraft::OptionalSend;
 use suraft::RPCTypes;
 use suraft::Raft;
 use suraft::RaftLogId;
@@ -1091,33 +1086,6 @@ impl RaftNetworkV2<MemConfig> for RaftRouterNetwork {
         } else {
             Ok(resp)
         }
-    }
-
-    async fn full_snapshot(
-        &mut self,
-        vote: Vote,
-        snapshot: Snapshot<MemConfig>,
-        _cancel: impl Future<Output = ReplicationClosed> + OptionalSend + 'static,
-        _option: RPCOption,
-    ) -> Result<SnapshotResponse, StreamingError> {
-        let from_id = vote.leader_id().voted_for().unwrap();
-
-        self.owner.count_rpc(RPCTypes::InstallSnapshot);
-        self.owner.call_rpc_pre_hook(snapshot.clone(), from_id.clone(), self.target.clone())?;
-        self.owner.emit_rpc_error(from_id.clone(), self.target.clone())?;
-        self.owner.rand_send_delay().await;
-
-        let node = self.owner.get_raft_handle(&self.target)?;
-
-        let resp = node.install_full_snapshot(vote, snapshot).await;
-        let resp = resp.map_err(|e| {
-            RPCError::Unreachable(Unreachable::new(&AnyError::error(format!(
-                "error: {} target={}",
-                e, self.target
-            ))))
-        })?;
-
-        Ok(resp)
     }
 
     /// Send a RequestVote RPC to the target Raft node (§5).

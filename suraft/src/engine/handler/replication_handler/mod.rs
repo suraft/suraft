@@ -331,7 +331,6 @@ where C: RaftTypeConfig
         let req = match inflight {
             Inflight::None => unreachable!("no data to send"),
             Inflight::Logs { log_id_range } => Replicate::logs(log_id_range.clone()),
-            Inflight::Snapshot { last_log_id } => Replicate::snapshot(last_log_id.clone()),
         };
         output.push_command(Command::Replicate {
             target: target.clone(),

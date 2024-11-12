@@ -9,7 +9,6 @@ pub(crate) mod response;
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyerror::AnyError;
 use futures::future::FutureExt;
 pub(crate) use replication_session_id::ReplicationSessionId;
 use request::Data;
@@ -20,7 +19,6 @@ use tracing_futures::Instrument;
 
 use crate::async_runtime::MpscUnboundedReceiver;
 use crate::async_runtime::MpscUnboundedSender;
-use crate::async_runtime::MpscUnboundedWeakSender;
 use crate::config::Config;
 use crate::core::notification::Notification;
 use crate::core::sm::handle::SnapshotReader;
@@ -40,18 +38,15 @@ use crate::network::RPCOption;
 use crate::network::RPCTypes;
 use crate::raft::AppendEntriesRequest;
 use crate::raft::AppendEntriesResponse;
-use crate::replication::callbacks::SnapshotCallback;
 use crate::replication::hint::ReplicationHint;
 use crate::storage::RaftLogReader;
 use crate::storage::RaftLogStorage;
-use crate::storage::Snapshot;
 use crate::type_config::alias::InstantOf;
 use crate::type_config::alias::JoinHandleOf;
 use crate::type_config::alias::MpscUnboundedReceiverOf;
 use crate::type_config::alias::MpscUnboundedSenderOf;
 use crate::type_config::alias::MpscUnboundedWeakSenderOf;
 use crate::type_config::alias::MutexOf;
-use crate::type_config::alias::OneshotReceiverOf;
 use crate::type_config::alias::OneshotSenderOf;
 use crate::type_config::async_runtime::mutex::Mutex;
 use crate::type_config::TypeConfigExt;
@@ -60,8 +55,6 @@ use crate::NodeId;
 use crate::RaftLogId;
 use crate::RaftNetworkFactory;
 use crate::RaftTypeConfig;
-use crate::StorageError;
-use crate::Vote;
 
 /// The handle to a spawned replication stream.
 pub(crate) struct ReplicationHandle<C>
@@ -71,7 +64,7 @@ where C: RaftTypeConfig
     pub(crate) join_handle: JoinHandleOf<C, Result<(), ReplicationClosed>>,
 
     /// The channel used for communicating with the replication task.
-    pub(crate) tx_repl: MpscUnboundedSenderOf<C, Replicate<C>>,
+    pub(crate) tx_repl: MpscUnboundedSenderOf<C, Replicate>,
 }
 
 /// A task responsible for sending replication events to a target follower in the Raft cluster.
@@ -96,14 +89,14 @@ where
     tx_raft_core: MpscUnboundedSenderOf<C, Notification<C>>,
 
     /// A channel for receiving events from the RaftCore and snapshot transmitting task.
-    rx_event: MpscUnboundedReceiverOf<C, Replicate<C>>,
+    rx_event: MpscUnboundedReceiverOf<C, Replicate>,
 
     /// A weak reference to the Sender for the separate sending-snapshot task to send callback.
     ///
     /// Because 1) ReplicationCore replies on the `close` event to shutdown.
     /// 2) ReplicationCore holds this tx; It is made a weak so that when
     /// RaftCore drops the only non-weak tx, the Receiver `rx_repl` will be closed.
-    weak_tx_event: MpscUnboundedWeakSenderOf<C, Replicate<C>>,
+    weak_tx_event: MpscUnboundedWeakSenderOf<C, Replicate>,
 
     /// The `RaftNetwork` interface for replicating logs and heartbeat.
     network: N::Network,
@@ -140,7 +133,7 @@ where
     matching: Option<LogId>,
 
     /// Next replication action to run.
-    next_action: Option<Data<C>>,
+    next_action: Option<Data>,
 
     /// Appropriate number of entries to send.
     /// This is only used by AppendEntries RPC.
@@ -238,8 +231,6 @@ where
                     log_data = Some(log.clone());
                     self.send_log_entries(log, true).await
                 }
-                Data::Snapshot(snap) => self.stream_snapshot(snap).await,
-                Data::SnapshotCallback(resp) => self.handle_snapshot_callback(resp),
             };
 
             tracing::debug!(res = debug(&res), "replication action done");
@@ -369,7 +360,7 @@ where
         &mut self,
         log_ids: LogIdRange,
         has_payload: bool,
-    ) -> Result<Option<Data<C>>, ReplicationError> {
+    ) -> Result<Option<Data>, ReplicationError> {
         tracing::debug!(log_id_range = display(&log_ids), "send_log_entries",);
 
         // Series of logs to send, and the last log id to send
@@ -647,7 +638,7 @@ where
     }
 
     #[tracing::instrument(level = "trace", skip_all)]
-    pub fn process_event(&mut self, event: Replicate<C>) {
+    pub fn process_event(&mut self, event: Replicate) {
         tracing::debug!(event = display(&event), "process_event");
 
         match event {
@@ -678,12 +669,6 @@ where
 
                 if cfg!(debug_assertions) {
                     match &d {
-                        Data::SnapshotCallback(_) => {
-                            debug_assert!(
-                                self.snapshot_state.is_some(),
-                                "snapshot state must be Some to receive callback"
-                            );
-                        }
                         _ => {
                             debug_assert!(
                                 self.snapshot_state.is_none(),
@@ -698,119 +683,8 @@ where
         }
     }
 
-    #[tracing::instrument(level = "info", skip_all)]
-    async fn stream_snapshot(&mut self, _snapshot_req: Option<LogId>) -> Result<Option<Data<C>>, ReplicationError> {
-        tracing::info!("{}", func_name!());
-
-        let snapshot = self.snapshot_reader.get_snapshot().await.map_err(|reason| {
-            tracing::warn!(error = display(&reason), "failed to get snapshot from state machine");
-            ReplicationClosed::new(reason)
-        })?;
-
-        tracing::info!(
-            "received snapshot: meta:{}",
-            snapshot.as_ref().map(|x| &x.meta).display()
-        );
-
-        let snapshot = match snapshot {
-            None => {
-                let sto_err = StorageError::read_snapshot(None, AnyError::error("snapshot not found"));
-                return Err(ReplicationError::StorageError(sto_err));
-            }
-            Some(x) => x,
-        };
-
-        let mut option = RPCOption::new(self.config.install_snapshot_timeout());
-        option.snapshot_chunk_size = Some(self.config.snapshot_max_chunk_size as usize);
-
-        let (tx_cancel, rx_cancel) = C::oneshot();
-
-        let jh = C::spawn(Self::send_snapshot(
-            self.snapshot_network.clone(),
-            self.session_id.vote(),
-            snapshot,
-            option,
-            rx_cancel,
-            self.weak_tx_event.clone(),
-        ));
-
-        // When self.rx_event is dropped:
-        // 1) ReplicationCore will return from the main loop;
-        // 2) and tx_cancel is dropped;
-        // 3) and the snapshot task will be notified.
-        self.snapshot_state = Some((tx_cancel, jh));
-        Ok(None)
-    }
-
-    async fn send_snapshot(
-        network: Arc<MutexOf<C, N::Network>>,
-        vote: Vote,
-        snapshot: Snapshot<C>,
-        option: RPCOption,
-        cancel: OneshotReceiverOf<C, ()>,
-        weak_tx: MpscUnboundedWeakSenderOf<C, Replicate<C>>,
-    ) {
-        let meta = snapshot.meta.clone();
-
-        let mut net = network.lock().await;
-
-        let start_time = C::now();
-
-        let cancel = async move {
-            let _ = cancel.await;
-            ReplicationClosed::new("ReplicationCore is dropped")
-        };
-
-        let res = net.full_snapshot(vote, snapshot, cancel, option).await;
-        if let Err(e) = &res {
-            tracing::warn!(error = display(e), "failed to send snapshot");
-        }
-
-        if let Some(tx_noty) = weak_tx.upgrade() {
-            let data = Data::new_snapshot_callback(start_time, meta, res);
-            let send_res = tx_noty.send(Replicate::new_data(data));
-            if send_res.is_err() {
-                tracing::warn!("weak_tx failed to send snapshot result to ReplicationCore");
-            }
-        } else {
-            tracing::warn!("weak_tx is dropped, no response is sent to ReplicationCore");
-        }
-    }
-
-    fn handle_snapshot_callback(&mut self, callback: SnapshotCallback<C>) -> Result<Option<Data<C>>, ReplicationError> {
-        tracing::debug!(
-            response = display(&callback),
-            matching = display(self.matching.display()),
-            "handle_snapshot_response"
-        );
-
-        self.snapshot_state = None;
-
-        let SnapshotCallback {
-            start_time,
-            result,
-            snapshot_meta,
-        } = callback;
-
-        let resp = result?;
-
-        // Handle response conditions.
-        let sender_vote = self.session_id.vote();
-        if resp.vote > sender_vote {
-            return Err(ReplicationError::HigherVote(HigherVote {
-                higher: resp.vote,
-                sender_vote,
-            }));
-        }
-
-        self.notify_heartbeat_progress(start_time);
-        self.notify_progress(ReplicationResult(Ok(snapshot_meta.last_log_id)));
-
-        Ok(None)
-    }
-
     /// If there are more logs to send, it returns a new `Some(Data::Logs)` to send.
-    fn next_action_to_send(&mut self, matching: Option<LogId>, log_ids: LogIdRange) -> Option<Data<C>> {
+    fn next_action_to_send(&mut self, matching: Option<LogId>, log_ids: LogIdRange) -> Option<Data> {
         if matching < log_ids.last {
             Some(Data::new_logs(LogIdRange::new(matching, log_ids.last)))
         } else {

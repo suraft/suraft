@@ -24,16 +24,6 @@ fn test_inflight_create() -> anyhow::Result<()> {
     assert_eq!(Inflight::None, l);
     assert!(l.is_none());
 
-    // Snapshot
-    let l = Inflight::snapshot(Some(log_id(10)));
-    assert_eq!(
-        Inflight::Snapshot {
-            last_log_id: Some(log_id(10))
-        },
-        l
-    );
-    assert!(!l.is_none());
-
     Ok(())
 }
 
@@ -44,9 +34,6 @@ fn test_inflight_is_xxx() -> anyhow::Result<()> {
 
     let l = Inflight::logs(Some(log_id(5)), Some(log_id(10)));
     assert!(l.is_sending_log());
-
-    let l = Inflight::snapshot(Some(log_id(10)));
-    assert!(l.is_sending_snapshot());
 
     Ok(())
 }
@@ -88,24 +75,6 @@ fn test_inflight_ack() -> anyhow::Result<()> {
         }
     }
 
-    // Update matching when transmitting by snapshot
-    {
-        {
-            let mut f = Inflight::snapshot(Some(log_id(5)));
-            f.ack(Some(log_id(5)));
-            assert_eq!(Inflight::None, f, "valid ack");
-        }
-
-        {
-            let res = std::panic::catch_unwind(|| {
-                let mut f = Inflight::snapshot(Some(log_id(5)));
-                f.ack(Some(log_id(4)));
-            });
-            tracing::info!("res: {:?}", res);
-            assert!(res.is_err(), "non-matching ack != snapshot.last_log_id");
-        }
-    }
-
     Ok(())
 }
 
@@ -133,15 +102,6 @@ fn test_inflight_conflict() -> anyhow::Result<()> {
         });
         tracing::info!("res: {:?}", res);
         assert!(res.is_err(), "non-matching conflict > prev_log_id");
-    }
-
-    {
-        let res = std::panic::catch_unwind(|| {
-            let mut f = Inflight::snapshot(Some(log_id(5)));
-            f.conflict(5);
-        });
-        tracing::info!("res: {:?}", res);
-        assert!(res.is_err(), "conflict is not expected by Inflight::Snapshot");
     }
 
     Ok(())

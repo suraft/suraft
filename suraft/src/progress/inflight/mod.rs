@@ -7,7 +7,6 @@ use std::fmt::Formatter;
 
 use validit::Validate;
 
-use crate::display_ext::DisplayOptionExt;
 use crate::log_id_range::LogIdRange;
 use crate::LogId;
 use crate::LogIdOptionExt;
@@ -25,14 +24,6 @@ pub(crate) enum Inflight {
     Logs {
         log_id_range: LogIdRange,
     },
-
-    /// Being replicating a snapshot.
-    Snapshot {
-        /// The last log id snapshot includes.
-        ///
-        /// It is None, if the snapshot is empty.
-        last_log_id: Option<LogId>,
-    },
 }
 
 impl Validate for Inflight {
@@ -40,7 +31,6 @@ impl Validate for Inflight {
         match self {
             Inflight::None => Ok(()),
             Inflight::Logs { log_id_range: r, .. } => r.validate(),
-            Inflight::Snapshot { .. } => Ok(()),
         }
     }
 }
@@ -50,9 +40,6 @@ impl Display for Inflight {
         match self {
             Inflight::None => write!(f, "None"),
             Inflight::Logs { log_id_range: r } => write!(f, "Logs:{}", r),
-            Inflight::Snapshot { last_log_id } => {
-                write!(f, "Snapshot:{}", last_log_id.display())
-            }
         }
     }
 }
@@ -70,13 +57,6 @@ impl Inflight {
         }
     }
 
-    /// Create inflight state for sending snapshot.
-    pub(crate) fn snapshot(snapshot_last_log_id: Option<LogId>) -> Self {
-        Self::Snapshot {
-            last_log_id: snapshot_last_log_id,
-        }
-    }
-
     pub(crate) fn is_none(&self) -> bool {
         &Inflight::None == self
     }
@@ -85,12 +65,6 @@ impl Inflight {
     #[allow(dead_code)]
     pub(crate) fn is_sending_log(&self) -> bool {
         matches!(self, Inflight::Logs { .. })
-    }
-
-    // test it if used
-    #[allow(dead_code)]
-    pub(crate) fn is_sending_snapshot(&self) -> bool {
-        matches!(self, Inflight::Snapshot { .. })
     }
 
     /// Update inflight state when log upto `upto` is acknowledged by a follower/learner.
@@ -106,10 +80,6 @@ impl Inflight {
                     Inflight::logs(upto, log_id_range.last.clone())
                 }
             }
-            Inflight::Snapshot { last_log_id } => {
-                debug_assert_eq!(&upto, last_log_id);
-                *self = Inflight::None;
-            }
         }
     }
 
@@ -123,9 +93,6 @@ impl Inflight {
                 // if prev_log_id==None, it will never conflict
                 debug_assert_eq!(Some(conflict), logs.prev.index());
                 *self = Inflight::None
-            }
-            Inflight::Snapshot { last_log_id: _ } => {
-                unreachable!("sending snapshot should not conflict");
             }
         }
     }

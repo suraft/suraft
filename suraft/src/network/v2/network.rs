@@ -1,4 +1,3 @@
-use std::future::Future;
 use std::time::Duration;
 
 use anyerror::AnyError;
@@ -6,22 +5,17 @@ use suraft_macros::add_async_trait;
 use suraft_macros::since;
 
 use crate::error::RPCError;
-use crate::error::ReplicationClosed;
-use crate::error::StreamingError;
 use crate::error::Unreachable;
 use crate::network::Backoff;
 use crate::network::RPCOption;
 use crate::raft::message::TransferLeaderRequest;
 use crate::raft::AppendEntriesRequest;
 use crate::raft::AppendEntriesResponse;
-use crate::raft::SnapshotResponse;
 use crate::raft::VoteRequest;
 use crate::raft::VoteResponse;
-use crate::storage::Snapshot;
 use crate::OptionalSend;
 use crate::OptionalSync;
 use crate::RaftTypeConfig;
-use crate::Vote;
 
 /// A trait defining the interface for a Raft network between cluster members.
 ///
@@ -55,31 +49,6 @@ where C: RaftTypeConfig
 
     /// Send a RequestVote RPC to the target.
     async fn vote(&mut self, rpc: VoteRequest, option: RPCOption) -> Result<VoteResponse, RPCError>;
-
-    /// Send a complete Snapshot to the target.
-    ///
-    /// This method is responsible to fragment the snapshot and send it to the target node.
-    /// Before returning from this method, the snapshot should be completely transmitted and
-    /// installed on the target node, or rejected because of `vote` being smaller than the
-    /// remote one.
-    ///
-    /// The default implementation just calls several `install_snapshot` RPC for each fragment.
-    ///
-    /// The `vote` is the leader vote which is used to check if the leader is still valid by a
-    /// follower.
-    /// When the follower finished receiving snapshot, it calls [`Raft::install_full_snapshot()`]
-    /// with this vote.
-    ///
-    /// `cancel` get `Ready` when the caller decides to cancel this snapshot transmission.
-    ///
-    /// [`Raft::install_full_snapshot()`]: crate::raft::Raft::install_full_snapshot
-    async fn full_snapshot(
-        &mut self,
-        vote: Vote,
-        snapshot: Snapshot<C>,
-        cancel: impl Future<Output = ReplicationClosed> + OptionalSend + 'static,
-        option: RPCOption,
-    ) -> Result<SnapshotResponse, StreamingError>;
 
     /// Send TransferLeader message to the target node.
     ///

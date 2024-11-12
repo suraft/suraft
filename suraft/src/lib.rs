@@ -106,7 +106,6 @@ pub use crate::membership::Membership;
 pub use crate::membership::StoredMembership;
 pub use crate::metrics::RaftMetrics;
 pub use crate::network::RPCTypes;
-pub use crate::network::RaftNetwork;
 pub use crate::network::RaftNetworkFactory;
 pub use crate::node::Node;
 pub use crate::node::NodeId;

@@ -79,7 +79,6 @@ impl ProgressEntry {
                 let lid = Some(upto);
                 lid > log_id_range.prev.as_ref()
             }
-            Inflight::Snapshot { last_log_id: _, .. } => false,
         }
     }
 
@@ -188,8 +187,7 @@ impl ProgressEntry {
         // The log the follower needs is purged.
         // Replicate by snapshot.
         if self.searching_end < purge_upto_next {
-            let snapshot_last = log_state.snapshot_last_log_id();
-            self.inflight = Inflight::snapshot(snapshot_last.cloned());
+            // TODO:
             return Ok(&self.inflight);
         }
 
@@ -263,10 +261,6 @@ impl Validate for ProgressEntry {
                 //             prev_log_id.next_index() <= searching_end
                 validit::less_equal!(&self.matching, &log_id_range.prev);
                 validit::less_equal!(log_id_range.prev.next_index(), self.searching_end);
-            }
-            Inflight::Snapshot { last_log_id, .. } => {
-                // There is no need to send a snapshot smaller than last matching.
-                validit::less!(&self.matching, last_log_id);
             }
         }
         Ok(())

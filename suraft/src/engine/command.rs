@@ -97,7 +97,7 @@ where C: RaftTypeConfig
     },
 
     /// Replicate log entries or snapshot to a target.
-    Replicate { target: NodeId, req: Replicate<C> },
+    Replicate { target: NodeId, req: Replicate },
 
     /// Broadcast transfer Leader message to all other nodes.
     BroadcastTransferLeader { req: TransferLeaderRequest },

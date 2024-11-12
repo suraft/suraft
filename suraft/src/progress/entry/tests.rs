@@ -25,9 +25,6 @@ fn test_is_log_range_inflight() -> anyhow::Result<()> {
     assert_eq!(true, pe.is_log_range_inflight(&log_id(4)));
     assert_eq!(true, pe.is_log_range_inflight(&log_id(5)));
 
-    pe.inflight = Inflight::snapshot(Some(log_id(5)));
-    assert_eq!(false, pe.is_log_range_inflight(&log_id(5)));
-
     Ok(())
 }
 
@@ -146,35 +143,6 @@ fn test_next_send() -> anyhow::Result<()> {
         pe.inflight = inflight_logs(10, 11);
         let res = pe.next_send(&LogState::new(6, 10, 20), 100);
         assert_eq!(Err(&inflight_logs(10, 11)), res);
-    }
-
-    {
-        //    matching,end
-        //    4,5
-        //    v
-        // -----+------+-----+--->
-        //      purged snap  last
-        //      6      10    20
-
-        let mut pe = ProgressEntry::empty(4);
-        pe.matching = Some(log_id(4));
-
-        let res = pe.next_send(&LogState::new(6, 10, 20), 100);
-        assert_eq!(Ok(&Inflight::snapshot(Some(log_id(10)))), res);
-    }
-    {
-        //    matching,end
-        //    4 6
-        //    v-v
-        // -----+------+-----+--->
-        //      purged snap  last
-        //      6      10    20
-
-        let mut pe = ProgressEntry::empty(6);
-        pe.matching = Some(log_id(4));
-
-        let res = pe.next_send(&LogState::new(6, 10, 20), 100);
-        assert_eq!(Ok(&Inflight::snapshot(Some(log_id(10)))), res);
     }
 
     {
