@@ -1,10 +1,11 @@
 use suraft_macros::add_async_trait;
 
 use crate::network::v2::RaftNetworkV2;
+use crate::Node;
+use crate::NodeId;
 use crate::OptionalSend;
 use crate::OptionalSync;
 use crate::RaftTypeConfig;
-use crate::NID;
 
 /// A trait defining the interface for a Raft network factory to create connections between cluster
 /// members.
@@ -30,5 +31,5 @@ where C: RaftTypeConfig
     ///
     /// The method is intentionally async to give the implementation a chance to use asynchronous
     /// sync primitives to serialize access to the common internal object, if needed.
-    async fn new_client(&mut self, target: NID, node: &C::Node) -> Self::Network;
+    async fn new_client(&mut self, target: NodeId, node: &Node) -> Self::Network;
 }

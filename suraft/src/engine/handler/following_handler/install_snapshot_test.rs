@@ -23,12 +23,12 @@ use crate::Membership;
 use crate::StoredMembership;
 use crate::Vote;
 
-fn m12() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {s(1),s(2)}], None)
+fn m12() -> Membership {
+    Membership::new(vec![btreeset! {s(1),s(2)}], None)
 }
 
-fn m1234() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {s(1),s(2),s(3),s(4)}], None)
+fn m1234() -> Membership {
+    Membership::new(vec![btreeset! {s(1),s(2),s(3),s(4)}], None)
 }
 
 fn eng() -> Engine<UTConfig> {
@@ -36,7 +36,7 @@ fn eng() -> Engine<UTConfig> {
     eng.state.enable_validation(false); // Disable validation for incomplete state
 
     eng.state.vote.update(
-        UTConfig::<()>::now(),
+        UTConfig::now(),
         Duration::from_millis(500),
         Vote::new_committed(2, s(1)),
     );
@@ -186,7 +186,7 @@ fn test_install_snapshot_conflict() -> anyhow::Result<()> {
         eng.state.enable_validation(false); // Disable validation for incomplete state
 
         eng.state.vote.update(
-            UTConfig::<()>::now(),
+            UTConfig::now(),
             Duration::from_millis(500),
             Vote::new_committed(2, s(1)),
         );

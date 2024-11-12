@@ -7,7 +7,6 @@ use crate::error::RPCError;
 use crate::error::RaftError;
 use crate::error::StreamingError;
 use crate::error::Unreachable;
-use crate::RaftTypeConfig;
 
 /// Simplifies error handling by extracting the inner error from a composite error.
 /// For example, converting `Result<R, CompositeError>`
@@ -44,15 +43,13 @@ impl<R, E> DecomposeResult<R, RaftError> for Result<R, RaftError<E>> {
     }
 }
 
-impl<C, R, E> DecomposeResult<R, RPCError<C>> for Result<R, RPCError<C, RaftError<E>>>
-where
-    C: RaftTypeConfig,
-    E: Error,
+impl<R, E> DecomposeResult<R, RPCError> for Result<R, RPCError<RaftError<E>>>
+where E: Error
 {
     type InnerError = E;
 
     /// `RaftError::Fatal` is considered as `RPCError::Unreachable`.
-    fn decompose(self) -> Result<Result<R, E>, RPCError<C>> {
+    fn decompose(self) -> Result<Result<R, E>, RPCError> {
         match self {
             Ok(r) => Ok(Ok(r)),
             Err(e) => match e {
@@ -69,13 +66,11 @@ where
     }
 }
 
-impl<C, R> DecomposeResult<R, StreamingError<C>> for Result<R, StreamingError<C, Fatal>>
-where C: RaftTypeConfig
-{
+impl<R> DecomposeResult<R, StreamingError> for Result<R, StreamingError<Fatal>> {
     type InnerError = Infallible;
 
     /// `Fatal` is considered as `RPCError::Unreachable`.
-    fn decompose(self) -> Result<Result<R, Self::InnerError>, StreamingError<C>> {
+    fn decompose(self) -> Result<Result<R, Self::InnerError>, StreamingError> {
         match self {
             Ok(r) => Ok(Ok(r)),
             Err(e) => match e {

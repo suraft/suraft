@@ -244,7 +244,7 @@ where C: RaftTypeConfig
 
     /// Update membership state with a committed membership config
     #[tracing::instrument(level = "debug", skip_all)]
-    fn update_committed_membership(&mut self, membership: EffectiveMembership<C>) {
+    fn update_committed_membership(&mut self, membership: EffectiveMembership) {
         tracing::debug!("update committed membership: {}", membership);
 
         let m = Arc::new(membership);
@@ -333,7 +333,7 @@ where C: RaftTypeConfig
     ///
     /// A follower/learner reverts the effective membership to the previous one,
     /// when conflicting logs are found.
-    fn last_two_memberships<'a>(entries: impl DoubleEndedIterator<Item = &'a C::Entry>) -> Vec<StoredMembership<C>>
+    fn last_two_memberships<'a>(entries: impl DoubleEndedIterator<Item = &'a C::Entry>) -> Vec<StoredMembership>
     where C::Entry: 'a {
         let mut memberships = vec![];
 

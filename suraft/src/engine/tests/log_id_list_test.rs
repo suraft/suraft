@@ -1,6 +1,4 @@
 use crate::engine::leader_log_ids::LeaderLogIds;
-use crate::engine::testing::s;
-use crate::engine::testing::UTConfig;
 use crate::engine::LogIdList;
 use crate::testing::log_id;
 

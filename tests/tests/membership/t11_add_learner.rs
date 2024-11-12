@@ -146,7 +146,7 @@ async fn add_learner_non_blocking() -> Result<()> {
         router.set_network_error(s(1), true);
 
         let raft = router.get_raft_handle(&s(0))?;
-        raft.add_learner(s(1), (), false).await?;
+        raft.add_learner(s(1), suraft::emp(), false).await?;
 
         let n = 6;
         for i in 0..=n {
@@ -196,7 +196,11 @@ async fn add_learner_with_set_nodes() -> Result<()> {
         router.new_raft_node(s(4)).await;
 
         let raft = router.get_raft_handle(&s(0))?;
-        raft.change_membership(ChangeMembers::SetNodes(btreemap! {s(2)=>(), s(4)=>()}), true).await?;
+        raft.change_membership(
+            ChangeMembers::SetNodes(btreemap! {s(2)=>suraft::emp(), s(4)=>suraft::emp()}),
+            true,
+        )
+        .await?;
 
         router
             .wait(&s(0), timeout())
@@ -248,7 +252,7 @@ async fn add_learner_when_previous_membership_not_committed() -> Result<()> {
     tracing::info!(log_index, "--- add new node node-1, in non blocking mode");
     {
         let node = router.get_raft_handle(&s(0))?;
-        let res = node.add_learner(s(2), (), true).await;
+        let res = node.add_learner(s(2), suraft::emp(), true).await;
         tracing::debug!("res: {:?}", res);
 
         let err = res.unwrap_err().into_api_error().unwrap();

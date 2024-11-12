@@ -23,10 +23,10 @@ use crate::replication::ReplicationSessionId;
 use crate::type_config::alias::OneshotSenderOf;
 use crate::vote::CommittedVote;
 use crate::LogId;
+use crate::NodeId;
 use crate::OptionalSend;
 use crate::RaftTypeConfig;
 use crate::Vote;
-use crate::NID;
 
 /// Commands to send to `RaftRuntime` to execute, to update the application state.
 #[derive(Debug)]
@@ -97,7 +97,7 @@ where C: RaftTypeConfig
     },
 
     /// Replicate log entries or snapshot to a target.
-    Replicate { target: NID, req: Replicate<C> },
+    Replicate { target: NodeId, req: Replicate<C> },
 
     /// Broadcast transfer Leader message to all other nodes.
     BroadcastTransferLeader { req: TransferLeaderRequest },
@@ -328,7 +328,7 @@ where C: RaftTypeConfig
     ReceiveSnapshotChunk(ValueSender<C, Result<(), InstallSnapshotError>>),
     InstallSnapshot(ValueSender<C, Result<InstallSnapshotResponse, InstallSnapshotError>>),
     InstallFullSnapshot(ValueSender<C, Result<SnapshotResponse, Infallible>>),
-    Initialize(ValueSender<C, Result<(), InitializeError<C>>>),
+    Initialize(ValueSender<C, Result<(), InitializeError>>),
 }
 
 impl<C> fmt::Display for Respond<C>

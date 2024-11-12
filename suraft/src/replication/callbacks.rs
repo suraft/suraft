@@ -20,17 +20,17 @@ pub(crate) struct SnapshotCallback<C: RaftTypeConfig> {
     pub(crate) start_time: InstantOf<C>,
 
     /// Meta data of the snapshot to be replicated.
-    pub(crate) snapshot_meta: SnapshotMeta<C>,
+    pub(crate) snapshot_meta: SnapshotMeta,
 
     /// The result of the snapshot replication.
-    pub(crate) result: Result<SnapshotResponse, StreamingError<C>>,
+    pub(crate) result: Result<SnapshotResponse, StreamingError>,
 }
 
 impl<C: RaftTypeConfig> SnapshotCallback<C> {
     pub(in crate::replication) fn new(
         start_time: InstantOf<C>,
-        snapshot_meta: SnapshotMeta<C>,
-        result: Result<SnapshotResponse, StreamingError<C>>,
+        snapshot_meta: SnapshotMeta,
+        result: Result<SnapshotResponse, StreamingError>,
     ) -> Self {
         Self {
             start_time,

@@ -61,7 +61,7 @@ async fn conflict_with_empty_entries() -> Result<()> {
     };
 
     let option = RPCOption::new(Duration::from_millis(1_000));
-    let resp = router.new_client(s(0), &()).await.append_entries(rpc, option).await?;
+    let resp = router.new_client(s(0), &suraft::emp()).await.append_entries(rpc, option).await?;
     assert!(!resp.is_success());
     assert!(resp.is_conflict());
 
@@ -83,7 +83,7 @@ async fn conflict_with_empty_entries() -> Result<()> {
 
     let option = RPCOption::new(Duration::from_millis(1_000));
 
-    let resp = router.new_client(s(0), &()).await.append_entries(rpc, option).await?;
+    let resp = router.new_client(s(0), &suraft::emp()).await.append_entries(rpc, option).await?;
     assert!(resp.is_success());
     assert!(!resp.is_conflict());
 
@@ -98,7 +98,7 @@ async fn conflict_with_empty_entries() -> Result<()> {
 
     let option = RPCOption::new(Duration::from_millis(1_000));
 
-    let resp = router.new_client(s(0), &()).await.append_entries(rpc, option).await?;
+    let resp = router.new_client(s(0), &suraft::emp()).await.append_entries(rpc, option).await?;
     assert!(!resp.is_success());
     assert!(resp.is_conflict());
 

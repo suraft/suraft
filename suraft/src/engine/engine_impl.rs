@@ -50,10 +50,10 @@ use crate::type_config::TypeConfigExt;
 use crate::LogId;
 use crate::LogIdOptionExt;
 use crate::Membership;
+use crate::NodeId;
 use crate::RaftLogId;
 use crate::RaftTypeConfig;
 use crate::Vote;
-use crate::NID;
 
 /// Raft protocol algorithm.
 ///
@@ -131,7 +131,7 @@ where C: RaftTypeConfig
 
     /// Create a default Engine for testing.
     #[allow(dead_code)]
-    pub(crate) fn testing_default(id: NID) -> Self {
+    pub(crate) fn testing_default(id: NodeId) -> Self {
         let config = EngineConfig::new_default(id);
         let state = RaftState::default();
         Self::new(state, config)
@@ -183,7 +183,7 @@ where C: RaftTypeConfig
     ///
     /// [precondition]: crate::docs::cluster_control::cluster_formation#preconditions-for-initialization
     #[tracing::instrument(level = "debug", skip_all)]
-    pub(crate) fn initialize(&mut self, mut entry: C::Entry) -> Result<(), InitializeError<C>> {
+    pub(crate) fn initialize(&mut self, mut entry: C::Entry) -> Result<(), InitializeError> {
         self.check_initialize()?;
 
         // The very first log id
@@ -325,7 +325,7 @@ where C: RaftTypeConfig
     }
 
     #[tracing::instrument(level = "debug", skip(self, resp))]
-    pub(crate) fn handle_vote_resp(&mut self, target: NID, resp: VoteResponse) {
+    pub(crate) fn handle_vote_resp(&mut self, target: NodeId, resp: VoteResponse) {
         tracing::info!(
             resp = display(&resp),
             target = display(&target),
@@ -524,7 +524,7 @@ where C: RaftTypeConfig
     /// - Engine only keeps the snapshot meta with the greatest last-log-id;
     /// - and a snapshot smaller than last-committed is not allowed to be installed.
     #[tracing::instrument(level = "debug", skip_all)]
-    pub(crate) fn finish_building_snapshot(&mut self, meta: SnapshotMeta<C>) {
+    pub(crate) fn finish_building_snapshot(&mut self, meta: SnapshotMeta) {
         tracing::info!(snapshot_meta = display(&meta), "{}", func_name!());
 
         self.state.io_state_mut().set_building_snapshot(false);
@@ -606,7 +606,7 @@ where C: RaftTypeConfig
         self.try_purge_log();
     }
 
-    pub(crate) fn trigger_transfer_leader(&mut self, to: NID) {
+    pub(crate) fn trigger_transfer_leader(&mut self, to: NodeId) {
         tracing::info!(to = display(&to), "{}", func_name!());
 
         let Some((mut lh, _)) = self.get_leader_handler_or_reject(None) else {
@@ -679,7 +679,7 @@ where C: RaftTypeConfig
 
     /// When initialized, the node that accept initialize request has to be a member of the initial
     /// config.
-    fn check_members_contain_me(&self, m: &Membership<C>) -> Result<(), NotInMembers<C>> {
+    fn check_members_contain_me(&self, m: &Membership) -> Result<(), NotInMembers> {
         if !m.is_voter(&self.config.id) {
             let e = NotInMembers {
                 node_id: self.config.id.clone(),
@@ -740,7 +740,7 @@ where C: RaftTypeConfig
         }
     }
 
-    pub(crate) fn leader_handler(&mut self) -> Result<LeaderHandler<C>, ForwardToLeader<C>> {
+    pub(crate) fn leader_handler(&mut self) -> Result<LeaderHandler<C>, ForwardToLeader> {
         let leader = match self.leader.as_mut() {
             None => {
                 tracing::debug!("this node is NOT a leader: {:?}", self.state.server_state);

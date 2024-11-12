@@ -35,7 +35,7 @@ fn test_initialize_single_node() -> anyhow::Result<()> {
 
     let log_id0 = LogId { term: 0, index: 0 };
 
-    let m1 = || Membership::<UTConfig>::new(vec![btreeset! {s(1)}], None);
+    let m1 = || Membership::new(vec![btreeset! {s(1)}], None);
     let entry = Entry::<UTConfig>::new_membership(LogId::default(), m1());
 
     tracing::info!("--- ok: init empty node 1 with membership(1,2)");
@@ -87,7 +87,7 @@ fn test_initialize() -> anyhow::Result<()> {
 
     let log_id0 = LogId { term: 0, index: 0 };
 
-    let m12 = || Membership::<UTConfig>::new(vec![btreeset! {s(1),s(2)}], None);
+    let m12 = || Membership::new(vec![btreeset! {s(1),s(2)}], None);
     let entry = || Entry::<UTConfig>::new_membership(LogId::default(), m12());
 
     tracing::info!("--- ok: init empty node 1 with membership(1,2)");
@@ -145,7 +145,7 @@ fn test_initialize() -> anyhow::Result<()> {
     tracing::info!("--- not allowed because of vote");
     {
         let mut eng = eng();
-        eng.state.vote = Leased::new(UTConfig::<()>::now(), Duration::from_millis(500), Vote::new(0, s(1)));
+        eng.state.vote = Leased::new(UTConfig::now(), Duration::from_millis(500), Vote::new(0, s(1)));
 
         assert_eq!(
             Err(InitializeError::NotAllowed(NotAllowed {

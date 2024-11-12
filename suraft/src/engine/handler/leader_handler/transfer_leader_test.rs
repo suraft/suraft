@@ -22,8 +22,8 @@ use crate::Membership;
 use crate::MembershipState;
 use crate::Vote;
 
-fn m23() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {s(2), s(3)}], btreeset! {s(1), s(2), s(3)})
+fn m23() -> Membership {
+    Membership::new(vec![btreeset! {s(2), s(3)}], btreeset! {s(1), s(2), s(3)})
 }
 
 fn eng() -> Engine<UTConfig> {
@@ -32,7 +32,7 @@ fn eng() -> Engine<UTConfig> {
 
     eng.config.id = s(1);
     eng.state.vote = Leased::new(
-        UTConfig::<()>::now(),
+        UTConfig::now(),
         Duration::from_millis(500),
         Vote::new_committed(3, s(1)),
     );

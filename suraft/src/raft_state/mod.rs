@@ -11,10 +11,10 @@ use crate::storage::SnapshotMeta;
 use crate::utime::Leased;
 use crate::LogId;
 use crate::LogIdOptionExt;
+use crate::NodeId;
 use crate::RaftTypeConfig;
 use crate::ServerState;
 use crate::Vote;
-use crate::NID;
 
 pub(crate) mod io_state;
 mod log_state_reader;
@@ -65,10 +65,10 @@ where C: RaftTypeConfig
     pub log_ids: LogIdList,
 
     /// The latest cluster membership configuration found, in log or in state machine.
-    pub membership_state: MembershipState<C>,
+    pub membership_state: MembershipState,
 
     /// The metadata of the last snapshot.
-    pub snapshot_meta: SnapshotMeta<C>,
+    pub snapshot_meta: SnapshotMeta,
 
     // --
     // -- volatile fields: they are not persisted.
@@ -329,7 +329,7 @@ where C: RaftTypeConfig
     ///
     /// [Determine Server State]: crate::docs::data::vote#vote-and-membership-define-the-server-state
     #[tracing::instrument(level = "debug", skip_all)]
-    pub(crate) fn calc_server_state(&self, id: &NID) -> ServerState {
+    pub(crate) fn calc_server_state(&self, id: &NodeId) -> ServerState {
         tracing::debug!(
             contains = display(self.membership_state.contains(id)),
             is_voter = display(self.is_voter(id)),
@@ -355,7 +355,7 @@ where C: RaftTypeConfig
         }
     }
 
-    pub(crate) fn is_voter(&self, id: &NID) -> bool {
+    pub(crate) fn is_voter(&self, id: &NodeId) -> bool {
         self.membership_state.is_voter(id)
     }
 
@@ -366,7 +366,7 @@ where C: RaftTypeConfig
     /// more details about determining the server state.
     ///
     /// [Determine Server State]: crate::docs::data::vote#vote-and-membership-define-the-server-state
-    pub(crate) fn is_leading(&self, id: &NID) -> bool {
+    pub(crate) fn is_leading(&self, id: &NodeId) -> bool {
         self.membership_state.contains(id) && self.vote.leader_id().voted_for().as_ref() == Some(id)
     }
 
@@ -378,7 +378,7 @@ where C: RaftTypeConfig
     /// more details about determining the server state.
     ///
     /// [Determine Server State]: crate::docs::data::vote#vote-and-membership-define-the-server-state
-    pub(crate) fn is_leader(&self, id: &NID) -> bool {
+    pub(crate) fn is_leader(&self, id: &NodeId) -> bool {
         self.is_leading(id) && self.vote.is_committed()
     }
 
@@ -402,7 +402,7 @@ where C: RaftTypeConfig
     }
 
     /// Build a ForwardToLeader error that contains the leader id and node it knows.
-    pub(crate) fn forward_to_leader(&self) -> ForwardToLeader<C> {
+    pub(crate) fn forward_to_leader(&self) -> ForwardToLeader {
         let vote = self.vote_ref();
 
         if vote.is_committed() {
@@ -415,7 +415,7 @@ where C: RaftTypeConfig
         ForwardToLeader::empty()
     }
 
-    pub(crate) fn new_forward_to_leader(&self, to: NID) -> ForwardToLeader<C> {
+    pub(crate) fn new_forward_to_leader(&self, to: NodeId) -> ForwardToLeader {
         // leader may not step down after being removed from `voters`.
         // It does not have to be a voter, being in membership is just enough
         let node = self.membership_state.effective().get_node(&to);

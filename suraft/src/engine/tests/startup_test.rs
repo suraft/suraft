@@ -25,16 +25,16 @@ use crate::Membership;
 use crate::ServerState;
 use crate::Vote;
 
-fn m_empty() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {}], None)
+fn m_empty() -> Membership {
+    Membership::new(vec![btreeset! {}], None)
 }
 
-fn m23() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {s(2), s(3)}], None)
+fn m23() -> Membership {
+    Membership::new(vec![btreeset! {s(2), s(3)}], None)
 }
 
-fn m34() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {s(3),s(4)}], None)
+fn m34() -> Membership {
+    Membership::new(vec![btreeset! {s(3),s(4)}], None)
 }
 
 fn eng() -> Engine<UTConfig> {
@@ -57,7 +57,7 @@ fn test_startup_as_leader_without_logs() -> anyhow::Result<()> {
     eng.state.log_ids = LogIdList::new([log_id(1, 3)]);
     // Committed vote makes it a leader at startup.
     eng.state.vote = Leased::new(
-        UTConfig::<()>::now(),
+        UTConfig::now(),
         Duration::from_millis(500),
         Vote::new_committed(2, s(2)),
     );
@@ -109,7 +109,7 @@ fn test_startup_as_leader_with_proposed_logs() -> anyhow::Result<()> {
     eng.state.log_ids = LogIdList::new([log_id(1, 2), log_id(1, 4), log_id(1, 6)]);
     // Committed vote makes it a leader at startup.
     eng.state.vote = Leased::new(
-        UTConfig::<()>::now(),
+        UTConfig::now(),
         Duration::from_millis(500),
         Vote::new_committed(1, s(2)),
     );
@@ -155,7 +155,7 @@ fn test_startup_as_leader_not_voter_issue_920() -> anyhow::Result<()> {
         .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(2, 3)), m_empty())));
     // Committed vote makes it a leader at startup.
     eng.state.vote = Leased::new(
-        UTConfig::<()>::now(),
+        UTConfig::now(),
         Duration::from_millis(500),
         Vote::new_committed(1, s(2)),
     );
@@ -176,7 +176,7 @@ fn test_startup_candidate_becomes_follower() -> anyhow::Result<()> {
         .membership_state
         .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(2, 3)), m23())));
     // Non-committed vote makes it a candidate at startup.
-    eng.state.vote = Leased::new(UTConfig::<()>::now(), Duration::from_millis(500), Vote::new(1, s(2)));
+    eng.state.vote = Leased::new(UTConfig::now(), Duration::from_millis(500), Vote::new(1, s(2)));
 
     eng.startup();
 

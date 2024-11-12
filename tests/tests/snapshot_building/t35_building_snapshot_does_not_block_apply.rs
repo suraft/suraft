@@ -74,7 +74,7 @@ async fn building_snapshot_does_not_block_apply() -> Result<()> {
             leader_commit: Some(log_id(1, next)),
         };
 
-        let mut cli = router.new_client(s(1), &()).await;
+        let mut cli = router.new_client(s(1), &suraft::emp()).await;
         let option = RPCOption::new(Duration::from_millis(1_000));
 
         let fu = cli.append_entries(rpc, option);

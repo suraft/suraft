@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use anyhow::Result;
 use maplit::btreeset;
+use suraft::emp;
 use suraft::network::v2::RaftNetworkV2;
 use suraft::network::RPCOption;
 use suraft::network::RaftNetworkFactory;
@@ -69,7 +70,7 @@ async fn building_snapshot_does_not_block_append() -> Result<()> {
             leader_commit: None,
         };
 
-        let mut cli = router.new_client(s(1), &()).await;
+        let mut cli = router.new_client(s(1), &emp()).await;
         let option = RPCOption::new(Duration::from_millis(1_000));
         let fu = cli.append_entries(rpc, option);
         let fu = tokio::time::timeout(Duration::from_millis(500), fu);

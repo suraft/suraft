@@ -56,12 +56,12 @@ use crate::type_config::alias::OneshotSenderOf;
 use crate::type_config::async_runtime::mutex::Mutex;
 use crate::type_config::TypeConfigExt;
 use crate::LogId;
+use crate::NodeId;
 use crate::RaftLogId;
 use crate::RaftNetworkFactory;
 use crate::RaftTypeConfig;
 use crate::StorageError;
 use crate::Vote;
-use crate::NID;
 
 /// The handle to a spawned replication stream.
 pub(crate) struct ReplicationHandle<C>
@@ -86,7 +86,7 @@ where
     LS: RaftLogStorage<C>,
 {
     /// The ID of the target Raft node which replication events are to be sent to.
-    target: NID,
+    target: NodeId,
 
     /// Identifies which session this replication belongs to.
     session_id: ReplicationSessionId,
@@ -158,7 +158,7 @@ where
     #[allow(clippy::type_complexity)]
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn spawn(
-        target: NID,
+        target: NodeId,
         session_id: ReplicationSessionId,
         config: Arc<Config>,
         committed: Option<LogId>,
@@ -369,7 +369,7 @@ where
         &mut self,
         log_ids: LogIdRange,
         has_payload: bool,
-    ) -> Result<Option<Data<C>>, ReplicationError<C>> {
+    ) -> Result<Option<Data<C>>, ReplicationError> {
         tracing::debug!(log_id_range = display(&log_ids), "send_log_entries",);
 
         // Series of logs to send, and the last log id to send
@@ -514,7 +514,7 @@ where
 
     /// Send the error result to RaftCore.
     /// RaftCore will then submit another replication command.
-    fn send_progress_error(&mut self, err: RPCError<C>) {
+    fn send_progress_error(&mut self, err: RPCError) {
         let _ = self.tx_raft_core.send(Notification::ReplicationProgress {
             progress: Progress {
                 target: self.target.clone(),
@@ -699,7 +699,7 @@ where
     }
 
     #[tracing::instrument(level = "info", skip_all)]
-    async fn stream_snapshot(&mut self, _snapshot_req: Option<LogId>) -> Result<Option<Data<C>>, ReplicationError<C>> {
+    async fn stream_snapshot(&mut self, _snapshot_req: Option<LogId>) -> Result<Option<Data<C>>, ReplicationError> {
         tracing::info!("{}", func_name!());
 
         let snapshot = self.snapshot_reader.get_snapshot().await.map_err(|reason| {
@@ -777,10 +777,7 @@ where
         }
     }
 
-    fn handle_snapshot_callback(
-        &mut self,
-        callback: SnapshotCallback<C>,
-    ) -> Result<Option<Data<C>>, ReplicationError<C>> {
+    fn handle_snapshot_callback(&mut self, callback: SnapshotCallback<C>) -> Result<Option<Data<C>>, ReplicationError> {
         tracing::debug!(
             response = display(&callback),
             matching = display(self.matching.display()),

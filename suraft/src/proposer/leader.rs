@@ -11,9 +11,9 @@ use crate::type_config::TypeConfigExt;
 use crate::vote::CommittedVote;
 use crate::LogId;
 use crate::LogIdOptionExt;
+use crate::NodeId;
 use crate::RaftLogId;
 use crate::RaftTypeConfig;
-use crate::NID;
 
 /// Leading state data.
 ///
@@ -31,7 +31,7 @@ use crate::NID;
 /// But instead it will be able to upgrade its `leader_id` without losing leadership.
 #[derive(Clone, Debug)]
 #[derive(PartialEq, Eq)]
-pub(crate) struct Leader<C, QS: QuorumSet<NID>>
+pub(crate) struct Leader<C, QS: QuorumSet<NodeId>>
 where C: RaftTypeConfig
 {
     /// Whether this Leader is marked as transferring to another node.
@@ -41,7 +41,7 @@ where C: RaftTypeConfig
     /// node.
     ///
     /// Leadership transfers disable proposing new logs.
-    pub(crate) transfer_to: Option<NID>,
+    pub(crate) transfer_to: Option<NodeId>,
 
     /// The vote this leader works in.
     ///
@@ -60,20 +60,20 @@ where C: RaftTypeConfig
     pub(crate) noop_log_id: Option<LogId>,
 
     /// Tracks the replication progress and committed index
-    pub(crate) progress: VecProgress<NID, ProgressEntry, Option<LogId>, QS>,
+    pub(crate) progress: VecProgress<NodeId, ProgressEntry, Option<LogId>, QS>,
 
     /// Tracks the clock time acknowledged by other nodes.
     ///
     /// See [`docs::leader_lease`] for more details.
     ///
     /// [`docs::leader_lease`]: `crate::docs::protocol::replication::leader_lease`
-    pub(crate) clock_progress: VecProgress<NID, Option<InstantOf<C>>, Option<InstantOf<C>>, QS>,
+    pub(crate) clock_progress: VecProgress<NodeId, Option<InstantOf<C>>, Option<InstantOf<C>>, QS>,
 }
 
 impl<C, QS> Leader<C, QS>
 where
     C: RaftTypeConfig,
-    QS: QuorumSet<NID> + Clone + fmt::Debug + 'static,
+    QS: QuorumSet<NodeId> + Clone + fmt::Debug + 'static,
 {
     /// Create a new Leader.
     ///
@@ -81,7 +81,7 @@ where
     pub(crate) fn new(
         vote: CommittedVote,
         quorum_set: QS,
-        learner_ids: impl IntoIterator<Item = NID>,
+        learner_ids: impl IntoIterator<Item = NodeId>,
         last_leader_log_id: LeaderLogIds,
     ) -> Self {
         debug_assert!(
@@ -146,11 +146,11 @@ where
         &self.committed_vote
     }
 
-    pub(crate) fn mark_transfer(&mut self, to: NID) {
+    pub(crate) fn mark_transfer(&mut self, to: NodeId) {
         self.transfer_to = Some(to);
     }
 
-    pub(crate) fn get_transfer_to(&self) -> Option<&NID> {
+    pub(crate) fn get_transfer_to(&self) -> Option<&NodeId> {
         self.transfer_to.as_ref()
     }
 
@@ -226,9 +226,9 @@ mod tests {
     use crate::testing::log_id;
     use crate::type_config::TypeConfigExt;
     use crate::Entry;
+    use crate::NodeId;
     use crate::RaftLogId;
     use crate::Vote;
-    use crate::NID;
 
     #[test]
     fn test_leader_new_with_proposed_log_id() {
@@ -349,14 +349,14 @@ mod tests {
 
     #[test]
     fn test_leading_last_quorum_acked_time_leader_is_voter() {
-        let mut leading = Leader::<UTConfig, Vec<NID>>::new(
+        let mut leading = Leader::<UTConfig, Vec<NodeId>>::new(
             Vote::new(2, s(1)).into_committed(),
             vec![s(1), s(2), s(3)],
             [s(4)],
             LeaderLogIds::new(None),
         );
 
-        let now1 = UTConfig::<()>::now();
+        let now1 = UTConfig::now();
 
         let _t2 = leading.clock_progress.increase_to(&s(2), Some(now1));
         let t1 = leading.last_quorum_acked_time();
@@ -372,12 +372,12 @@ mod tests {
             LeaderLogIds::new(None),
         );
 
-        let t2 = UTConfig::<()>::now();
+        let t2 = UTConfig::now();
         let _ = leading.clock_progress.increase_to(&s(2), Some(t2));
         let t = leading.last_quorum_acked_time();
         assert!(t.is_none(), "n1(leader+learner) does not count in quorum");
 
-        let t3 = UTConfig::<()>::now();
+        let t3 = UTConfig::now();
         let _ = leading.clock_progress.increase_to(&s(3), Some(t3));
         let t = leading.last_quorum_acked_time();
         assert_eq!(Some(t2), t, "n2 and n3 acked");
@@ -392,12 +392,12 @@ mod tests {
             LeaderLogIds::new(None),
         );
 
-        let t2 = UTConfig::<()>::now();
+        let t2 = UTConfig::now();
         let _ = leading.clock_progress.increase_to(&s(2), Some(t2));
         let t = leading.last_quorum_acked_time();
         assert!(t.is_none(), "n1(leader+learner) does not count in quorum");
 
-        let t3 = UTConfig::<()>::now();
+        let t3 = UTConfig::now();
         let _ = leading.clock_progress.increase_to(&s(3), Some(t3));
         let t = leading.last_quorum_acked_time();
         assert_eq!(Some(t2), t, "n2 and n3 acked");

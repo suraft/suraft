@@ -1,11 +1,11 @@
 use std::fmt;
 
 use crate::progress::entry::ProgressEntry;
-use crate::NID;
+use crate::NodeId;
 
 #[derive(Debug)]
 #[derive(PartialEq, Eq)]
-pub(crate) struct ReplicationProgress(pub NID, pub ProgressEntry);
+pub(crate) struct ReplicationProgress(pub NodeId, pub ProgressEntry);
 
 impl fmt::Display for ReplicationProgress {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

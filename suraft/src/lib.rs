@@ -68,6 +68,8 @@ pub mod type_config;
 #[cfg(test)]
 mod feature_serde_test;
 
+use std::fmt;
+
 pub use anyerror;
 pub use anyerror::AnyError;
 pub use suraft_macros::add_async_trait;
@@ -106,10 +108,9 @@ pub use crate::metrics::RaftMetrics;
 pub use crate::network::RPCTypes;
 pub use crate::network::RaftNetwork;
 pub use crate::network::RaftNetworkFactory;
-pub use crate::node::BasicNode;
-pub use crate::node::EmptyNode;
 pub use crate::node::Node;
-pub use crate::node::NID;
+pub use crate::node::NodeId;
+pub use crate::node::N;
 pub use crate::raft::Raft;
 pub use crate::raft_state::MembershipState;
 pub use crate::raft_state::RaftState;
@@ -128,6 +129,17 @@ pub use crate::type_config::alias;
 pub use crate::type_config::RaftTypeConfig;
 pub use crate::vote::LeaderId;
 pub use crate::vote::Vote;
+
+// This is only used for testing
+// TODO: remove this:
+pub fn emp() -> Node {
+    Node::default()
+}
+
+// TODO: remove this:
+pub fn nn(s: impl fmt::Display) -> Node {
+    Node::new(s.to_string())
+}
 
 /// A trait defining application specific data.
 ///

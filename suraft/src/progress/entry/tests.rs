@@ -1,6 +1,5 @@
 use std::borrow::Borrow;
 
-use crate::engine::testing::UTConfig;
 use crate::progress::entry::ProgressEntry;
 use crate::progress::inflight::Inflight;
 use crate::raft_state::LogStateReader;

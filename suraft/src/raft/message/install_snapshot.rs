@@ -1,18 +1,17 @@
 use std::fmt;
 
 use crate::storage::SnapshotMeta;
-use crate::RaftTypeConfig;
 use crate::Vote;
 
 /// An RPC sent by the Raft leader to send chunks of a snapshot to a follower (§7).
 #[derive(Clone, Debug)]
 #[derive(PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize), serde(bound = ""))]
-pub struct InstallSnapshotRequest<C: RaftTypeConfig> {
+pub struct InstallSnapshotRequest {
     pub vote: Vote,
 
     /// Metadata of a snapshot: snapshot_id, last_log_ed membership etc.
-    pub meta: SnapshotMeta<C>,
+    pub meta: SnapshotMeta,
 
     /// The byte offset where this chunk of data is positioned in the snapshot file.
     pub offset: u64,
@@ -23,7 +22,7 @@ pub struct InstallSnapshotRequest<C: RaftTypeConfig> {
     pub done: bool,
 }
 
-impl<C: RaftTypeConfig> fmt::Display for InstallSnapshotRequest<C> {
+impl fmt::Display for InstallSnapshotRequest {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,

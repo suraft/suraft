@@ -49,7 +49,7 @@ async fn append_entries_with_bigger_term() -> Result<()> {
 
     let option = RPCOption::new(Duration::from_millis(1_000));
 
-    let resp = router.new_client(s(0), &()).await.append_entries(req, option).await?;
+    let resp = router.new_client(s(0), &suraft::emp()).await.append_entries(req, option).await?;
     assert!(resp.is_success());
 
     // after append entries, check hard state in term 2 and vote for node 1

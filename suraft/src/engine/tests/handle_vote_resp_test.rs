@@ -27,12 +27,12 @@ use crate::LogId;
 use crate::Membership;
 use crate::Vote;
 
-fn m12() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {s(1),s(2)}], None)
+fn m12() -> Membership {
+    Membership::new(vec![btreeset! {s(1),s(2)}], None)
 }
 
-fn m1234() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {s(1),s(2),s(3),s(4)}], None)
+fn m1234() -> Membership {
+    Membership::new(vec![btreeset! {s(1),s(2),s(3),s(4)}], None)
 }
 
 fn eng() -> Engine<UTConfig> {
@@ -49,7 +49,7 @@ fn test_handle_vote_resp() -> anyhow::Result<()> {
     {
         let mut eng = eng();
         eng.state.server_state = ServerState::Follower;
-        eng.state.vote = Leased::new(UTConfig::<()>::now(), Duration::from_millis(500), Vote::new(2, s(1)));
+        eng.state.vote = Leased::new(UTConfig::now(), Duration::from_millis(500), Vote::new(2, s(1)));
         eng.state
             .membership_state
             .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(1, 1)), m12())));
@@ -69,7 +69,7 @@ fn test_handle_vote_resp() -> anyhow::Result<()> {
     {
         let mut eng = eng();
         eng.config.id = s(1);
-        eng.state.vote = Leased::new(UTConfig::<()>::now(), Duration::from_millis(500), Vote::new(2, s(1)));
+        eng.state.vote = Leased::new(UTConfig::now(), Duration::from_millis(500), Vote::new(2, s(1)));
         eng.state
             .membership_state
             .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(1, 1)), m12())));
@@ -101,7 +101,7 @@ fn test_handle_vote_resp() -> anyhow::Result<()> {
     {
         let mut eng = eng();
         eng.config.id = s(1);
-        eng.state.vote = Leased::new(UTConfig::<()>::now(), Duration::from_millis(500), Vote::new(2, s(1)));
+        eng.state.vote = Leased::new(UTConfig::now(), Duration::from_millis(500), Vote::new(2, s(1)));
         eng.state.log_ids = LogIdList::new(vec![log_id(3, 3)]);
         eng.state
             .membership_state
@@ -138,7 +138,7 @@ fn test_handle_vote_resp() -> anyhow::Result<()> {
     {
         let mut eng = eng();
         eng.config.id = s(1);
-        eng.state.vote = Leased::new(UTConfig::<()>::now(), Duration::from_millis(500), Vote::new(2, s(1)));
+        eng.state.vote = Leased::new(UTConfig::now(), Duration::from_millis(500), Vote::new(2, s(1)));
         eng.state
             .membership_state
             .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(1, 1)), m1234())));
@@ -173,7 +173,7 @@ fn test_handle_vote_resp_equal_vote() -> anyhow::Result<()> {
     {
         let mut eng = eng();
         eng.config.id = s(1);
-        eng.state.vote = Leased::new(UTConfig::<()>::now(), Duration::from_millis(500), Vote::new(2, s(1)));
+        eng.state.vote = Leased::new(UTConfig::now(), Duration::from_millis(500), Vote::new(2, s(1)));
         eng.state
             .membership_state
             .set_effective(Arc::new(EffectiveMembership::new(Some(log_id(1, 1)), m12())));

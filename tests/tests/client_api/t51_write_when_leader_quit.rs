@@ -86,7 +86,7 @@ async fn write_when_leader_quit_and_log_revert() -> Result<()> {
         raft_err,
         RaftError::APIError(ClientWriteError::ForwardToLeader(ForwardToLeader {
             leader_id: Some(s(1)),
-            leader_node: Some(()),
+            leader_node: Some(suraft::emp()),
         }))
     );
 

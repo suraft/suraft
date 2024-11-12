@@ -27,13 +27,13 @@ use suraft::storage::Snapshot;
 use suraft::Entry;
 use suraft::EntryPayload;
 use suraft::LogId;
+use suraft::NodeId;
 use suraft::OptionalSend;
 use suraft::RaftLogId;
 use suraft::SnapshotMeta;
 use suraft::StorageError;
 use suraft::StoredMembership;
 use suraft::Vote;
-use suraft::NID;
 use tokio::sync::RwLock;
 use tokio::time::Duration;
 
@@ -74,20 +74,19 @@ impl IntoMemClientRequest<ClientRequest> for ClientRequest {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ClientResponse(pub Option<String>);
 
-pub type MemNodeId = NID;
+pub type MemNodeId = NodeId;
 
 suraft::declare_raft_types!(
     /// Declare the type configuration for `MemStore`.
     pub TypeConfig:
         AppData = ClientRequest,
         AppResponse = ClientResponse,
-        Node = (),
 );
 
 /// The application snapshot type which the `MemStore` works with.
 #[derive(Debug)]
 pub struct MemStoreSnapshot {
-    pub meta: SnapshotMeta<TypeConfig>,
+    pub meta: SnapshotMeta,
 
     /// The data of the state machine at the time of this snapshot.
     pub data: Vec<u8>,
@@ -98,7 +97,7 @@ pub struct MemStoreSnapshot {
 pub struct MemStoreStateMachine {
     pub last_applied_log: Option<LogId>,
 
-    pub last_membership: StoredMembership<TypeConfig>,
+    pub last_membership: StoredMembership,
 
     /// The current status of a client by ID.
     pub client_status: HashMap<String, String>,
@@ -440,7 +439,7 @@ impl RaftLogStorage<TypeConfig> for Arc<MemLogStore> {
 impl RaftStateMachine<TypeConfig> for Arc<MemStateMachine> {
     type SnapshotBuilder = Self;
 
-    async fn applied_state(&mut self) -> Result<(Option<LogId>, StoredMembership<TypeConfig>), StorageError> {
+    async fn applied_state(&mut self) -> Result<(Option<LogId>, StoredMembership), StorageError> {
         let sm = self.sm.read().await;
         Ok((sm.last_applied_log.clone(), sm.last_membership.clone()))
     }
@@ -487,7 +486,7 @@ impl RaftStateMachine<TypeConfig> for Arc<MemStateMachine> {
     #[tracing::instrument(level = "trace", skip(self, snapshot))]
     async fn install_snapshot(
         &mut self,
-        meta: &SnapshotMeta<TypeConfig>,
+        meta: &SnapshotMeta,
         snapshot: Box<SnapshotDataOf<TypeConfig>>,
     ) -> Result<(), StorageError> {
         tracing::info!(

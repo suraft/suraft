@@ -23,24 +23,24 @@ use crate::Membership;
 use crate::MembershipState;
 use crate::Vote;
 
-fn m01() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {s(0),s(1)}], None)
+fn m01() -> Membership {
+    Membership::new(vec![btreeset! {s(0),s(1)}], None)
 }
 
-fn m23() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {s(2), s(3)}], None)
+fn m23() -> Membership {
+    Membership::new(vec![btreeset! {s(2), s(3)}], None)
 }
 
-fn m23_45() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {s(2), s(3)}], Some(btreeset! {s(4),s(5)}))
+fn m23_45() -> Membership {
+    Membership::new(vec![btreeset! {s(2), s(3)}], Some(btreeset! {s(4),s(5)}))
 }
 
-fn m34() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {s(3),s(4)}], None)
+fn m34() -> Membership {
+    Membership::new(vec![btreeset! {s(3),s(4)}], None)
 }
 
-fn m4_356() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {s(4)}], Some(btreeset! {s(3),s(5),s(6)}))
+fn m4_356() -> Membership {
+    Membership::new(vec![btreeset! {s(4)}], Some(btreeset! {s(3),s(5),s(6)}))
 }
 
 fn eng() -> Engine<UTConfig> {
@@ -51,7 +51,7 @@ fn eng() -> Engine<UTConfig> {
         Arc::new(EffectiveMembership::new(Some(log_id(2, 3)), m23())),
     );
     eng.state.vote = Leased::new(
-        UTConfig::<()>::now(),
+        UTConfig::now(),
         Duration::from_millis(500),
         Vote::new_committed(6, s(2)),
     );

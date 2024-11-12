@@ -99,7 +99,7 @@ async fn with_state_machine_wrong_sm_type() -> Result<()> {
         impl RaftStateMachine<TC> for FooSM {
             type SnapshotBuilder = Self;
 
-            async fn applied_state(&mut self) -> Result<(Option<LogId>, StoredMembership<TC>), Err> {
+            async fn applied_state(&mut self) -> Result<(Option<LogId>, StoredMembership), Err> {
                 todo!()
             }
 
@@ -121,7 +121,7 @@ async fn with_state_machine_wrong_sm_type() -> Result<()> {
 
             async fn install_snapshot(
                 &mut self,
-                _meta: &SnapshotMeta<TC>,
+                _meta: &SnapshotMeta,
                 _snapshot: Box<<TC as RaftTypeConfig>::SnapshotData>,
             ) -> Result<(), Err> {
                 todo!()

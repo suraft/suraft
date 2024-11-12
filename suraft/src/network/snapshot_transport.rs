@@ -49,7 +49,7 @@ mod tokio_rt {
             mut snapshot: Snapshot<C>,
             mut cancel: impl Future<Output = ReplicationClosed> + OptionalSend + 'static,
             option: RPCOption,
-        ) -> Result<SnapshotResponse, StreamingError<C, Fatal>>
+        ) -> Result<SnapshotResponse, StreamingError<Fatal>>
         where
             Net: RaftNetwork<C> + ?Sized,
         {
@@ -110,7 +110,7 @@ mod tokio_rt {
                     Ok(outer_res) => match outer_res {
                         Ok(res) => res,
                         Err(err) => {
-                            let err: RPCError<C, RaftError<InstallSnapshotError>> = err;
+                            let err: RPCError<RaftError<InstallSnapshotError>> = err;
 
                             tracing::warn!(error=%err, "error sending InstallSnapshot RPC to target");
 
@@ -165,7 +165,7 @@ mod tokio_rt {
         async fn receive_snapshot(
             streaming: &mut Option<Streaming<C>>,
             raft: &Raft<C>,
-            req: InstallSnapshotRequest<C>,
+            req: InstallSnapshotRequest,
         ) -> Result<Option<Snapshot<C>>, RaftError<InstallSnapshotError>> {
             let snapshot_id = &req.meta.snapshot_id;
             let snapshot_meta = req.meta.clone();
@@ -229,7 +229,7 @@ mod tokio_rt {
         C::SnapshotData: tokio::io::AsyncWrite + tokio::io::AsyncSeek + Unpin,
     {
         /// Receive a chunk of snapshot data.
-        pub async fn receive(&mut self, req: InstallSnapshotRequest<C>) -> Result<bool, StorageError> {
+        pub async fn receive(&mut self, req: InstallSnapshotRequest) -> Result<bool, StorageError> {
             // TODO: check id?
 
             // Always seek to the target offset if not an exact match.
@@ -303,7 +303,7 @@ pub trait SnapshotTransport<C: RaftTypeConfig> {
         snapshot: Snapshot<C>,
         cancel: impl Future<Output = ReplicationClosed> + OptionalSend + 'static,
         option: RPCOption,
-    ) -> Result<SnapshotResponse, StreamingError<C, Fatal>>
+    ) -> Result<SnapshotResponse, StreamingError<Fatal>>
     where
         Net: RaftNetwork<C> + ?Sized;
 
@@ -324,7 +324,7 @@ pub trait SnapshotTransport<C: RaftTypeConfig> {
     /// }
     ///
     /// impl<C> App<C> {
-    ///     fn handle_install_snapshot_request(&mut self, req: InstallSnapshotRequest<C>) {
+    ///     fn handle_install_snapshot_request(&mut self, req: InstallSnapshotRequest) {
     ///         let res = Chunked::receive_snapshot(&mut self.streaming, &self.raft, req).await?;
     ///         if let Some(snapshot) = res {
     ///             self.raft.install_snapshot(snapshot).await?;
@@ -335,7 +335,7 @@ pub trait SnapshotTransport<C: RaftTypeConfig> {
     async fn receive_snapshot(
         streaming: &mut Option<Streaming<C>>,
         raft: &Raft<C>,
-        req: InstallSnapshotRequest<C>,
+        req: InstallSnapshotRequest,
     ) -> Result<Option<Snapshot<C>>, RaftError<InstallSnapshotError>>;
 }
 
@@ -415,23 +415,19 @@ mod tests {
             &mut self,
             _rpc: AppendEntriesRequest<C>,
             _option: RPCOption,
-        ) -> Result<AppendEntriesResponse, RPCError<C, RaftError>> {
+        ) -> Result<AppendEntriesResponse, RPCError<RaftError>> {
             unimplemented!()
         }
 
-        async fn vote(
-            &mut self,
-            _rpc: VoteRequest,
-            _option: RPCOption,
-        ) -> Result<VoteResponse, RPCError<C, RaftError>> {
+        async fn vote(&mut self, _rpc: VoteRequest, _option: RPCOption) -> Result<VoteResponse, RPCError<RaftError>> {
             unimplemented!()
         }
 
         async fn install_snapshot(
             &mut self,
-            rpc: InstallSnapshotRequest<C>,
+            rpc: InstallSnapshotRequest,
             _option: RPCOption,
-        ) -> Result<InstallSnapshotResponse, RPCError<C, RaftError<InstallSnapshotError>>> {
+        ) -> Result<InstallSnapshotResponse, RPCError<RaftError<InstallSnapshotError>>> {
             // A fake implementation to test the Chunked::send_snapshot.
 
             self.received_offset.push(rpc.offset);

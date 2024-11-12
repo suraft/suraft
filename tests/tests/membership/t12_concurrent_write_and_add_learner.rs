@@ -6,9 +6,9 @@ use anyhow::Result;
 use maplit::btreeset;
 use suraft::Config;
 use suraft::LogIdOptionExt;
+use suraft::NodeId;
 use suraft::ServerState;
 use suraft::Vote;
-use suraft::NID;
 use tracing::Instrument;
 
 use crate::fixtures::s;
@@ -142,7 +142,7 @@ async fn concurrent_write_and_add_learner() -> Result<()> {
     Ok(())
 }
 
-async fn wait_log(router: &RaftRouter, node_ids: &BTreeSet<NID>, want_log: u64) -> anyhow::Result<()> {
+async fn wait_log(router: &RaftRouter, node_ids: &BTreeSet<NodeId>, want_log: u64) -> anyhow::Result<()> {
     for i in node_ids.iter() {
         router
             .wait_for_metrics(

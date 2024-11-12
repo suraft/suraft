@@ -3,20 +3,15 @@ use crate::error::InProgress;
 use crate::ChangeMembers;
 use crate::Membership;
 use crate::MembershipState;
-use crate::RaftTypeConfig;
 
 /// This struct handles change-membership requests, validating them and applying the changes if
 /// the necessary conditions are met. It operates at the `Engine` and `RaftState` level, and
 /// serves as the outermost API for a consensus engine.
-pub(crate) struct ChangeHandler<'m, C>
-where C: RaftTypeConfig
-{
-    pub(crate) state: &'m MembershipState<C>,
+pub(crate) struct ChangeHandler<'m> {
+    pub(crate) state: &'m MembershipState,
 }
 
-impl<'m, C> ChangeHandler<'m, C>
-where C: RaftTypeConfig
-{
+impl<'m> ChangeHandler<'m> {
     /// Builds a new membership configuration by applying changes to the current configuration.
     ///
     /// * `changes`: The changes to apply to the current membership configuration.
@@ -28,7 +23,7 @@ where C: RaftTypeConfig
     ///
     /// This function ensures that the cluster will have at least one voter in the new membership
     /// configuration.
-    pub(crate) fn apply(&self, change: ChangeMembers<C>, retain: bool) -> Result<Membership<C>, ChangeMembershipError> {
+    pub(crate) fn apply(&self, change: ChangeMembers, retain: bool) -> Result<Membership, ChangeMembershipError> {
         self.ensure_committed()?;
 
         let new_membership = self.state.effective().membership().clone().change(change, retain)?;

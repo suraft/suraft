@@ -91,13 +91,13 @@ use crate::type_config::TypeConfigExt;
 use crate::LogId;
 use crate::LogIdOptionExt;
 use crate::LogIndexOptionExt;
+use crate::NodeId;
 use crate::OptionalSend;
 use crate::RaftNetworkFactory;
 use crate::RaftState;
 pub use crate::RaftTypeConfig;
 use crate::StorageHelper;
 use crate::Vote;
-use crate::NID;
 
 /// Define types for a Raft type configuration.
 ///
@@ -172,7 +172,6 @@ macro_rules! declare_raft_types {
                 // Default types:
                 (AppData      , , String                                ),
                 (AppResponse  , , String                                ),
-                (Node         , , $crate::impls::BasicNode              ),
                 (Entry        , , $crate::impls::Entry<Self>            ),
                 (SnapshotData , , std::io::Cursor<Vec<u8>>                       ),
                 (Responder    , , $crate::impls::OneshotResponder<Self> ),
@@ -232,7 +231,7 @@ where C: RaftTypeConfig
     /// used by Raft for data storage.
     #[tracing::instrument(level="debug", skip_all, fields(cluster=%config.cluster_name))]
     pub async fn new<LS, N, SM>(
-        id: NID,
+        id: NodeId,
         config: Arc<Config>,
         network: N,
         mut log_store: LS,
@@ -442,7 +441,7 @@ where C: RaftTypeConfig
     #[cfg(feature = "tokio-rt")]
     pub async fn install_snapshot(
         &self,
-        req: InstallSnapshotRequest<C>,
+        req: InstallSnapshotRequest,
     ) -> Result<InstallSnapshotResponse, RaftError<crate::error::InstallSnapshotError>>
     where
         C::SnapshotData: tokio::io::AsyncRead + tokio::io::AsyncWrite + tokio::io::AsyncSeek + Unpin,
@@ -488,7 +487,7 @@ where C: RaftTypeConfig
     /// up-to-date; however, the `is_leader` method must still be used to guard against stale
     /// reads. This method is perfect for making decisions on where to route client requests.
     #[tracing::instrument(level = "debug", skip(self))]
-    pub async fn current_leader(&self) -> Option<NID> {
+    pub async fn current_leader(&self) -> Option<NodeId> {
         self.metrics().borrow_watched().current_leader.clone()
     }
 
@@ -499,7 +498,7 @@ where C: RaftTypeConfig
     /// the read will not be stale.
     #[deprecated(since = "0.9.0", note = "use `Raft::ensure_linearizable()` instead")]
     #[tracing::instrument(level = "debug", skip(self))]
-    pub async fn is_leader(&self) -> Result<(), RaftError<CheckIsLeaderError<C>>> {
+    pub async fn is_leader(&self) -> Result<(), RaftError<CheckIsLeaderError>> {
         let (tx, rx) = C::oneshot();
         let _ = self.inner.call_core(RaftMsg::CheckIsLeaderRequest { tx }, rx).await?;
         Ok(())
@@ -529,7 +528,7 @@ where C: RaftTypeConfig
     /// ```
     /// Read more about how it works: [Read Operation](crate::docs::protocol::read)
     #[tracing::instrument(level = "debug", skip(self))]
-    pub async fn ensure_linearizable(&self) -> Result<Option<LogId>, RaftError<CheckIsLeaderError<C>>> {
+    pub async fn ensure_linearizable(&self) -> Result<Option<LogId>, RaftError<CheckIsLeaderError>> {
         let (read_log_id, applied) = self.get_read_log_id().await?;
 
         if read_log_id.index() > applied.index() {
@@ -576,7 +575,7 @@ where C: RaftTypeConfig
     ///
     /// See: [Read Operation](crate::docs::protocol::read)
     #[tracing::instrument(level = "debug", skip(self))]
-    pub async fn get_read_log_id(&self) -> Result<(Option<LogId>, Option<LogId>), RaftError<CheckIsLeaderError<C>>> {
+    pub async fn get_read_log_id(&self) -> Result<(Option<LogId>, Option<LogId>), RaftError<CheckIsLeaderError>> {
         let (tx, rx) = C::oneshot();
         let (read_log_id, applied) = self.inner.call_core(RaftMsg::CheckIsLeaderRequest { tx }, rx).await?;
         Ok((read_log_id, applied))
@@ -604,7 +603,7 @@ where C: RaftTypeConfig
     pub async fn client_write<E>(
         &self,
         app_data: C::AppData,
-    ) -> Result<ClientWriteResponse<C>, RaftError<ClientWriteError<C>>>
+    ) -> Result<ClientWriteResponse<C>, RaftError<ClientWriteError>>
     where
         ResponderReceiverOf<C>: Future<Output = Result<ClientWriteResult<C>, E>>,
         E: Error + OptionalSend,
@@ -745,8 +744,8 @@ where C: RaftTypeConfig
     /// More than one node performing `initialize()` with the same config is safe,
     /// with different config will result in split brain condition.
     #[tracing::instrument(level = "debug", skip(self))]
-    pub async fn initialize<T>(&self, members: T) -> Result<(), RaftError<InitializeError<C>>>
-    where T: IntoNodes<C::Node> + Debug {
+    pub async fn initialize<T>(&self, members: T) -> Result<(), RaftError<InitializeError>>
+    where T: IntoNodes + Debug {
         let (tx, rx) = C::oneshot();
         self.inner
             .call_core(
@@ -766,7 +765,7 @@ where C: RaftTypeConfig
     fn check_replication_upto_date(
         &self,
         metrics: &RaftMetrics<C>,
-        node_id: &NID,
+        node_id: &NodeId,
         membership_log_id: Option<&LogId>,
     ) -> Result<Option<LogId>, ()> {
         if metrics.membership_config.log_id().as_ref() < membership_log_id {
@@ -966,7 +965,7 @@ where C: RaftTypeConfig
     }
 
     /// Get a handle to the server metrics channel.
-    pub fn server_metrics(&self) -> WatchReceiverOf<C, RaftServerMetrics<C>> {
+    pub fn server_metrics(&self) -> WatchReceiverOf<C, RaftServerMetrics> {
         self.inner.rx_server_metrics.clone()
     }
 

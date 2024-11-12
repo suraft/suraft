@@ -4,7 +4,7 @@ use crate::display_ext::DisplayOptionExt;
 use crate::display_ext::DisplayResultExt;
 use crate::replication::ReplicationSessionId;
 use crate::LogId;
-use crate::NID;
+use crate::NodeId;
 
 /// The response of replication command.
 ///
@@ -13,7 +13,7 @@ use crate::NID;
 #[derive(Debug)]
 pub(crate) struct Progress {
     /// The ID of the target node for which the match index is to be updated.
-    pub(crate) target: NID,
+    pub(crate) target: NodeId,
 
     /// The request by this leader has been successfully handled by the target node,
     /// or an error in string.
@@ -64,7 +64,6 @@ impl fmt::Display for ReplicationResult {
 
 #[cfg(test)]
 mod tests {
-    use crate::engine::testing::s;
     use crate::replication::response::ReplicationResult;
     use crate::testing::log_id;
 

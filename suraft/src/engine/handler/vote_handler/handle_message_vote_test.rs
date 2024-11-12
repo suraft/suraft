@@ -19,8 +19,8 @@ use crate::Membership;
 use crate::TokioInstant;
 use crate::Vote;
 
-fn m01() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {s(0),s(1)}], None)
+fn m01() -> Membership {
+    Membership::new(vec![btreeset! {s(0),s(1)}], None)
 }
 
 fn eng() -> Engine<UTConfig> {
@@ -28,7 +28,7 @@ fn eng() -> Engine<UTConfig> {
     eng.state.enable_validation(false); // Disable validation for incomplete state
 
     eng.config.id = s(0);
-    eng.state.vote = Leased::new(UTConfig::<()>::now(), Duration::from_millis(500), Vote::new(2, s(1)));
+    eng.state.vote = Leased::new(UTConfig::now(), Duration::from_millis(500), Vote::new(2, s(1)));
     eng.state.server_state = ServerState::Candidate;
     eng.state
         .membership_state
@@ -42,7 +42,7 @@ fn eng() -> Engine<UTConfig> {
 fn test_handle_message_vote_reject_smaller_vote() -> anyhow::Result<()> {
     let mut eng = eng();
     eng.state.vote = Leased::new(
-        UTConfig::<()>::now(),
+        UTConfig::now(),
         Duration::from_millis(500),
         Vote::new_committed(2, s(1)),
     );

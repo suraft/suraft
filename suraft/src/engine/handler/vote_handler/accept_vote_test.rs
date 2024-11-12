@@ -21,8 +21,8 @@ use crate::EffectiveMembership;
 use crate::Membership;
 use crate::Vote;
 
-fn m01() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {s(0),s(1)}], None)
+fn m01() -> Membership {
+    Membership::new(vec![btreeset! {s(0),s(1)}], None)
 }
 
 /// Make a sample VoteResponse
@@ -35,7 +35,7 @@ fn eng() -> Engine<UTConfig> {
     eng.state.enable_validation(false); // Disable validation for incomplete state
 
     eng.config.id = s(0);
-    eng.state.vote = Leased::new(UTConfig::<()>::now(), Duration::from_millis(500), Vote::new(2, s(1)));
+    eng.state.vote = Leased::new(UTConfig::now(), Duration::from_millis(500), Vote::new(2, s(1)));
     eng.state.server_state = ServerState::Candidate;
     eng.state
         .membership_state
@@ -50,12 +50,12 @@ fn test_accept_vote_reject_smaller_vote() -> anyhow::Result<()> {
     let mut eng = eng();
     eng.output.take_commands();
 
-    let (tx, _rx) = UTConfig::<()>::oneshot();
+    let (tx, _rx) = UTConfig::oneshot();
     let resp = eng.vote_handler().accept_vote(&Vote::new(1, s(2)), tx, |_state, _err| mk_res(false));
 
     assert!(resp.is_none());
 
-    let (tx, _rx) = UTConfig::<()>::oneshot();
+    let (tx, _rx) = UTConfig::oneshot();
     assert_eq!(
         vec![
             //
@@ -78,7 +78,7 @@ fn test_accept_vote_granted_greater_vote() -> anyhow::Result<()> {
     let mut eng = eng();
     eng.output.take_commands();
 
-    let (tx, _rx) = UTConfig::<()>::oneshot();
+    let (tx, _rx) = UTConfig::oneshot();
     let resp = eng.vote_handler().accept_vote(&Vote::new(3, s(3)), tx, |_state, _err| mk_res(true));
 
     assert!(resp.is_some());

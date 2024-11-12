@@ -17,11 +17,11 @@ use crate::Membership;
 use crate::MembershipState;
 use crate::Vote;
 
-fn m01() -> Membership<UTConfig> {
+fn m01() -> Membership {
     Membership::new(vec![btreeset! {s(0),s(1)}], None)
 }
 
-fn m23() -> Membership<UTConfig> {
+fn m23() -> Membership {
     Membership::new(vec![btreeset! {s(2), s(3)}], None)
 }
 
@@ -30,7 +30,7 @@ fn eng() -> Engine<UTConfig> {
     eng.state.enable_validation(false); // Disable validation for incomplete state
 
     eng.state.vote = Leased::new(
-        UTConfig::<()>::now(),
+        UTConfig::now(),
         Duration::from_millis(500),
         Vote::new_committed(2, s(1)),
     );

@@ -239,7 +239,7 @@ node.
 ```ignore
 pub trait RaftNetworkFactory<C: RaftTypeConfig>: Send + Sync + 'static {
     type Network: RaftNetwork<C>;
-    async fn new_client(&mut self, target: NID, node: &C::Node) -> Self::Network;
+    async fn new_client(&mut self, target: NID, node: &Node) -> Self::Network;
 }
 ```
 

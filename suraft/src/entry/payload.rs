@@ -15,7 +15,7 @@ pub enum EntryPayload<C: RaftTypeConfig> {
     Normal(C::AppData),
 
     /// A change-membership log entry.
-    Membership(Membership<C>),
+    Membership(Membership),
 }
 
 impl<C> Clone for EntryPayload<C>
@@ -67,7 +67,7 @@ impl<C: RaftTypeConfig> RaftPayload<C> for EntryPayload<C> {
         matches!(self, EntryPayload::Blank)
     }
 
-    fn get_membership(&self) -> Option<&Membership<C>> {
+    fn get_membership(&self) -> Option<&Membership> {
         if let EntryPayload::Membership(m) = self {
             Some(m)
         } else {

@@ -93,7 +93,7 @@ async fn snapshot_overrides_membership() -> Result<()> {
             };
             let option = RPCOption::new(Duration::from_millis(1_000));
 
-            router.new_client(s(1), &()).await.append_entries(req, option).await?;
+            router.new_client(s(1), &suraft::emp()).await.append_entries(req, option).await?;
 
             tracing::info!(log_index, "--- check that learner membership is affected");
             {

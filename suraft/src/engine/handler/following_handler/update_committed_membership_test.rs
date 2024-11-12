@@ -15,23 +15,23 @@ use crate::Membership;
 use crate::MembershipState;
 use crate::Vote;
 
-fn m01() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {s(0),s(1)}], None)
+fn m01() -> Membership {
+    Membership::new(vec![btreeset! {s(0),s(1)}], None)
 }
 
-fn m23() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {s(2), s(3)}], None)
+fn m23() -> Membership {
+    Membership::new(vec![btreeset! {s(2), s(3)}], None)
 }
 
-fn m34() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {s(3),s(4)}], None)
+fn m34() -> Membership {
+    Membership::new(vec![btreeset! {s(3),s(4)}], None)
 }
 
 fn eng() -> Engine<UTConfig> {
     let mut eng = Engine::testing_default(s(0));
     eng.config.id = s(2);
     eng.state.vote = Leased::new(
-        UTConfig::<()>::now(),
+        UTConfig::now(),
         Duration::from_millis(500),
         Vote::new_committed(2, s(1)),
     );

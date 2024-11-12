@@ -92,7 +92,7 @@ where C: RaftTypeConfig
         self.payload.is_blank()
     }
 
-    fn get_membership(&self) -> Option<&Membership<C>> {
+    fn get_membership(&self) -> Option<&Membership> {
         self.payload.get_membership()
     }
 }
@@ -119,7 +119,7 @@ where C: RaftTypeConfig
         }
     }
 
-    fn new_membership(log_id: LogId, m: Membership<C>) -> Self {
+    fn new_membership(log_id: LogId, m: Membership) -> Self {
         Self {
             log_id,
             payload: EntryPayload::Membership(m),

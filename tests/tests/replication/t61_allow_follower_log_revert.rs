@@ -104,7 +104,10 @@ async fn allow_follower_log_revert_errors() -> Result<()> {
         let n1 = router.get_raft_handle(&s(1))?;
         let res = n1.trigger().allow_next_revert(&s(0), true).await?;
         assert_eq!(
-            Err(AllowNextRevertError::ForwardToLeader(ForwardToLeader::new(s(0), ()))),
+            Err(AllowNextRevertError::ForwardToLeader(ForwardToLeader::new(
+                s(0),
+                suraft::emp()
+            ))),
             res
         );
     }

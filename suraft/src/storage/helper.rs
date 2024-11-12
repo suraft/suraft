@@ -243,7 +243,7 @@ where
     /// a follower only need to revert at most one membership log.
     ///
     /// Thus a raft node will only need to store at most two recent membership logs.
-    pub async fn get_membership(&mut self) -> Result<MembershipState<C>, StorageError> {
+    pub async fn get_membership(&mut self) -> Result<MembershipState, StorageError> {
         let (last_applied, sm_mem) = self.state_machine.applied_state().await?;
 
         let log_mem = self.last_membership_in_log(last_applied.next_index()).await?;
@@ -277,7 +277,7 @@ where
     /// `>=since_index`. If no such membership log is found, it returns `None`, e.g., when logs
     /// are cleaned after being applied.
     #[tracing::instrument(level = "trace", skip_all)]
-    pub async fn last_membership_in_log(&mut self, since_index: u64) -> Result<Vec<StoredMembership<C>>, StorageError> {
+    pub async fn last_membership_in_log(&mut self, since_index: u64) -> Result<Vec<StoredMembership>, StorageError> {
         let st = self.log_store.get_log_state().await?;
 
         let mut end = st.last_log_id.next_index();

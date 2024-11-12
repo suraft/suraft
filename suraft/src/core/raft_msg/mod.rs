@@ -17,10 +17,11 @@ use crate::type_config::alias::ResponderOf;
 use crate::type_config::alias::SnapshotDataOf;
 use crate::ChangeMembers;
 use crate::LogId;
+use crate::Node;
+use crate::NodeId;
 use crate::RaftState;
 use crate::RaftTypeConfig;
 use crate::Vote;
-use crate::NID;
 
 pub(crate) mod external_command;
 
@@ -34,7 +35,7 @@ pub(crate) type VoteTx<C> = ResultSender<C, VoteResponse>;
 pub(crate) type AppendEntriesTx<C> = ResultSender<C, AppendEntriesResponse>;
 
 /// TX for Linearizable Read Response
-pub(crate) type ClientReadTx<C> = ResultSender<C, (Option<LogId>, Option<LogId>), CheckIsLeaderError<C>>;
+pub(crate) type ClientReadTx<C> = ResultSender<C, (Option<LogId>, Option<LogId>), CheckIsLeaderError>;
 
 /// A message sent by application to the [`RaftCore`].
 ///
@@ -78,12 +79,12 @@ where C: RaftTypeConfig
     },
 
     Initialize {
-        members: BTreeMap<NID, C::Node>,
-        tx: ResultSender<C, (), InitializeError<C>>,
+        members: BTreeMap<NodeId, Node>,
+        tx: ResultSender<C, (), InitializeError>,
     },
 
     ChangeMembership {
-        changes: ChangeMembers<C>,
+        changes: ChangeMembers,
 
         /// If `retain` is `true`, then the voters that are not in the new
         /// config will be converted into learners, otherwise they will be removed.
@@ -104,7 +105,7 @@ where C: RaftTypeConfig
         /// The vote of the Leader that is transferring the leadership.
         from: Vote,
         /// The assigned node to be the next Leader.
-        to: NID,
+        to: NodeId,
     },
 
     ExternalCommand {

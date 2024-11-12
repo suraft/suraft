@@ -2,14 +2,14 @@ use std::cmp::Ordering;
 use std::fmt;
 
 use crate::display_ext::DisplayOptionExt;
-use crate::NID;
+use crate::NodeId;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize), serde(bound = ""))]
 pub struct LeaderId {
     pub term: u64,
 
-    pub voted_for: Option<NID>,
+    pub voted_for: Option<NodeId>,
 }
 
 impl PartialOrd for LeaderId {
@@ -37,7 +37,7 @@ impl PartialOrd for LeaderId {
 }
 
 impl LeaderId {
-    pub fn new(term: u64, node_id: NID) -> Self {
+    pub fn new(term: u64, node_id: NodeId) -> Self {
         Self {
             term,
             voted_for: Some(node_id),
@@ -48,7 +48,7 @@ impl LeaderId {
         self.term
     }
 
-    pub fn voted_for(&self) -> Option<NID> {
+    pub fn voted_for(&self) -> Option<NodeId> {
         self.voted_for.clone()
     }
 

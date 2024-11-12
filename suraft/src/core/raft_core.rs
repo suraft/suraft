@@ -100,21 +100,20 @@ use crate::ChangeMembers;
 use crate::Instant;
 use crate::LogId;
 use crate::Membership;
+use crate::Node;
+use crate::NodeId;
 use crate::OptionalSend;
 use crate::RaftTypeConfig;
 use crate::StorageError;
-use crate::NID;
 
 /// A temp struct to hold the data for a node that is being applied.
 #[derive(Debug)]
-pub(crate) struct ApplyingEntry<C: RaftTypeConfig> {
+pub(crate) struct ApplyingEntry {
     log_id: LogId,
-    membership: Option<Membership<C>>,
+    membership: Option<Membership>,
 }
 
-impl<C> fmt::Display for ApplyingEntry<C>
-where C: RaftTypeConfig
-{
+impl fmt::Display for ApplyingEntry {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.log_id)?;
         if let Some(m) = &self.membership {
@@ -124,8 +123,8 @@ where C: RaftTypeConfig
     }
 }
 
-impl<C: RaftTypeConfig> ApplyingEntry<C> {
-    pub(crate) fn new(log_id: LogId, membership: Option<Membership<C>>) -> Self {
+impl ApplyingEntry {
+    pub(crate) fn new(log_id: LogId, membership: Option<Membership>) -> Self {
         Self { log_id, membership }
     }
 }
@@ -135,7 +134,7 @@ pub(crate) struct ApplyResult<C: RaftTypeConfig> {
     pub(crate) since: u64,
     pub(crate) end: u64,
     pub(crate) last_applied: LogId,
-    pub(crate) applying_entries: Vec<ApplyingEntry<C>>,
+    pub(crate) applying_entries: Vec<ApplyingEntry>,
     pub(crate) apply_results: Vec<C::AppResponse>,
 }
 
@@ -170,7 +169,7 @@ where
     LS: RaftLogStorage<C>,
 {
     /// This node's ID.
-    pub(crate) id: NID,
+    pub(crate) id: NodeId,
 
     /// This node's runtime config.
     pub(crate) config: Arc<Config>,
@@ -194,7 +193,7 @@ where
     pub(crate) client_resp_channels: BTreeMap<u64, ResponderOf<C>>,
 
     /// A mapping of node IDs the replication state of the target node.
-    pub(crate) replications: BTreeMap<NID, ReplicationHandle<C>>,
+    pub(crate) replications: BTreeMap<NodeId, ReplicationHandle<C>>,
 
     pub(crate) heartbeat_handle: HeartbeatWorkersHandle<C>,
 
@@ -211,7 +210,7 @@ where
 
     pub(crate) tx_metrics: WatchSenderOf<C, RaftMetrics<C>>,
     pub(crate) tx_data_metrics: WatchSenderOf<C, RaftDataMetrics<C>>,
-    pub(crate) tx_server_metrics: WatchSenderOf<C, RaftServerMetrics<C>>,
+    pub(crate) tx_server_metrics: WatchSenderOf<C, RaftServerMetrics>,
 
     pub(crate) span: Span,
 }
@@ -457,7 +456,7 @@ where
     //       membership logs. And it does not need to wait for the previous membership log to commit
     //       to propose the new membership log.
     #[tracing::instrument(level = "debug", skip(self, tx))]
-    pub(super) fn change_membership(&mut self, changes: ChangeMembers<C>, retain: bool, tx: ResponderOf<C>) {
+    pub(super) fn change_membership(&mut self, changes: ChangeMembers, retain: bool, tx: ResponderOf<C>) {
         let res = self.engine.state.membership_state.change_handler().apply(changes, retain);
         let new_membership = match res {
             Ok(x) => x,
@@ -656,8 +655,8 @@ where
     #[tracing::instrument(level = "debug", skip(self, tx))]
     pub(crate) fn handle_initialize(
         &mut self,
-        member_nodes: BTreeMap<NID, C::Node>,
-        tx: ResultSender<C, (), InitializeError<C>>,
+        member_nodes: BTreeMap<NodeId, Node>,
+        tx: ResultSender<C, (), InitializeError>,
     ) {
         tracing::debug!(member_nodes = debug(&member_nodes), "{}", func_name!());
 
@@ -693,7 +692,7 @@ where
     /// Reject a request due to the Raft node being in a state which prohibits the request.
     #[tracing::instrument(level = "trace", skip(self, tx))]
     pub(crate) fn reject_with_forward_to_leader<T: OptionalSend, E>(&self, tx: ResultSender<C, T, E>)
-    where E: From<ForwardToLeader<C>> + OptionalSend {
+    where E: From<ForwardToLeader> + OptionalSend {
         let mut leader_id = self.current_leader();
         let leader_node = self.get_leader_node(leader_id.clone());
 
@@ -708,7 +707,7 @@ where
     }
 
     #[tracing::instrument(level = "debug", skip(self))]
-    pub(crate) fn current_leader(&self) -> Option<NID> {
+    pub(crate) fn current_leader(&self) -> Option<NodeId> {
         tracing::debug!(
             self_id = display(&self.id),
             vote = display(self.engine.state.vote_ref()),
@@ -744,7 +743,7 @@ where
         leading.and_then(|l| l.last_quorum_acked_time())
     }
 
-    pub(crate) fn get_leader_node(&self, leader_id: Option<NID>) -> Option<C::Node> {
+    pub(crate) fn get_leader_node(&self, leader_id: Option<NodeId>) -> Option<Node> {
         let leader_id = match leader_id {
             None => return None,
             Some(x) => x,
@@ -791,7 +790,7 @@ where
 
     /// Send result of applying a log entry to its client.
     #[tracing::instrument(level = "debug", skip_all)]
-    pub(super) fn send_response(entry: ApplyingEntry<C>, resp: C::AppResponse, tx: Option<ResponderOf<C>>) {
+    pub(super) fn send_response(entry: ApplyingEntry, resp: C::AppResponse, tx: Option<ResponderOf<C>>) {
         tracing::debug!(entry = debug(&entry), "send_response");
 
         let tx = match tx {
@@ -815,7 +814,7 @@ where
     #[allow(clippy::type_complexity)]
     pub(crate) async fn spawn_replication_stream(
         &mut self,
-        target: NID,
+        target: NodeId,
         progress_entry: ProgressEntry,
     ) -> ReplicationHandle<C> {
         // Safe unwrap(): target must be in membership

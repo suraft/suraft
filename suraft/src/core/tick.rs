@@ -177,7 +177,6 @@ mod tests {
     impl RaftTypeConfig for TickUTConfig {
         type AppData = ();
         type AppResponse = ();
-        type Node = ();
         type Entry = crate::Entry<TickUTConfig>;
         type SnapshotData = Cursor<Vec<u8>>;
         type AsyncRuntime = TokioRuntime;

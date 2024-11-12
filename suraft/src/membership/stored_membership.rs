@@ -3,8 +3,8 @@ use std::fmt;
 use crate::display_ext::DisplayOption;
 use crate::LogId;
 use crate::Membership;
-use crate::RaftTypeConfig;
-use crate::NID;
+use crate::Node;
+use crate::NodeId;
 
 /// This struct represents information about a membership config that has already been stored in the
 /// raft logs.
@@ -18,20 +18,16 @@ use crate::NID;
 #[derive(Clone, Debug, Default)]
 #[derive(PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize), serde(bound = ""))]
-pub struct StoredMembership<C>
-where C: RaftTypeConfig
-{
+pub struct StoredMembership {
     /// The id of the log that stores this membership config
     log_id: Option<LogId>,
 
     /// Membership config
-    membership: Membership<C>,
+    membership: Membership,
 }
 
-impl<C> StoredMembership<C>
-where C: RaftTypeConfig
-{
-    pub fn new(log_id: Option<LogId>, membership: Membership<C>) -> Self {
+impl StoredMembership {
+    pub fn new(log_id: Option<LogId>, membership: Membership) -> Self {
         Self { log_id, membership }
     }
 
@@ -39,22 +35,20 @@ where C: RaftTypeConfig
         &self.log_id
     }
 
-    pub fn membership(&self) -> &Membership<C> {
+    pub fn membership(&self) -> &Membership {
         &self.membership
     }
 
-    pub fn voter_ids(&self) -> impl Iterator<Item = NID> {
+    pub fn voter_ids(&self) -> impl Iterator<Item = NodeId> {
         self.membership.voter_ids()
     }
 
-    pub fn nodes(&self) -> impl Iterator<Item = (&NID, &C::Node)> {
+    pub fn nodes(&self) -> impl Iterator<Item = (&NodeId, &Node)> {
         self.membership.nodes()
     }
 }
 
-impl<C> fmt::Display for StoredMembership<C>
-where C: RaftTypeConfig
-{
+impl fmt::Display for StoredMembership {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{{log_id:{}, {}}}", DisplayOption(&self.log_id), self.membership)
     }

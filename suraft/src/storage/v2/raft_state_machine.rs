@@ -35,7 +35,7 @@ where C: RaftTypeConfig
     /// last-applied-log-id.
     /// Because upon startup, the last membership will be loaded by scanning logs from the
     /// `last-applied-log-id`.
-    async fn applied_state(&mut self) -> Result<(Option<LogId>, StoredMembership<C>), StorageError>;
+    async fn applied_state(&mut self) -> Result<(Option<LogId>, StoredMembership), StorageError>;
 
     /// Apply the given payload of entries to the state machine.
     ///
@@ -101,7 +101,7 @@ where C: RaftTypeConfig
     /// snapshot.
     async fn install_snapshot(
         &mut self,
-        meta: &SnapshotMeta<C>,
+        meta: &SnapshotMeta,
         snapshot: Box<C::SnapshotData>,
     ) -> Result<(), StorageError>;
 

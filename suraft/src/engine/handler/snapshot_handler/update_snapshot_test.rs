@@ -9,12 +9,12 @@ use crate::testing::log_id;
 use crate::Membership;
 use crate::StoredMembership;
 
-fn m12() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {s(1),s(2)}], None)
+fn m12() -> Membership {
+    Membership::new(vec![btreeset! {s(1),s(2)}], None)
 }
 
-fn m1234() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {s(1),s(2),s(3),s(4)}], None)
+fn m1234() -> Membership {
+    Membership::new(vec![btreeset! {s(1),s(2),s(3),s(4)}], None)
 }
 
 fn eng() -> Engine<UTConfig> {

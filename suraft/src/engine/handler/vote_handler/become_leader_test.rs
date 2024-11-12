@@ -23,8 +23,8 @@ use crate::EffectiveMembership;
 use crate::Membership;
 use crate::Vote;
 
-fn m01() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {s(0),s(1)}], None)
+fn m01() -> Membership {
+    Membership::new(vec![btreeset! {s(0),s(1)}], None)
 }
 
 fn eng() -> Engine<UTConfig> {
@@ -33,7 +33,7 @@ fn eng() -> Engine<UTConfig> {
 
     eng.config.id = s(1);
     eng.state.vote = Leased::new(
-        UTConfig::<()>::now(),
+        UTConfig::now(),
         Duration::from_millis(500),
         Vote::new_committed(2, s(1)),
     );

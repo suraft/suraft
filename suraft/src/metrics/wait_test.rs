@@ -16,11 +16,11 @@ use crate::type_config::alias::WatchSenderOf;
 use crate::type_config::TypeConfigExt;
 use crate::LogId;
 use crate::Membership;
+use crate::NodeId;
 use crate::RaftMetrics;
 use crate::RaftTypeConfig;
 use crate::StoredMembership;
 use crate::Vote;
-use crate::NID;
 
 /// Test wait for different state changes
 #[tokio::test(flavor = "multi_thread", worker_threads = 8)]
@@ -95,7 +95,7 @@ async fn test_wait() -> anyhow::Result<()> {
             let mut update = init.clone();
             update.membership_config = Arc::new(StoredMembership::new(
                 None,
-                Membership::new(vec![btreeset! {s(1),s(2)}], btreemap! {s(3)=>()}),
+                Membership::new(vec![btreeset! {s(1),s(2)}], btreemap! {s(3)=>crate::emp()}),
             ));
             let rst = tx.send(update);
             assert!(rst.is_ok());
@@ -252,7 +252,7 @@ where C: RaftTypeConfig {
     #[allow(deprecated)]
     let init = RaftMetrics {
         running_state: Ok(()),
-        id: NID::default(),
+        id: NodeId::default(),
         state: ServerState::Learner,
         current_term: 0,
         vote: Vote::default(),

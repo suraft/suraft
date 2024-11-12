@@ -19,8 +19,8 @@ use crate::EffectiveMembership;
 use crate::Membership;
 use crate::Vote;
 
-fn m01() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {s(0),s(1)}], None)
+fn m01() -> Membership {
+    Membership::new(vec![btreeset! {s(0),s(1)}], None)
 }
 
 fn eng() -> Engine<UTConfig> {
@@ -29,7 +29,7 @@ fn eng() -> Engine<UTConfig> {
 
     eng.config.id = s(1);
     // By default expire the leader lease so that the vote can be overridden in these tests.
-    eng.state.vote = Leased::new(UTConfig::<()>::now(), Duration::from_millis(0), Vote::new(2, s(1)));
+    eng.state.vote = Leased::new(UTConfig::now(), Duration::from_millis(0), Vote::new(2, s(1)));
     eng.state.server_state = ServerState::Candidate;
     eng.state
         .membership_state
@@ -44,7 +44,7 @@ fn eng() -> Engine<UTConfig> {
 fn test_handle_vote_req_rejected_by_leader_lease() -> anyhow::Result<()> {
     let mut eng = eng();
     eng.state.vote.update(
-        UTConfig::<()>::now(),
+        UTConfig::now(),
         Duration::from_millis(500),
         Vote::new_committed(2, s(1)),
     );

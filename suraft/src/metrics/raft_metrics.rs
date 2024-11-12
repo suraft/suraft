@@ -12,10 +12,10 @@ use crate::type_config::alias::InstantOf;
 use crate::type_config::alias::SerdeInstantOf;
 use crate::Instant;
 use crate::LogId;
+use crate::NodeId;
 use crate::RaftTypeConfig;
 use crate::StoredMembership;
 use crate::Vote;
-use crate::NID;
 
 /// A set of metrics describing the current state of a Raft node.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -24,7 +24,7 @@ pub struct RaftMetrics<C: RaftTypeConfig> {
     pub running_state: Result<(), Fatal>,
 
     /// The ID of the Raft node.
-    pub id: NID,
+    pub id: NodeId,
 
     // ---
     // --- data ---
@@ -58,7 +58,7 @@ pub struct RaftMetrics<C: RaftTypeConfig> {
     pub state: ServerState,
 
     /// The current cluster leader.
-    pub current_leader: Option<NID>,
+    pub current_leader: Option<NodeId>,
 
     /// For a leader, it is the elapsed time in milliseconds since the most recently acknowledged
     /// timestamp by a quorum.
@@ -95,7 +95,7 @@ pub struct RaftMetrics<C: RaftTypeConfig> {
     pub last_quorum_acked: Option<SerdeInstantOf<C>>,
 
     /// The current membership config of the cluster.
-    pub membership_config: Arc<StoredMembership<C>>,
+    pub membership_config: Arc<StoredMembership>,
 
     /// Heartbeat metrics. It is Some() only when this node is leader.
     ///
@@ -162,7 +162,7 @@ where C: RaftTypeConfig
 impl<C> RaftMetrics<C>
 where C: RaftTypeConfig
 {
-    pub fn new_initial(id: NID) -> Self {
+    pub fn new_initial(id: NodeId) -> Self {
         #[allow(deprecated)]
         Self {
             running_state: Ok(()),
@@ -279,18 +279,16 @@ where C: RaftTypeConfig
 /// Subset of RaftMetrics, only include server-related metrics
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize), serde(bound = ""))]
-pub struct RaftServerMetrics<C: RaftTypeConfig> {
-    pub id: NID,
+pub struct RaftServerMetrics {
+    pub id: NodeId,
     pub vote: Vote,
     pub state: ServerState,
-    pub current_leader: Option<NID>,
+    pub current_leader: Option<NodeId>,
 
-    pub membership_config: Arc<StoredMembership<C>>,
+    pub membership_config: Arc<StoredMembership>,
 }
 
-impl<C> fmt::Display for RaftServerMetrics<C>
-where C: RaftTypeConfig
-{
+impl fmt::Display for RaftServerMetrics {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "ServerMetrics{{")?;
 

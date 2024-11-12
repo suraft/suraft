@@ -50,9 +50,9 @@ pub(crate) use wait_condition::Condition;
 
 use crate::type_config::alias::SerdeInstantOf;
 use crate::LogId;
-use crate::NID;
+use crate::NodeId;
 
-pub(crate) type ReplicationMetrics = BTreeMap<NID, Option<LogId>>;
+pub(crate) type ReplicationMetrics = BTreeMap<NodeId, Option<LogId>>;
 /// Heartbeat metrics, a mapping between a node's ID and the time of the last
 /// acknowledged heartbeat or replication to this node.
-pub(crate) type HeartbeatMetrics<C> = BTreeMap<NID, Option<SerdeInstantOf<C>>>;
+pub(crate) type HeartbeatMetrics<C> = BTreeMap<NodeId, Option<SerdeInstantOf<C>>>;

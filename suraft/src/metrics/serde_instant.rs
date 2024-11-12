@@ -152,7 +152,7 @@ mod serde_impl {
 
         #[test]
         fn test_serde_instant() {
-            let now = UTConfig::<()>::now();
+            let now = UTConfig::now();
             let serde_instant = SerdeInstant::new(now);
             let json = serde_json::to_string(&serde_instant).unwrap();
             println!("json: {}", json);

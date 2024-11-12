@@ -51,10 +51,10 @@ where C: RaftTypeConfig
         &mut self,
         rpc: AppendEntriesRequest<C>,
         option: RPCOption,
-    ) -> Result<AppendEntriesResponse, RPCError<C>>;
+    ) -> Result<AppendEntriesResponse, RPCError>;
 
     /// Send a RequestVote RPC to the target.
-    async fn vote(&mut self, rpc: VoteRequest, option: RPCOption) -> Result<VoteResponse, RPCError<C>>;
+    async fn vote(&mut self, rpc: VoteRequest, option: RPCOption) -> Result<VoteResponse, RPCError>;
 
     /// Send a complete Snapshot to the target.
     ///
@@ -79,7 +79,7 @@ where C: RaftTypeConfig
         snapshot: Snapshot<C>,
         cancel: impl Future<Output = ReplicationClosed> + OptionalSend + 'static,
         option: RPCOption,
-    ) -> Result<SnapshotResponse, StreamingError<C>>;
+    ) -> Result<SnapshotResponse, StreamingError>;
 
     /// Send TransferLeader message to the target node.
     ///
@@ -91,7 +91,7 @@ where C: RaftTypeConfig
     ///
     /// [`Raft::handle_transfer_leader()`]: crate::raft::Raft::handle_transfer_leader
     #[since(version = "0.10.0")]
-    async fn transfer_leader(&mut self, _req: TransferLeaderRequest, _option: RPCOption) -> Result<(), RPCError<C>> {
+    async fn transfer_leader(&mut self, _req: TransferLeaderRequest, _option: RPCOption) -> Result<(), RPCError> {
         Err(RPCError::Unreachable(Unreachable::new(&AnyError::error(
             "transfer_leader not implemented",
         ))))

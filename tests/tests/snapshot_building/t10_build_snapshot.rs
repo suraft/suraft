@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use anyhow::Result;
 use maplit::btreeset;
+use suraft::emp;
 use suraft::network::v2::RaftNetworkV2;
 use suraft::network::RPCOption;
 use suraft::network::RaftNetworkFactory;
@@ -124,7 +125,7 @@ async fn build_snapshot() -> Result<()> {
         let option = RPCOption::new(Duration::from_millis(1_000));
 
         let res = router
-            .new_client(s(1), &())
+            .new_client(s(1), &emp())
             .await
             .append_entries(
                 AppendEntriesRequest {

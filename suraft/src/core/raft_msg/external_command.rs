@@ -5,9 +5,9 @@ use std::fmt;
 use crate::core::raft_msg::ResultSender;
 use crate::core::sm;
 use crate::error::AllowNextRevertError;
+use crate::NodeId;
 use crate::RaftTypeConfig;
 use crate::Snapshot;
-use crate::NID;
 
 /// Application-triggered Raft actions for testing and administration.
 ///
@@ -36,13 +36,13 @@ pub(crate) enum ExternalCommand<C: RaftTypeConfig> {
     PurgeLog { upto: u64 },
 
     /// Submit a command to inform RaftCore to transfer leadership to the specified node.
-    TriggerTransferLeader { to: NID },
+    TriggerTransferLeader { to: NodeId },
 
     /// Allow or not the next revert of the replication to the specified node.
     AllowNextRevert {
-        to: NID,
+        to: NodeId,
         allow: bool,
-        tx: ResultSender<C, (), AllowNextRevertError<C>>,
+        tx: ResultSender<C, (), AllowNextRevertError>,
     },
 
     /// Send a [`sm::Command`] to [`sm::worker::Worker`].

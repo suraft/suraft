@@ -16,14 +16,15 @@ use crate::type_config::alias::WatchReceiverOf;
 use crate::type_config::alias::WatchSenderOf;
 use crate::type_config::TypeConfigExt;
 use crate::Config;
+use crate::Node;
+use crate::NodeId;
 use crate::RaftNetworkFactory;
 use crate::RaftTypeConfig;
-use crate::NID;
 
 pub(crate) struct HeartbeatWorkersHandle<C>
 where C: RaftTypeConfig
 {
-    pub(crate) id: NID,
+    pub(crate) id: NodeId,
 
     pub(crate) config: Arc<Config>,
 
@@ -37,13 +38,13 @@ where C: RaftTypeConfig
     /// A separate task will have a clone of this receiver to receive and execute heartbeat command.
     pub(crate) rx: WatchReceiverOf<C, Option<HeartbeatEvent<C>>>,
 
-    pub(crate) workers: BTreeMap<NID, (OneshotSenderOf<C, ()>, JoinHandleOf<C, ()>)>,
+    pub(crate) workers: BTreeMap<NodeId, (OneshotSenderOf<C, ()>, JoinHandleOf<C, ()>)>,
 }
 
 impl<C> HeartbeatWorkersHandle<C>
 where C: RaftTypeConfig
 {
-    pub(crate) fn new(id: NID, config: Arc<Config>) -> Self {
+    pub(crate) fn new(id: NodeId, config: Arc<Config>) -> Self {
         let (tx, rx) = C::watch_channel(None);
 
         Self {
@@ -64,7 +65,7 @@ where C: RaftTypeConfig
         &mut self,
         network_factory: &mut NF,
         tx_notification: &MpscUnboundedSenderOf<C, Notification<C>>,
-        targets: impl IntoIterator<Item = (NID, C::Node)>,
+        targets: impl IntoIterator<Item = (NodeId, Node)>,
     ) where
         NF: RaftNetworkFactory<C>,
     {

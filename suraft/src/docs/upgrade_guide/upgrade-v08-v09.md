@@ -131,7 +131,7 @@ To use arbitrary snapshot data, the application needs to:
   ```ignore 
   impl RaftNetwork for YourNetwork {
       async fn full_snapshot(&mut self, vote: Vote, snapshot: Snapshot<C>, /*...*/
-      ) -> Result<SnapshotResponse<NID>, StreamingError<C, Fatal<NID>>> {
+      ) -> Result<SnapshotResponse<NID>, StreamingError<Fatal<NID>>> {
           let resp = Chunked::send_snapshot(self, vote, snapshot, /*...*/).await?;
           Ok(resp)
       }
@@ -151,7 +151,7 @@ To use arbitrary snapshot data, the application needs to:
   ```ignore
   async fn handle_install_snapshot_request(
       &self,
-      req: InstallSnapshotRequest<C>,
+      req: InstallSnapshotRequest,
   ) -> Result<_, _>
   where C::SnapshotData: AsyncRead + AsyncWrite + AsyncSeek + Unpin,
   {

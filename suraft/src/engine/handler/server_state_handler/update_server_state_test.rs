@@ -16,12 +16,12 @@ use crate::MembershipState;
 use crate::ServerState;
 use crate::Vote;
 
-fn m01() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {s(0),s(1)}], None)
+fn m01() -> Membership {
+    Membership::new(vec![btreeset! {s(0),s(1)}], None)
 }
 
-fn m123() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {s(1), s(2), s(3)}], None)
+fn m123() -> Membership {
+    Membership::new(vec![btreeset! {s(1), s(2), s(3)}], None)
 }
 
 fn eng() -> Engine<UTConfig> {
@@ -30,7 +30,7 @@ fn eng() -> Engine<UTConfig> {
 
     eng.config.id = s(2);
     eng.state.vote = Leased::new(
-        UTConfig::<()>::now(),
+        UTConfig::now(),
         Duration::from_millis(500),
         Vote::new_committed(2, s(2)),
     );
@@ -52,7 +52,7 @@ fn test_update_server_state_if_changed() -> anyhow::Result<()> {
     {
         assert_eq!(ServerState::Leader, ssh.state.server_state);
 
-        ssh.state.vote = Leased::new(UTConfig::<()>::now(), Duration::from_millis(500), Vote::new(2, s(100)));
+        ssh.state.vote = Leased::new(UTConfig::now(), Duration::from_millis(500), Vote::new(2, s(100)));
         ssh.update_server_state_if_changed();
 
         assert_eq!(ServerState::Follower, ssh.state.server_state);

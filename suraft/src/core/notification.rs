@@ -9,17 +9,17 @@ use crate::replication::ReplicationSessionId;
 use crate::type_config::alias::InstantOf;
 use crate::vote::CommittedVote;
 use crate::vote::NonCommittedVote;
+use crate::NodeId;
 use crate::RaftTypeConfig;
 use crate::StorageError;
 use crate::Vote;
-use crate::NID;
 
 /// A message coming from the internal components.
 pub(crate) enum Notification<C>
 where C: RaftTypeConfig
 {
     VoteResponse {
-        target: NID,
+        target: NodeId,
         resp: VoteResponse,
 
         /// The candidate that sent the vote request.
@@ -31,7 +31,7 @@ where C: RaftTypeConfig
     /// A Leader sees a higher `vote` when replicating.
     HigherVote {
         /// The ID of the target node from which the new term was observed.
-        target: NID,
+        target: NodeId,
 
         /// The higher vote observed.
         higher: Vote,
@@ -56,7 +56,7 @@ where C: RaftTypeConfig
     HeartbeatProgress {
         session_id: ReplicationSessionId,
         sending_time: InstantOf<C>,
-        target: NID,
+        target: NodeId,
     },
 
     /// Result of executing a command sent from state machine worker.

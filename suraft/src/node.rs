@@ -1,84 +1,66 @@
-use std::fmt::Debug;
+use std::collections::BTreeMap;
 use std::fmt::Display;
 use std::fmt::Formatter;
 
-use crate::OptionalSend;
-use crate::OptionalSync;
-
-/// Essential trait bound for application level node-data, except serde.
-pub trait NodeEssential:
-    Sized + OptionalSend + OptionalSync + Eq + PartialEq + Debug + Clone + Default + 'static
-{
-}
-impl<T> NodeEssential for T where T: Sized + OptionalSend + OptionalSync + Eq + PartialEq + Debug + Clone + Default + 'static
-{}
-
-/// A Raft `Node`, this trait holds all relevant node information.
+/// `NodeId` uniquely identifies a node within the suraft cluster.
 ///
-/// For the most generic case `BasicNode` provides an example implementation including the node's
-/// network address, but the used `Node` implementation can be customized to include additional
-/// information.
-#[cfg(feature = "serde")]
-pub trait Node: NodeEssential + serde::Serialize + for<'a> serde::Deserialize<'a> {}
+/// Using a distinct type for `NodeId` enhances type safety and clarity.
+/// It can be extended in the future to support more complex identifiers.
+pub type NodeId = String;
 
-#[cfg(feature = "serde")]
-impl<T> Node for T where T: NodeEssential + serde::Serialize + for<'a> serde::Deserialize<'a> {}
-
-#[cfg(not(feature = "serde"))]
-pub trait Node: NodeEssential {}
-
-#[cfg(not(feature = "serde"))]
-impl<T> Node for T where T: NodeEssential {}
-
-// TODO: rename it
-pub type NID = String;
-
-/// EmptyNode is an implementation of trait [`Node`] that contains nothing.
+/// `Node` represents a single participant in the suraft cluster.
 ///
-/// Such a node store nothing but is just a place holder.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct EmptyNode {}
+/// Each node is uniquely identified by [`NodeId`] and contains necessary information
+/// for cluster coordination and communication.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct Node {
+    /// The network address (e.g., IP and port) of the node for communication.
+    pub address: String,
 
-impl EmptyNode {
-    /// Creates an [`EmptyNode`].
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
-impl Display for EmptyNode {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{{}}")
-    }
-}
-
-/// An implementation of trait [`Node`] that contains minimal node information.
-///
-/// The most common usage is to store the connecting address of a node.
-/// So that an application does not need an additional store to support its
-/// [`RaftNetwork`](crate::RaftNetwork) implementation.
-///
-/// An application is also free not to use this storage and implements its own node-id to address
-/// mapping.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct BasicNode {
-    /// User defined string that represent the endpoint of the target node.
+    /// Optional metadata or configuration data associated with the node.
     ///
-    /// It is used by [`RaftNetwork`](crate::RaftNetwork) for connecting to target node.
-    pub addr: String,
+    /// This can include information such as roles, capacities, or other custom attributes.
+    pub metadata: BTreeMap<String, String>,
 }
 
-impl BasicNode {
-    /// Creates as [`BasicNode`].
-    pub fn new(addr: impl ToString) -> Self {
-        Self { addr: addr.to_string() }
+impl Node {
+    pub fn new(address: impl ToString) -> Self {
+        Node {
+            address: address.to_string(),
+            metadata: Default::default(),
+        }
+    }
+
+    pub fn new_with_meta(address: impl ToString, metadata: BTreeMap<String, String>) -> Self {
+        Node {
+            address: address.to_string(),
+            metadata,
+        }
     }
 }
 
-impl Display for BasicNode {
+impl Display for Node {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.addr)
+        write!(f, "{}; ", self.address)?;
+        for (i, (k, v)) in self.metadata.iter().enumerate() {
+            if i > 0 {
+                write!(f, ",")?;
+            }
+            write!(f, "{}:{}", k, v)?;
+        }
+        Ok(())
     }
 }
+
+impl Default for Node {
+    // TODO: remove this.
+    fn default() -> Self {
+        Node {
+            address: String::new(),
+            metadata: BTreeMap::new(),
+        }
+    }
+}
+
+pub type N = Node;

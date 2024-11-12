@@ -10,10 +10,10 @@ use crate::raft_state::IOId;
 use crate::raft_state::LogStateReader;
 use crate::replication::ReplicationSessionId;
 use crate::LogId;
+use crate::NodeId;
 use crate::RaftLogId;
 use crate::RaftState;
 use crate::RaftTypeConfig;
-use crate::NID;
 
 #[cfg(test)]
 mod append_entries_test;
@@ -117,7 +117,7 @@ where C: RaftTypeConfig
     }
 
     /// Disable proposing new logs for this Leader, and transfer Leader to another node
-    pub(crate) fn transfer_leader(&mut self, to: NID) {
+    pub(crate) fn transfer_leader(&mut self, to: NodeId) {
         self.leader.mark_transfer(to.clone());
         self.state.vote.disable_lease();
 

@@ -1,49 +1,26 @@
 use std::collections::BTreeMap;
-use std::fmt::Display;
-use std::fmt::Formatter;
 
 use maplit::btreemap;
 use maplit::btreeset;
 
+use crate::emp;
 use crate::engine::testing::s;
-use crate::engine::testing::UTConfig;
 use crate::membership::IntoNodes;
 use crate::ChangeMembers;
 use crate::Membership;
+use crate::Node;
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct TestNode {
-    pub addr: String,
-    pub data: BTreeMap<String, String>,
-}
-
-impl Display for TestNode {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}; ", self.addr)?;
-        for (i, (k, v)) in self.data.iter().enumerate() {
-            if i > 0 {
-                write!(f, ",")?;
-            }
-            write!(f, "{}:{}", k, v)?;
-        }
-        Ok(())
-    }
-}
 #[test]
 fn test_membership_summary() -> anyhow::Result<()> {
-    let node = |addr: &str, k: &str| TestNode {
-        addr: addr.to_string(),
-        data: btreemap! {k.to_string() => k.to_string()},
-    };
+    let node = |addr: &str, k: &str| Node::new_with_meta(addr, btreemap! {k.to_string() => k.to_string()});
 
-    let m = Membership::<UTConfig>::new(vec![btreeset! {s(1),s(2)}, btreeset! {s(3)}], None);
+    let m = Membership::new(vec![btreeset! {s(1),s(2)}, btreeset! {s(3)}], ());
     assert_eq!("{voters:[{1:(),2:()},{3:()}], learners:[]}", m.to_string());
 
-    let m = Membership::<UTConfig>::new(vec![btreeset! {s(1),s(2)}, btreeset! {s(3)}], Some(btreeset! {s(4)}));
+    let m = Membership::new(vec![btreeset! {s(1),s(2)}, btreeset! {s(3)}], Some(btreeset! {s(4)}));
     assert_eq!("{voters:[{1:(),2:()},{3:()}], learners:[4:()]}", m.to_string());
 
-    let m = Membership::<UTConfig<TestNode>>::new_unchecked(vec![btreeset! {s(1),s(2)}, btreeset! {s(3)}], btreemap! {
+    let m = Membership::new_unchecked(vec![btreeset! {s(1),s(2)}, btreeset! {s(3)}], btreemap! {
         s(1)=>node("127.0.0.1", "k1"),
         s(2)=>node("127.0.0.2", "k2"),
         s(3)=>node("127.0.0.3", "k3"),
@@ -51,7 +28,7 @@ fn test_membership_summary() -> anyhow::Result<()> {
 
     });
     assert_eq!(
-        r#"{voters:[{1:TestNode { addr: "127.0.0.1", data: {"k1": "k1"} },2:TestNode { addr: "127.0.0.2", data: {"k2": "k2"} }},{3:TestNode { addr: "127.0.0.3", data: {"k3": "k3"} }}], learners:[4:TestNode { addr: "127.0.0.4", data: {"k4": "k4"} }]}"#,
+        r#"{voters:[{1:Node { addr: "127.0.0.1", data: {"k1": "k1"} },2:Node { addr: "127.0.0.2", data: {"k2": "k2"} }},{3:Node { addr: "127.0.0.3", data: {"k3": "k3"} }}], learners:[4:Node { addr: "127.0.0.4", data: {"k4": "k4"} }]}"#,
         m.to_string()
     );
 
@@ -60,9 +37,9 @@ fn test_membership_summary() -> anyhow::Result<()> {
 
 #[test]
 fn test_membership() -> anyhow::Result<()> {
-    let m1 = Membership::<UTConfig>::new(vec![btreeset! {s(1)}], None);
-    let m123 = Membership::<UTConfig>::new(vec![btreeset! {s(1), s(2), s(3)}], None);
-    let m123_345 = Membership::<UTConfig>::new(vec![btreeset! {s(1), s(2), s(3)}, btreeset! {s(3), s(4), s(5)}], None);
+    let m1 = Membership::new(vec![btreeset! {s(1)}], ());
+    let m123 = Membership::new(vec![btreeset! {s(1), s(2), s(3)}], ());
+    let m123_345 = Membership::new(vec![btreeset! {s(1), s(2), s(3)}, btreeset! {s(3), s(4), s(5)}], ());
 
     assert_eq!(Some(btreeset! {s(1)}), m1.get_joint_config().first().cloned());
     assert_eq!(
@@ -103,8 +80,8 @@ fn test_membership() -> anyhow::Result<()> {
 fn test_membership_with_learners() -> anyhow::Result<()> {
     // test multi membership with learners
     {
-        let m1_2 = Membership::<UTConfig>::new(vec![btreeset! {s(1)}], Some(btreeset! {s(2)}));
-        let m1_23 = m1_2.clone().change(ChangeMembers::AddNodes(btreemap! {s(3)=>()}), true)?;
+        let m1_2 = Membership::new(vec![btreeset! {s(1)}], Some(btreeset! {s(2)}));
+        let m1_23 = m1_2.clone().change(ChangeMembers::AddNodes(btreemap! {s(3)=>emp()}), true)?;
 
         // test learner and membership
         assert_eq!(vec![s(1)], m1_2.voter_ids().collect::<Vec<_>>());
@@ -115,20 +92,20 @@ fn test_membership_with_learners() -> anyhow::Result<()> {
 
         // Adding a member as learner has no effect:
 
-        let m = m1_23.clone().change(ChangeMembers::AddNodes(btreemap! {s(1)=>()}), true)?;
+        let m = m1_23.clone().change(ChangeMembers::AddNodes(btreemap! {s(1)=>emp()}), true)?;
         // let m = m1_23.add_learner(1, ());
         assert_eq!(vec![s(1)], m.voter_ids().collect::<Vec<_>>());
 
         // Adding a existent learner has no effect:
 
-        let m = m1_23.change(ChangeMembers::AddNodes(btreemap! {s(3)=>()}), true)?;
+        let m = m1_23.change(ChangeMembers::AddNodes(btreemap! {s(3)=>emp()}), true)?;
         assert_eq!(vec![s(1)], m.voter_ids().collect::<Vec<_>>());
         assert_eq!(btreeset! {s(2), s(3)}, m.learner_ids().collect());
     }
 
     // overlapping members and learners
     {
-        let s1_2 = Membership::<UTConfig>::new(
+        let s1_2 = Membership::new(
             vec![btreeset! {s(1), s(2), s(3)}, btreeset! {s(5),s(6),s(7)}],
             Some(btreeset! {s(3), s(4), s(5)}),
         );
@@ -141,12 +118,9 @@ fn test_membership_with_learners() -> anyhow::Result<()> {
 
 #[test]
 fn test_membership_add_learner() -> anyhow::Result<()> {
-    let node = |s: &str| TestNode {
-        addr: s.to_string(),
-        data: Default::default(),
-    };
+    let node = |s: &str| Node::new(s);
 
-    let m_1_2 = Membership::<UTConfig<TestNode>>::new_unchecked(
+    let m_1_2 = Membership::new_unchecked(
         vec![btreeset! {s(1)}, btreeset! {s(2)}],
         btreemap! {s(1)=>node("1"), s(2)=>node("2")},
     );
@@ -160,7 +134,7 @@ fn test_membership_add_learner() -> anyhow::Result<()> {
 
     let m_1_2_3 = m_1_2.change(ChangeMembers::AddNodes(btreemap! {s(3)=>node("3")}), true)?;
     assert_eq!(
-        Membership::<UTConfig<TestNode>>::new_unchecked(
+        Membership::new_unchecked(
             vec![btreeset! {s(1)}, btreeset! {s(2)}],
             btreemap! {s(1)=>node("1"), s(2)=>node("2"), s(3)=>node("3")}
         ),
@@ -172,12 +146,9 @@ fn test_membership_add_learner() -> anyhow::Result<()> {
 
 #[test]
 fn test_membership_update_nodes() -> anyhow::Result<()> {
-    let node = |s: &str| TestNode {
-        addr: s.to_string(),
-        data: Default::default(),
-    };
+    let node = |s: &str| Node::new(s);
 
-    let m_1_2 = Membership::<UTConfig<TestNode>>::new_unchecked(
+    let m_1_2 = Membership::new_unchecked(
         vec![btreeset! {s(1)}, btreeset! {s(2)}],
         btreemap! {s(1)=>node("1"), s(2)=>node("2")},
     );
@@ -187,7 +158,7 @@ fn test_membership_update_nodes() -> anyhow::Result<()> {
         true,
     )?;
     assert_eq!(
-        Membership::<UTConfig<TestNode>>::new_unchecked(
+        Membership::new_unchecked(
             vec![btreeset! {s(1)}, btreeset! {s(2)}],
             btreemap! {s(1)=>node("1"), s(2)=>node("20"), s(3)=>node("30")}
         ),
@@ -199,12 +170,9 @@ fn test_membership_update_nodes() -> anyhow::Result<()> {
 
 #[test]
 fn test_membership_extend_nodes() -> anyhow::Result<()> {
-    let node = |s: &str| TestNode {
-        addr: s.to_string(),
-        data: Default::default(),
-    };
+    let node = |s: &str| Node::new(s);
 
-    let ext = |a, b| Membership::<UTConfig<TestNode>>::extend_nodes(a, &b);
+    let ext = |a, b| Membership::extend_nodes(a, &b);
 
     assert_eq!(
         btreemap! {s(1)=>node("1")},
@@ -226,9 +194,8 @@ fn test_membership_extend_nodes() -> anyhow::Result<()> {
 // TODO: rename
 #[test]
 fn test_membership_with_nodes() -> anyhow::Result<()> {
-    let node = TestNode::default;
-    let with_nodes =
-        |nodes| Membership::<UTConfig<TestNode>>::new_unchecked(vec![btreeset! {s(1)}, btreeset! {s(2)}], nodes);
+    let node = Node::default;
+    let with_nodes = |nodes| Membership::new_unchecked(vec![btreeset! {s(1)}, btreeset! {s(2)}], nodes);
 
     let res = with_nodes(btreemap! {s(1)=>node(), s(2)=>node()});
     assert_eq!(
@@ -253,7 +220,7 @@ fn test_membership_next_coherent() -> anyhow::Result<()> {
     let c3 = || btreeset! {s(7), s(8), s(9)};
 
     #[allow(clippy::redundant_closure)]
-    let new_mem = |voter_ids, ns| Membership::<UTConfig>::new(voter_ids, ns);
+    let new_mem = |voter_ids, ns| Membership::new(voter_ids, ns);
 
     let m1 = new_mem(vec![c1()], nodes());
     let m12 = new_mem(vec![c1(), c2()], nodes());
@@ -280,8 +247,8 @@ fn test_membership_next_coherent() -> anyhow::Result<()> {
 
     let old_learners = || btreeset! {s(1), s(2)};
     let learners = || btreeset! {s(1), s(2), s(3), s(4), s(5)};
-    let m23_with_learners_old = Membership::<UTConfig>::new(vec![c2(), c3()], Some(old_learners()));
-    let m23_with_learners_new = Membership::<UTConfig>::new(vec![c3()], Some(learners()));
+    let m23_with_learners_old = Membership::new(vec![c2(), c3()], Some(old_learners()));
+    let m23_with_learners_new = Membership::new(vec![c3()], Some(learners()));
     assert_eq!(m23_with_learners_new, m23_with_learners_old.next_coherent(c3(), true));
 
     Ok(())
@@ -289,16 +256,12 @@ fn test_membership_next_coherent() -> anyhow::Result<()> {
 
 #[test]
 fn test_membership_next_coherent_with_nodes() -> anyhow::Result<()> {
-    let node = |s: &str| TestNode {
-        addr: s.to_string(),
-        data: Default::default(),
-    };
+    let node = |s: &str| Node::new(s);
 
     let c1 = || btreeset! {s(1)};
     let c2 = || btreeset! {s(2)};
 
-    let initial =
-        Membership::<UTConfig<TestNode>>::new_unchecked(vec![c1(), c2()], btreemap! {s(1)=>node("1"), s(2)=>node("2")});
+    let initial = Membership::new_unchecked(vec![c1(), c2()], btreemap! {s(1)=>node("1"), s(2)=>node("2")});
 
     // joint [{2}, {1,2}]
 
@@ -322,15 +285,12 @@ fn test_membership_next_coherent_with_nodes() -> anyhow::Result<()> {
 
 #[test]
 fn test_membership_next_coherent_retain_false_keeps_existing_learners() -> anyhow::Result<()> {
-    let node = |s: u64| TestNode {
-        addr: s.to_string(),
-        data: Default::default(),
-    };
+    let node = |s: u64| Node::new(s);
 
     let c1 = || btreeset! {s(1)};
     let c2 = || btreeset! {s(2)};
 
-    let initial = Membership::<UTConfig<TestNode>>::new_unchecked(
+    let initial = Membership::new_unchecked(
         vec![c1(), c2()],
         btreemap! {s(1)=>node(1), s(2)=>node(2), s(3)=>node(3)},
     );

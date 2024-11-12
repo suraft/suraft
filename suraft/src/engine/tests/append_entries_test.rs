@@ -24,16 +24,16 @@ use crate::Membership;
 use crate::MembershipState;
 use crate::Vote;
 
-fn m01() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {s(0),s(1)}], None)
+fn m01() -> Membership {
+    Membership::new(vec![btreeset! {s(0),s(1)}], None)
 }
 
-fn m23() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {s(2), s(3)}], None)
+fn m23() -> Membership {
+    Membership::new(vec![btreeset! {s(2), s(3)}], None)
 }
 
-fn m34() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {s(3),s(4)}], None)
+fn m34() -> Membership {
+    Membership::new(vec![btreeset! {s(3),s(4)}], None)
 }
 
 fn eng() -> Engine<UTConfig> {
@@ -41,7 +41,7 @@ fn eng() -> Engine<UTConfig> {
     eng.state.enable_validation(false); // Disable validation for incomplete state
 
     eng.config.id = s(2);
-    eng.state.vote = Leased::new(UTConfig::<()>::now(), Duration::from_millis(500), Vote::new(2, s(1)));
+    eng.state.vote = Leased::new(UTConfig::now(), Duration::from_millis(500), Vote::new(2, s(1)));
     eng.state.log_ids.append(log_id(1, 1));
     eng.state.log_ids.append(log_id(2, 3));
     eng.state.committed = Some(log_id(0, 0));
@@ -86,7 +86,7 @@ fn test_append_entries_vote_is_rejected() -> anyhow::Result<()> {
 fn test_append_entries_prev_log_id_is_applied() -> anyhow::Result<()> {
     // An applied log id has to be committed thus
     let mut eng = eng();
-    eng.state.vote = Leased::new(UTConfig::<()>::now(), Duration::from_millis(500), Vote::new(1, s(2)));
+    eng.state.vote = Leased::new(UTConfig::now(), Duration::from_millis(500), Vote::new(1, s(2)));
     eng.output.take_commands();
 
     let res = eng.append_entries(
@@ -224,7 +224,7 @@ fn test_append_entries_prev_log_id_is_committed() -> anyhow::Result<()> {
 #[test]
 fn test_append_entries_prev_log_id_not_exists() -> anyhow::Result<()> {
     let mut eng = eng();
-    eng.state.vote = Leased::new(UTConfig::<()>::now(), Duration::from_millis(500), Vote::new(1, s(2)));
+    eng.state.vote = Leased::new(UTConfig::now(), Duration::from_millis(500), Vote::new(1, s(2)));
     eng.output.take_commands();
 
     let res = eng.append_entries(&Vote::new_committed(2, s(1)), Some(log_id(2, 4)), vec![

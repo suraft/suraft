@@ -18,7 +18,6 @@ use crate::entry::RaftEntry;
 use crate::raft::responder::Responder;
 use crate::AppData;
 use crate::AppResponse;
-use crate::Node;
 use crate::OptionalSend;
 use crate::OptionalSync;
 
@@ -56,9 +55,6 @@ pub trait RaftTypeConfig:
 
     /// Application-specific response data returned by the state machine.
     type AppResponse: AppResponse;
-
-    /// Raft application level node data
-    type Node: Node;
 
     /// Raft log entry, which can be built from an AppData.
     type Entry: RaftEntry<Self> + FromAppData<Self::AppData>;
@@ -100,7 +96,6 @@ pub mod alias {
 
     pub type DOf<C> = <C as RaftTypeConfig>::AppData;
     pub type ROf<C> = <C as RaftTypeConfig>::AppResponse;
-    pub type NodeOf<C> = <C as RaftTypeConfig>::Node;
     pub type EntryOf<C> = <C as RaftTypeConfig>::Entry;
     pub type SnapshotDataOf<C> = <C as RaftTypeConfig>::SnapshotData;
     pub type AsyncRuntimeOf<C> = <C as RaftTypeConfig>::AsyncRuntime;

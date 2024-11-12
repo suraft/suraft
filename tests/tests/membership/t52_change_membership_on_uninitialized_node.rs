@@ -26,7 +26,7 @@ async fn change_membership_on_uninitialized_node() -> Result<()> {
     router.new_raft_node(s(0)).await;
 
     let n0 = router.get_raft_handle(&s(0))?;
-    let res = n0.change_membership(ChangeMembers::AddVoters(btreemap! {s(0)=>()}), false).await;
+    let res = n0.change_membership(ChangeMembers::AddVoters(btreemap! {s(0)=>suraft::emp()}), false).await;
     tracing::info!("{:?}", res);
 
     let err = res.unwrap_err();

@@ -7,8 +7,6 @@ use crate::impls::TokioRuntime;
 
 declare_raft_types!(
     All:
-        Node = (),
-
         /// This is AppData
         AppData = (),
         #[allow(dead_code)]
@@ -23,7 +21,6 @@ declare_raft_types!(
 declare_raft_types!(
     WithoutD:
         AppResponse = (),
-        Node = (),
         Entry = crate::Entry<Self>,
         SnapshotData = Cursor<Vec<u8>>,
         AsyncRuntime = TokioRuntime,
@@ -32,7 +29,6 @@ declare_raft_types!(
 declare_raft_types!(
     WithoutR:
         AppData = (),
-        Node = (),
         Entry = crate::Entry<Self>,
         SnapshotData = Cursor<Vec<u8>>,
         AsyncRuntime = TokioRuntime,

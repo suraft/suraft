@@ -15,12 +15,12 @@ pub(crate) enum Response<C>
 where C: RaftTypeConfig
 {
     /// Build a snapshot, it returns result via the universal RaftCore response channel.
-    BuildSnapshot(SnapshotMeta<C>),
+    BuildSnapshot(SnapshotMeta),
 
     /// When finishing installing a snapshot.
     ///
     /// It does not return any value to RaftCore.
-    InstallSnapshot((IOId, Option<SnapshotMeta<C>>)),
+    InstallSnapshot((IOId, Option<SnapshotMeta>)),
 
     /// Send back applied result to RaftCore.
     Apply(ApplyResult<C>),

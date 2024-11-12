@@ -26,24 +26,24 @@ use crate::type_config::alias::WatchReceiverOf;
 use crate::type_config::AsyncRuntime;
 use crate::type_config::TypeConfigExt;
 use crate::Config;
+use crate::NodeId;
 use crate::OptionalSend;
 use crate::RaftMetrics;
 use crate::RaftTypeConfig;
-use crate::NID;
 
 /// RaftInner is the internal handle and provides internally used APIs to communicate with
 /// `RaftCore`.
 pub(in crate::raft) struct RaftInner<C>
 where C: RaftTypeConfig
 {
-    pub(in crate::raft) id: NID,
+    pub(in crate::raft) id: NodeId,
     pub(in crate::raft) config: Arc<Config>,
     pub(in crate::raft) runtime_config: Arc<RuntimeConfig>,
     pub(in crate::raft) tick_handle: TickHandle<C>,
     pub(in crate::raft) tx_api: MpscUnboundedSenderOf<C, RaftMsg<C>>,
     pub(in crate::raft) rx_metrics: WatchReceiverOf<C, RaftMetrics<C>>,
     pub(in crate::raft) rx_data_metrics: WatchReceiverOf<C, RaftDataMetrics<C>>,
-    pub(in crate::raft) rx_server_metrics: WatchReceiverOf<C, RaftServerMetrics<C>>,
+    pub(in crate::raft) rx_server_metrics: WatchReceiverOf<C, RaftServerMetrics>,
 
     pub(in crate::raft) tx_shutdown: std::sync::Mutex<Option<OneshotSenderOf<C, ()>>>,
     pub(in crate::raft) core_state: std::sync::Mutex<CoreState<C>>,

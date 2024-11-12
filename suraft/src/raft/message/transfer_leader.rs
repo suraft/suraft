@@ -2,8 +2,8 @@ use std::fmt;
 
 use crate::display_ext::DisplayOptionExt;
 use crate::LogId;
+use crate::NodeId;
 use crate::Vote;
-use crate::NID;
 
 #[derive(Clone, Debug)]
 #[derive(PartialEq, Eq)]
@@ -13,14 +13,14 @@ pub struct TransferLeaderRequest {
     pub(crate) from_leader: Vote,
 
     /// The assigned node to be the next Leader.
-    pub(crate) to_node_id: NID,
+    pub(crate) to_node_id: NodeId,
 
     /// The last log id the `to_node_id` node should at least have to become Leader.
     pub(crate) last_log_id: Option<LogId>,
 }
 
 impl TransferLeaderRequest {
-    pub fn new(from: Vote, to: NID, last_log_id: Option<LogId>) -> Self {
+    pub fn new(from: Vote, to: NodeId, last_log_id: Option<LogId>) -> Self {
         Self {
             from_leader: from,
             to_node_id: to,
@@ -34,7 +34,7 @@ impl TransferLeaderRequest {
     }
 
     /// To which node the leadership is transferred.
-    pub fn to_node_id(&self) -> &NID {
+    pub fn to_node_id(&self) -> &NodeId {
         &self.to_node_id
     }
 

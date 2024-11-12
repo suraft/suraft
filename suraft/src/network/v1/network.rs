@@ -34,17 +34,17 @@ where C: RaftTypeConfig
         &mut self,
         rpc: AppendEntriesRequest<C>,
         option: RPCOption,
-    ) -> Result<AppendEntriesResponse, RPCError<C, RaftError>>;
+    ) -> Result<AppendEntriesResponse, RPCError<RaftError>>;
 
     /// Send an InstallSnapshot RPC to the target.
     async fn install_snapshot(
         &mut self,
-        _rpc: crate::raft::InstallSnapshotRequest<C>,
+        _rpc: crate::raft::InstallSnapshotRequest,
         _option: RPCOption,
-    ) -> Result<crate::raft::InstallSnapshotResponse, RPCError<C, RaftError<crate::error::InstallSnapshotError>>>;
+    ) -> Result<crate::raft::InstallSnapshotResponse, RPCError<RaftError<crate::error::InstallSnapshotError>>>;
 
     /// Send a RequestVote RPC to the target.
-    async fn vote(&mut self, rpc: VoteRequest, option: RPCOption) -> Result<VoteResponse, RPCError<C, RaftError>>;
+    async fn vote(&mut self, rpc: VoteRequest, option: RPCOption) -> Result<VoteResponse, RPCError<RaftError>>;
 
     /// Build a backoff instance if the target node is temporarily(or permanently) unreachable.
     ///

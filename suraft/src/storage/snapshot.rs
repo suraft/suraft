@@ -9,7 +9,7 @@ pub struct Snapshot<C>
 where C: RaftTypeConfig
 {
     /// metadata of a snapshot
-    pub meta: SnapshotMeta<C>,
+    pub meta: SnapshotMeta,
 
     /// A read handle to the associated snapshot.
     pub snapshot: Box<C::SnapshotData>,
@@ -19,7 +19,7 @@ impl<C> Snapshot<C>
 where C: RaftTypeConfig
 {
     #[allow(dead_code)]
-    pub(crate) fn new(meta: SnapshotMeta<C>, snapshot: Box<C::SnapshotData>) -> Self {
+    pub(crate) fn new(meta: SnapshotMeta, snapshot: Box<C::SnapshotData>) -> Self {
         Self { meta, snapshot }
     }
 }

@@ -3,16 +3,16 @@ use std::time::Duration;
 use crate::engine::time_state;
 use crate::type_config::alias::AsyncRuntimeOf;
 use crate::Config;
+use crate::NodeId;
 use crate::RaftTypeConfig;
 use crate::SnapshotPolicy;
-use crate::NID;
 
 /// Config for Engine
 #[derive(Clone, Debug)]
 #[derive(PartialEq, Eq)]
 pub(crate) struct EngineConfig {
     /// The id of this node.
-    pub(crate) id: NID,
+    pub(crate) id: NodeId,
 
     /// The snapshot policy to use for a Raft node.
     pub(crate) snapshot_policy: SnapshotPolicy,
@@ -30,7 +30,7 @@ pub(crate) struct EngineConfig {
 }
 
 impl EngineConfig {
-    pub(crate) fn new<C: RaftTypeConfig>(id: NID, config: &Config) -> Self {
+    pub(crate) fn new<C: RaftTypeConfig>(id: NodeId, config: &Config) -> Self {
         let election_timeout = Duration::from_millis(config.new_rand_election_timeout::<AsyncRuntimeOf<C>>());
         Self {
             id,
@@ -47,7 +47,7 @@ impl EngineConfig {
     }
 
     #[allow(dead_code)]
-    pub(crate) fn new_default(id: NID) -> Self {
+    pub(crate) fn new_default(id: NodeId) -> Self {
         Self {
             id,
             snapshot_policy: SnapshotPolicy::LogsSinceLast(5000),

@@ -28,11 +28,11 @@ where
         &mut self,
         rpc: AppendEntriesRequest<C>,
         option: RPCOption,
-    ) -> Result<AppendEntriesResponse, RPCError<C>> {
+    ) -> Result<AppendEntriesResponse, RPCError> {
         RaftNetwork::<C>::append_entries(self, rpc, option).await.decompose_infallible()
     }
 
-    async fn vote(&mut self, rpc: VoteRequest, option: RPCOption) -> Result<VoteResponse, RPCError<C>> {
+    async fn vote(&mut self, rpc: VoteRequest, option: RPCOption) -> Result<VoteResponse, RPCError> {
         RaftNetwork::<C>::vote(self, rpc, option).await.decompose_infallible()
     }
 
@@ -42,7 +42,7 @@ where
         snapshot: Snapshot<C>,
         cancel: impl Future<Output = ReplicationClosed> + OptionalSend + 'static,
         option: RPCOption,
-    ) -> Result<SnapshotResponse, StreamingError<C>> {
+    ) -> Result<SnapshotResponse, StreamingError> {
         use crate::network::snapshot_transport::Chunked;
         use crate::network::snapshot_transport::SnapshotTransport;
 

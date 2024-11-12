@@ -83,7 +83,6 @@ mod tests {
     #[cfg(not(feature = "single-term-leader"))]
     #[test]
     fn test_display() {
-        use crate::engine::testing::s;
         use crate::MessageSummary;
 
         let lid = crate::testing::log_id(1, 3);

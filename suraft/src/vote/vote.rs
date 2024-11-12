@@ -6,7 +6,7 @@ use crate::vote::ref_vote::RefVote;
 use crate::vote::vote_status::VoteStatus;
 use crate::vote::NonCommittedVote;
 use crate::LeaderId;
-use crate::NID;
+use crate::NodeId;
 
 /// `Vote` represent the privilege of a node.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -37,14 +37,14 @@ impl std::fmt::Display for Vote {
 }
 
 impl Vote {
-    pub fn new(term: u64, node_id: NID) -> Self {
+    pub fn new(term: u64, node_id: NodeId) -> Self {
         Self {
             leader_id: LeaderId::new(term, node_id),
             committed: false,
         }
     }
 
-    pub fn new_committed(term: u64, node_id: NID) -> Self {
+    pub fn new_committed(term: u64, node_id: NodeId) -> Self {
         Self {
             leader_id: LeaderId::new(term, node_id),
             committed: true,

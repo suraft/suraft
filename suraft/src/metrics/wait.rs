@@ -11,10 +11,10 @@ use crate::metrics::RaftMetrics;
 use crate::type_config::alias::WatchReceiverOf;
 use crate::type_config::TypeConfigExt;
 use crate::LogId;
+use crate::NodeId;
 use crate::OptionalSend;
 use crate::RaftTypeConfig;
 use crate::Vote;
-use crate::NID;
 
 // Error variants related to metrics.
 #[derive(Debug, thiserror::Error)]
@@ -100,7 +100,7 @@ where C: RaftTypeConfig
 
     /// Wait for `current_leader` to become `Some(leader_id)` until timeout.
     #[tracing::instrument(level = "trace", skip(self), fields(msg=msg.to_string().as_str()))]
-    pub async fn current_leader(&self, leader_id: NID, msg: impl ToString) -> Result<RaftMetrics<C>, WaitError> {
+    pub async fn current_leader(&self, leader_id: NodeId, msg: impl ToString) -> Result<RaftMetrics<C>, WaitError> {
         self.metrics(
             |m| m.current_leader.as_ref() == Some(&leader_id),
             &format!("{} .current_leader == {}", msg.to_string(), leader_id),
@@ -173,7 +173,11 @@ where C: RaftTypeConfig
     /// Wait for `membership` to become the expected node id set or timeout.
     #[deprecated(since = "0.9.0", note = "use `voter_ids()` instead")]
     #[tracing::instrument(level = "trace", skip(self), fields(msg=msg.to_string().as_str()))]
-    pub async fn members(&self, want_members: BTreeSet<NID>, msg: impl ToString) -> Result<RaftMetrics<C>, WaitError> {
+    pub async fn members(
+        &self,
+        want_members: BTreeSet<NodeId>,
+        msg: impl ToString,
+    ) -> Result<RaftMetrics<C>, WaitError> {
         self.metrics(
             |m| {
                 let got = m.membership_config.membership().voter_ids().collect::<BTreeSet<_>>();
@@ -188,7 +192,7 @@ where C: RaftTypeConfig
     #[tracing::instrument(level = "trace", skip_all, fields(msg=msg.to_string().as_str()))]
     pub async fn voter_ids(
         &self,
-        voter_ids: impl IntoIterator<Item = NID>,
+        voter_ids: impl IntoIterator<Item = NodeId>,
         msg: impl ToString,
     ) -> Result<RaftMetrics<C>, WaitError> {
         let want = voter_ids.into_iter().collect::<BTreeSet<_>>();

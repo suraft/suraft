@@ -26,6 +26,7 @@ use maplit::btreeset;
 use pretty_assertions::assert_eq;
 #[allow(unused_imports)]
 use pretty_assertions::assert_ne;
+use suraft::emp;
 use suraft::error::CheckIsLeaderError;
 use suraft::error::ClientWriteError;
 use suraft::error::Fatal;
@@ -54,6 +55,8 @@ use suraft::storage::Snapshot;
 use suraft::Config;
 use suraft::LogId;
 use suraft::LogIdOptionExt;
+use suraft::Node;
+use suraft::NodeId;
 use suraft::OptionalSend;
 use suraft::RPCTypes;
 use suraft::Raft;
@@ -64,7 +67,6 @@ use suraft::RaftState;
 use suraft::RaftTypeConfig;
 use suraft::ServerState;
 use suraft::Vote;
-use suraft::NID;
 use suraft_memstore::ClientRequest;
 use suraft_memstore::ClientResponse;
 use suraft_memstore::IntoMemClientRequest;
@@ -201,8 +203,7 @@ pub enum RPCErrorType {
 }
 
 impl RPCErrorType {
-    fn make_error<C>(&self, id: NID, dir: Direction) -> RPCError<C>
-    where C: RaftTypeConfig {
+    fn make_error(&self, id: NodeId, dir: Direction) -> RPCError {
         let msg = format!("error {} id={}", dir, id);
 
         match self {
@@ -225,7 +226,7 @@ impl RPCErrorType {
 }
 
 /// Pre-hook result, which does not return remote Error.
-pub type PreHookResult = Result<(), RPCError<MemConfig, Infallible>>;
+pub type PreHookResult = Result<(), RPCError<Infallible>>;
 
 #[derive(Debug)]
 #[derive(derive_more::From, derive_more::TryInto)]
@@ -233,7 +234,7 @@ pub enum RPCRequest<C: RaftTypeConfig>
 where C::SnapshotData: fmt::Debug
 {
     AppendEntries(AppendEntriesRequest<C>),
-    InstallSnapshot(InstallSnapshotRequest<C>),
+    InstallSnapshot(InstallSnapshotRequest),
     InstallFullSnapshot(Snapshot<C>),
     Vote(VoteRequest),
     TransferLeader(TransferLeaderRequest),
@@ -586,7 +587,7 @@ impl TypedRaftRouter {
         request: impl Into<RPCRequest<TypeConfig>>,
         from: MemNodeId,
         to: MemNodeId,
-    ) -> Result<(), RPCError<MemConfig, E>>
+    ) -> Result<(), RPCError<E>>
     where
         E: std::error::Error,
     {
@@ -760,13 +761,13 @@ impl TypedRaftRouter {
         &self,
         leader: MemNodeId,
         target: MemNodeId,
-    ) -> Result<ClientWriteResponse<MemConfig>, ClientWriteError<MemConfig>> {
+    ) -> Result<ClientWriteResponse<MemConfig>, ClientWriteError> {
         let node = self.get_raft_handle(&leader).unwrap();
-        node.add_learner(target, (), true).await.map_err(|e| e.into_api_error().unwrap())
+        node.add_learner(target, emp(), true).await.map_err(|e| e.into_api_error().unwrap())
     }
 
     /// Ensure read linearizability.
-    pub async fn ensure_linearizable(&self, target: MemNodeId) -> Result<(), CheckIsLeaderError<MemConfig>> {
+    pub async fn ensure_linearizable(&self, target: MemNodeId) -> Result<(), CheckIsLeaderError> {
         let n = self.get_raft_handle(&target).unwrap();
         n.ensure_linearizable().await.map_err(|e| e.into_api_error().unwrap())?;
         Ok(())
@@ -778,7 +779,7 @@ impl TypedRaftRouter {
         mut target: MemNodeId,
         client_id: &str,
         serial: u64,
-    ) -> Result<(), RaftError<ClientWriteError<MemConfig>>> {
+    ) -> Result<(), RaftError<ClientWriteError>> {
         for ith in 0..3 {
             let req = ClientRequest::make_request(client_id, serial);
             if let Err(err) = self.send_client_request(target, req).await {
@@ -840,7 +841,7 @@ impl TypedRaftRouter {
         target: MemNodeId,
         client_id: &str,
         count: usize,
-    ) -> Result<u64, RaftError<ClientWriteError<MemConfig>>> {
+    ) -> Result<u64, RaftError<ClientWriteError>> {
         for idx in 0..count {
             self.client_request(target.clone(), client_id, idx as u64).await?;
         }
@@ -852,7 +853,7 @@ impl TypedRaftRouter {
         &self,
         target: MemNodeId,
         req: ClientRequest,
-    ) -> Result<ClientResponse, RaftError<ClientWriteError<MemConfig>>> {
+    ) -> Result<ClientResponse, RaftError<ClientWriteError>> {
         let node = {
             let rt = self.nodes.lock().unwrap();
             rt.get(&target)
@@ -993,7 +994,7 @@ impl TypedRaftRouter {
     }
 
     #[tracing::instrument(level = "debug", skip(self))]
-    pub fn emit_rpc_error(&self, id: MemNodeId, target: MemNodeId) -> Result<(), RPCError<MemConfig>> {
+    pub fn emit_rpc_error(&self, id: MemNodeId, target: MemNodeId) -> Result<(), RPCError> {
         let fails = self.fail_rpc.lock().unwrap();
 
         for key in [(id, NetSend), (target, NetRecv)] {
@@ -1009,7 +1010,7 @@ impl TypedRaftRouter {
 impl RaftNetworkFactory<MemConfig> for TypedRaftRouter {
     type Network = RaftRouterNetwork;
 
-    async fn new_client(&mut self, target: MemNodeId, _node: &()) -> Self::Network {
+    async fn new_client(&mut self, target: MemNodeId, _node: &Node) -> Self::Network {
         RaftRouterNetwork {
             target,
             owner: self.clone(),
@@ -1028,7 +1029,7 @@ impl RaftNetworkV2<MemConfig> for RaftRouterNetwork {
         &mut self,
         mut rpc: AppendEntriesRequest<MemConfig>,
         _option: RPCOption,
-    ) -> Result<AppendEntriesResponse, RPCError<MemConfig>> {
+    ) -> Result<AppendEntriesResponse, RPCError> {
         let from_id = rpc.vote.leader_id().voted_for().unwrap();
 
         tracing::debug!("append_entries to id={} {}", self.target, rpc);
@@ -1098,7 +1099,7 @@ impl RaftNetworkV2<MemConfig> for RaftRouterNetwork {
         snapshot: Snapshot<MemConfig>,
         _cancel: impl Future<Output = ReplicationClosed> + OptionalSend + 'static,
         _option: RPCOption,
-    ) -> Result<SnapshotResponse, StreamingError<MemConfig>> {
+    ) -> Result<SnapshotResponse, StreamingError> {
         let from_id = vote.leader_id().voted_for().unwrap();
 
         self.owner.count_rpc(RPCTypes::InstallSnapshot);
@@ -1120,7 +1121,7 @@ impl RaftNetworkV2<MemConfig> for RaftRouterNetwork {
     }
 
     /// Send a RequestVote RPC to the target Raft node (§5).
-    async fn vote(&mut self, rpc: VoteRequest, _option: RPCOption) -> Result<VoteResponse, RPCError<MemConfig>> {
+    async fn vote(&mut self, rpc: VoteRequest, _option: RPCOption) -> Result<VoteResponse, RPCError> {
         let from_id = rpc.vote.leader_id().voted_for().unwrap();
 
         self.owner.count_rpc(RPCTypes::Vote);
@@ -1141,11 +1142,7 @@ impl RaftNetworkV2<MemConfig> for RaftRouterNetwork {
         Ok(resp)
     }
 
-    async fn transfer_leader(
-        &mut self,
-        rpc: TransferLeaderRequest,
-        _option: RPCOption,
-    ) -> Result<(), RPCError<MemConfig>> {
+    async fn transfer_leader(&mut self, rpc: TransferLeaderRequest, _option: RPCOption) -> Result<(), RPCError> {
         let from_id = rpc.from_leader().leader_id().voted_for().unwrap();
 
         self.owner.count_rpc(RPCTypes::TransferLeader);

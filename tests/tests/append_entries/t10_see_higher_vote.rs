@@ -45,7 +45,7 @@ async fn append_sees_higher_vote() -> Result<()> {
         let option = RPCOption::new(Duration::from_millis(1_000));
 
         let resp = router
-            .new_client(s(1), &())
+            .new_client(s(1), &suraft::emp())
             .await
             .vote(
                 VoteRequest {

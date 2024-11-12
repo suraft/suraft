@@ -21,8 +21,8 @@ use crate::MembershipState;
 use crate::StoredMembership;
 use crate::Vote;
 
-fn m12() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {s(1),s(2)}], None)
+fn m12() -> Membership {
+    Membership::new(vec![btreeset! {s(1),s(2)}], None)
 }
 
 fn eng() -> Engine<UTConfig> {
@@ -106,7 +106,7 @@ fn test_trigger_purge_log_in_used_wont_be_delete() -> anyhow::Result<()> {
     eng.state.io_state.purged = Some(log_id(1, 2));
     eng.state.log_ids = LogIdList::new([log_id(1, 2), log_id(1, 10)]);
     eng.state.vote = Leased::new(
-        UTConfig::<()>::now(),
+        UTConfig::now(),
         Duration::from_millis(500),
         Vote::new_committed(2, s(1)),
     );

@@ -22,12 +22,12 @@ use crate::Membership;
 use crate::StoredMembership;
 use crate::Vote;
 
-fn m12() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {s(1),s(2)}], None)
+fn m12() -> Membership {
+    Membership::new(vec![btreeset! {s(1),s(2)}], None)
 }
 
-fn m1234() -> Membership<UTConfig> {
-    Membership::<UTConfig>::new(vec![btreeset! {s(1),s(2),s(3),s(4)}], None)
+fn m1234() -> Membership {
+    Membership::new(vec![btreeset! {s(1),s(2),s(3),s(4)}], None)
 }
 
 fn eng() -> Engine<UTConfig> {
@@ -35,7 +35,7 @@ fn eng() -> Engine<UTConfig> {
     eng.state.enable_validation(false); // Disable validation for incomplete state
 
     eng.state.vote.update(
-        UTConfig::<()>::now(),
+        UTConfig::now(),
         Duration::from_millis(500),
         Vote::new_committed(2, s(1)),
     );
@@ -68,7 +68,7 @@ fn test_handle_install_full_snapshot_lt_last_snapshot() -> anyhow::Result<()> {
 
     let curr_vote = eng.state.vote_ref().clone();
 
-    let (tx, _rx) = UTConfig::<()>::oneshot();
+    let (tx, _rx) = UTConfig::oneshot();
 
     eng.handle_install_full_snapshot(
         curr_vote.clone(),
@@ -92,7 +92,7 @@ fn test_handle_install_full_snapshot_lt_last_snapshot() -> anyhow::Result<()> {
         eng.state.snapshot_meta
     );
 
-    let (dummy_tx, _rx) = UTConfig::<()>::oneshot();
+    let (dummy_tx, _rx) = UTConfig::oneshot();
     assert_eq!(
         vec![
             //
@@ -116,7 +116,7 @@ fn test_handle_install_full_snapshot_no_conflict() -> anyhow::Result<()> {
 
     let curr_vote = eng.state.vote_ref().clone();
 
-    let (tx, _rx) = UTConfig::<()>::oneshot();
+    let (tx, _rx) = UTConfig::oneshot();
 
     eng.handle_install_full_snapshot(
         curr_vote.clone(),
@@ -140,7 +140,7 @@ fn test_handle_install_full_snapshot_no_conflict() -> anyhow::Result<()> {
         eng.state.snapshot_meta
     );
 
-    let (dummy_tx, _rx) = UTConfig::<()>::oneshot();
+    let (dummy_tx, _rx) = UTConfig::oneshot();
     assert_eq!(
         vec![
             //

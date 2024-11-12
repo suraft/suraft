@@ -9,7 +9,6 @@ use crate::error::ReplicationClosed;
 use crate::error::ReplicationError;
 use crate::error::Timeout;
 use crate::error::Unreachable;
-use crate::RaftTypeConfig;
 use crate::StorageError;
 
 /// Error occurred when streaming local data to a remote raft node.
@@ -22,7 +21,7 @@ use crate::StorageError;
     serde(bound(serialize = "E: serde::Serialize")),
     serde(bound(deserialize = "E: for <'d> serde::Deserialize<'d>"))
 )]
-pub enum StreamingError<C: RaftTypeConfig, E: Error = Infallible> {
+pub enum StreamingError<E: Error = Infallible> {
     /// The replication stream is closed intentionally.
     #[error(transparent)]
     Closed(#[from] ReplicationClosed),
@@ -45,11 +44,11 @@ pub enum StreamingError<C: RaftTypeConfig, E: Error = Infallible> {
 
     /// Remote node returns an error.
     #[error(transparent)]
-    RemoteError(#[from] RemoteError<C, E>),
+    RemoteError(#[from] RemoteError<E>),
 }
 
-impl<C: RaftTypeConfig> From<StreamingError<C, Fatal>> for ReplicationError<C> {
-    fn from(e: StreamingError<C, Fatal>) -> Self {
+impl From<StreamingError<Fatal>> for ReplicationError {
+    fn from(e: StreamingError<Fatal>) -> Self {
         match e {
             StreamingError::Closed(e) => ReplicationError::Closed(e),
             StreamingError::StorageError(e) => ReplicationError::StorageError(e),
@@ -64,8 +63,8 @@ impl<C: RaftTypeConfig> From<StreamingError<C, Fatal>> for ReplicationError<C> {
     }
 }
 
-impl<C: RaftTypeConfig> From<RPCError<C>> for StreamingError<C> {
-    fn from(value: RPCError<C>) -> Self {
+impl From<RPCError> for StreamingError {
+    fn from(value: RPCError) -> Self {
         #[allow(unreachable_patterns)]
         match value {
             RPCError::Timeout(e) => StreamingError::Timeout(e),
@@ -79,8 +78,8 @@ impl<C: RaftTypeConfig> From<RPCError<C>> for StreamingError<C> {
     }
 }
 
-impl<C: RaftTypeConfig> From<StreamingError<C>> for ReplicationError<C> {
-    fn from(e: StreamingError<C>) -> Self {
+impl From<StreamingError> for ReplicationError {
+    fn from(e: StreamingError) -> Self {
         #[allow(unreachable_patterns)]
         match e {
             StreamingError::Closed(e) => ReplicationError::Closed(e),

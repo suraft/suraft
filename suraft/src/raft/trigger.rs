@@ -5,8 +5,8 @@ use crate::error::AllowNextRevertError;
 use crate::error::Fatal;
 use crate::raft::RaftInner;
 use crate::type_config::TypeConfigExt;
+use crate::NodeId;
 use crate::RaftTypeConfig;
-use crate::NID;
 
 /// Trigger is an interface to trigger an action to RaftCore by external caller.
 ///
@@ -84,7 +84,7 @@ where C: RaftTypeConfig
     /// Submit a command to inform RaftCore to transfer leadership to the specified node.
     ///
     /// If this node is not a Leader, it is just ignored.
-    pub async fn transfer_leader(&self, to: NID) -> Result<(), Fatal> {
+    pub async fn transfer_leader(&self, to: NodeId) -> Result<(), Fatal> {
         self.raft_inner
             .send_external_command(ExternalCommand::TriggerTransferLeader { to }, "transfer_leader")
             .await
@@ -127,7 +127,7 @@ where C: RaftTypeConfig
     /// - call [`Self::allow_next_revert`] on the Leader.
     /// - Clear the target node's data directory.
     /// - Restart the target node.
-    pub async fn allow_next_revert(&self, to: &NID, allow: bool) -> Result<Result<(), AllowNextRevertError<C>>, Fatal> {
+    pub async fn allow_next_revert(&self, to: &NodeId, allow: bool) -> Result<Result<(), AllowNextRevertError>, Fatal> {
         let (tx, rx) = C::oneshot();
         self.raft_inner
             .send_external_command(
@@ -140,7 +140,7 @@ where C: RaftTypeConfig
             )
             .await?;
 
-        let res: Result<(), AllowNextRevertError<C>> = self.raft_inner.recv_msg(rx).await?;
+        let res: Result<(), AllowNextRevertError> = self.raft_inner.recv_msg(rx).await?;
 
         Ok(res)
     }

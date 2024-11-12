@@ -20,11 +20,11 @@ use crate::LogId;
 use crate::Membership;
 use crate::Vote;
 
-fn m1() -> Membership<UTConfig> {
+fn m1() -> Membership {
     Membership::new(vec![btreeset! {s(1)}], None)
 }
 
-fn m12() -> Membership<UTConfig> {
+fn m12() -> Membership {
     Membership::new(vec![btreeset! {s(1),s(2)}], None)
 }
 
@@ -85,7 +85,7 @@ fn test_elect_single_node_elect_again() -> anyhow::Result<()> {
 
         // Build in-progress election state
         eng.state.vote = Leased::new(
-            UTConfig::<()>::now(),
+            UTConfig::now(),
             Duration::from_millis(500),
             Vote::new_committed(1, s(2)),
         );

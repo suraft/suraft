@@ -3,7 +3,6 @@ use std::fmt;
 use crate::display_ext::DisplayOption;
 use crate::storage::SnapshotSignature;
 use crate::LogId;
-use crate::RaftTypeConfig;
 use crate::SnapshotId;
 use crate::StoredMembership;
 
@@ -14,14 +13,12 @@ use crate::StoredMembership;
 /// and a snapshot id.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize), serde(bound = ""))]
-pub struct SnapshotMeta<C>
-where C: RaftTypeConfig
-{
+pub struct SnapshotMeta {
     /// Log entries upto which this snapshot includes, inclusive.
     pub last_log_id: Option<LogId>,
 
     /// The last applied membership config.
-    pub last_membership: StoredMembership<C>,
+    pub last_membership: StoredMembership,
 
     /// To identify a snapshot when transferring.
     /// Caveat: even when two snapshot is built with the same `last_log_id`, they still could be
@@ -29,9 +26,7 @@ where C: RaftTypeConfig
     pub snapshot_id: SnapshotId,
 }
 
-impl<C> fmt::Display for SnapshotMeta<C>
-where C: RaftTypeConfig
-{
+impl fmt::Display for SnapshotMeta {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -43,9 +38,7 @@ where C: RaftTypeConfig
     }
 }
 
-impl<C> SnapshotMeta<C>
-where C: RaftTypeConfig
-{
+impl SnapshotMeta {
     pub fn signature(&self) -> SnapshotSignature {
         SnapshotSignature {
             last_log_id: self.last_log_id.clone(),
