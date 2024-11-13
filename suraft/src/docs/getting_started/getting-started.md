@@ -200,7 +200,7 @@ The only difference between them is:
 ```ignore
 pub trait RaftNetwork<C: RaftTypeConfig>: Send + Sync + 'static {
     async fn vote(&mut self, rpc: VoteRequest<NID>) -> Result<...>;
-    async fn append_entries(&mut self, rpc: AppendEntriesRequest<C>) -> Result<...>;
+    async fn append_entries(&mut self, rpc: AppendEntriesRequest) -> Result<...>;
     async fn install_snapshot(&mut self, vote: Vote, snapshot: Snapshot<C>) -> Result<...>;
 }
 ```

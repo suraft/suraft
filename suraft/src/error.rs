@@ -384,7 +384,7 @@ impl Unreachable {
 /// ```ignore
 /// impl<C: RaftTypeConfig> RaftNetwork<C> for MyNetwork {
 ///     fn append_entries(&self,
-///             rpc: AppendEntriesRequest<C>,
+///             rpc: AppendEntriesRequest,
 ///             option: RPCOption
 ///     ) -> Result<_, RPCError<RaftError<>>> {
 ///         if rpc.entries.len() > 10 {

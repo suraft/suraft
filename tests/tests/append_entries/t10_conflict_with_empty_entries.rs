@@ -6,13 +6,9 @@ use suraft::network::v2::RaftNetworkV2;
 use suraft::network::RPCOption;
 use suraft::network::RaftNetworkFactory;
 use suraft::raft::AppendEntriesRequest;
-use suraft::testing::blank_ent;
 use suraft::Config;
-use suraft::Entry;
-use suraft::EntryPayload;
 use suraft::LogId;
 use suraft::Vote;
-use suraft_memstore::ClientRequest;
 
 use crate::fixtures::s;
 use crate::fixtures::ut_harness;
@@ -53,10 +49,8 @@ async fn conflict_with_empty_entries() -> Result<()> {
 
     // Expect conflict even if the message contains no entries.
 
-    let rpc = AppendEntriesRequest::<suraft_memstore::TypeConfig> {
+    let rpc = AppendEntriesRequest {
         vote: Vote::new_committed(1, s(1)),
-        prev_log_id: Some(LogId::new(1, 5)),
-        entries: vec![],
         leader_commit: Some(LogId::new(1, 5)),
     };
 
@@ -67,17 +61,8 @@ async fn conflict_with_empty_entries() -> Result<()> {
 
     // Feed logs
 
-    let rpc = AppendEntriesRequest::<suraft_memstore::TypeConfig> {
+    let rpc = AppendEntriesRequest {
         vote: Vote::new_committed(1, s(1)),
-        prev_log_id: None,
-        entries: vec![blank_ent(0, 0), blank_ent(1, 1), Entry {
-            log_id: LogId::new(1, 2),
-            payload: EntryPayload::Normal(ClientRequest {
-                client: "foo".to_string(),
-                serial: 1,
-                status: "bar".to_string(),
-            }),
-        }],
         leader_commit: Some(LogId::new(1, 5)),
     };
 
@@ -89,10 +74,8 @@ async fn conflict_with_empty_entries() -> Result<()> {
 
     // Expect a conflict with prev_log_index == 3
 
-    let rpc = AppendEntriesRequest::<suraft_memstore::TypeConfig> {
+    let rpc = AppendEntriesRequest {
         vote: Vote::new_committed(1, s(1)),
-        prev_log_id: Some(LogId::new(1, 3)),
-        entries: vec![],
         leader_commit: Some(LogId::new(1, 5)),
     };
 

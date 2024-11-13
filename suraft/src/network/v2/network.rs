@@ -43,7 +43,7 @@ where C: RaftTypeConfig
     /// Send an AppendEntries RPC to the target.
     async fn append_entries(
         &mut self,
-        rpc: AppendEntriesRequest<C>,
+        rpc: AppendEntriesRequest,
         option: RPCOption,
     ) -> Result<AppendEntriesResponse, RPCError>;
 

@@ -366,7 +366,7 @@ where C: RaftTypeConfig
     /// These RPCs are sent by the cluster leader to replicate log entries (§5.3), and are also
     /// used as heartbeats (§5.2).
     #[tracing::instrument(level = "debug", skip(self, rpc))]
-    pub async fn append_entries(&self, rpc: AppendEntriesRequest<C>) -> Result<AppendEntriesResponse, RaftError> {
+    pub async fn append_entries(&self, rpc: AppendEntriesRequest) -> Result<AppendEntriesResponse, RaftError> {
         tracing::debug!(rpc = display(&rpc), "Raft::append_entries");
 
         let (tx, rx) = C::oneshot();

@@ -85,9 +85,7 @@ where
 
             let payload = AppendEntriesRequest {
                 vote: heartbeat.session_id.leader_vote.clone().into_vote(),
-                prev_log_id: None,
                 leader_commit: heartbeat.committed.clone(),
-                entries: vec![],
             };
 
             let res = C::timeout(timeout, self.network.append_entries(payload, option)).await;

@@ -321,7 +321,7 @@ where
             l.progress.iter().filter(|(id, _v)| l.progress.is_voter(id) == Some(true))
         };
 
-        for (target, progress) in voter_progresses {
+        for (target, _progress) in voter_progresses {
             let target = target.clone();
 
             if target == my_id {
@@ -330,8 +330,6 @@ where
 
             let rpc = AppendEntriesRequest {
                 vote: my_vote.clone(),
-                prev_log_id: progress.matching.clone(),
-                entries: vec![],
                 leader_commit: self.engine.state.committed().cloned(),
             };
 
@@ -1194,10 +1192,10 @@ where
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    pub(super) fn handle_append_entries_request(&mut self, req: AppendEntriesRequest<C>, tx: AppendEntriesTx<C>) {
+    pub(super) fn handle_append_entries_request(&mut self, req: AppendEntriesRequest, tx: AppendEntriesTx<C>) {
         tracing::debug!(req = display(&req), func = func_name!());
 
-        let is_ok = self.engine.handle_append_entries(&req.vote, req.prev_log_id, req.entries, Some(tx));
+        let is_ok = self.engine.handle_append_entries(&req.vote, Some(tx));
 
         if is_ok {
             self.engine.handle_commit_entries(req.leader_commit);

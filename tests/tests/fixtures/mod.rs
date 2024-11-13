@@ -228,7 +228,7 @@ pub type PreHookResult = Result<(), RPCError<Infallible>>;
 pub enum RPCRequest<C: RaftTypeConfig>
 where C::SnapshotData: fmt::Debug
 {
-    AppendEntries(AppendEntriesRequest<C>),
+    AppendEntries(AppendEntriesRequest),
     InstallSnapshot(InstallSnapshotRequest),
     InstallFullSnapshot(Snapshot<C>),
     Vote(VoteRequest),
@@ -274,12 +274,6 @@ pub struct TypedRaftRouter {
     /// 0 means no delay.
     send_delay: Arc<AtomicU64>,
 
-    /// To simulate PartialSuccess for AppendEntries RPCs.
-    ///
-    /// If the quota is set to `Some(n)`, then the AppendEntries RPC consumes the quota,
-    /// and send out at most `n` entries.
-    append_entries_quota: Arc<Mutex<Option<u64>>>,
-
     /// Count of RPCs sent.
     rpc_count: Arc<Mutex<HashMap<RPCTypes, u64>>>,
 
@@ -318,7 +312,6 @@ impl Builder {
             enable_saving_committed: true,
             fail_rpc: Default::default(),
             send_delay: Arc::new(AtomicU64::new(send_delay)),
-            append_entries_quota: Arc::new(Mutex::new(None)),
             rpc_count: Default::default(),
             rpc_pre_hook: Default::default(),
         }
@@ -349,11 +342,6 @@ impl TypedRaftRouter {
         let r = rand::random::<u64>() % send_delay;
         let timeout = Duration::from_millis(r);
         tokio::time::sleep(timeout).await;
-    }
-
-    pub fn set_append_entries_quota(&mut self, quota: Option<u64>) {
-        let mut append_entries_quota = self.append_entries_quota.lock().unwrap();
-        *append_entries_quota = quota;
     }
 
     fn count_rpc(&self, rpc_type: RPCTypes) {
@@ -1022,7 +1010,7 @@ impl RaftNetworkV2<MemConfig> for RaftRouterNetwork {
     /// Send an AppendEntries RPC to the target Raft node (§5).
     async fn append_entries(
         &mut self,
-        mut rpc: AppendEntriesRequest<MemConfig>,
+        mut rpc: AppendEntriesRequest,
         _option: RPCOption,
     ) -> Result<AppendEntriesResponse, RPCError> {
         let from_id = rpc.vote.leader_id().voted_for().unwrap();
@@ -1032,38 +1020,6 @@ impl RaftNetworkV2<MemConfig> for RaftRouterNetwork {
         self.owner.call_rpc_pre_hook(rpc.clone(), from_id.clone(), self.target.clone())?;
         self.owner.emit_rpc_error(from_id.clone(), self.target.clone())?;
         self.owner.rand_send_delay().await;
-
-        // decrease quota if quota is set
-        let truncated = {
-            let n = rpc.entries.len() as u64;
-
-            let mut x = self.owner.append_entries_quota.lock().unwrap();
-            let q = *x;
-            tracing::debug!("current quota: {:?}", q);
-
-            if let Some(quota) = q {
-                if quota < n {
-                    rpc.entries.truncate(quota as usize);
-                    *x = Some(0);
-                    if let Some(last) = rpc.entries.last() {
-                        Some(Some(last.get_log_id().clone()))
-                    } else {
-                        Some(rpc.prev_log_id.clone())
-                    }
-                } else {
-                    *x = Some(quota - n);
-                    None
-                }
-            } else {
-                None
-            }
-        };
-
-        {
-            let x = self.owner.append_entries_quota.lock().unwrap();
-            tracing::debug!("quota after consumption: {:?}", *x);
-        }
-        tracing::debug!("append_entries truncated: {:?}", truncated);
 
         let node = self.owner.get_raft_handle(&self.target)?;
 
@@ -1077,15 +1033,7 @@ impl RaftNetworkV2<MemConfig> for RaftRouterNetwork {
             ))))
         })?;
 
-        // If entries are truncated by quota, return an partial success response.
-        if let Some(truncated) = truncated {
-            match resp {
-                AppendEntriesResponse::Success => Ok(AppendEntriesResponse::PartialSuccess(truncated)),
-                _ => Ok(resp),
-            }
-        } else {
-            Ok(resp)
-        }
+        Ok(resp)
     }
 
     /// Send a RequestVote RPC to the target Raft node (§5).

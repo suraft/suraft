@@ -44,7 +44,7 @@ pub(crate) enum RaftMsg<C>
 where C: RaftTypeConfig
 {
     AppendEntries {
-        rpc: AppendEntriesRequest<C>,
+        rpc: AppendEntriesRequest,
         tx: AppendEntriesTx<C>,
     },
 

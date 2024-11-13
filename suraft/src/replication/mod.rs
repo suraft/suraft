@@ -386,9 +386,7 @@ where
         // Build the heartbeat frame to be sent to the follower.
         let payload = AppendEntriesRequest {
             vote: self.session_id.vote(),
-            prev_log_id: sending_range.prev.clone(),
             leader_commit: self.committed.clone(),
-            entries: logs,
         };
 
         // Send the payload.

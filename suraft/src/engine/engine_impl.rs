@@ -377,24 +377,16 @@ where C: RaftTypeConfig
     ///
     /// Also clean conflicting entries and update membership state.
     #[tracing::instrument(level = "debug", skip_all)]
-    pub(crate) fn handle_append_entries(
-        &mut self,
-        vote: &Vote,
-        prev_log_id: Option<LogId>,
-        entries: Vec<C::Entry>,
-        tx: Option<AppendEntriesTx<C>>,
-    ) -> bool {
+    pub(crate) fn handle_append_entries(&mut self, vote: &Vote, tx: Option<AppendEntriesTx<C>>) -> bool {
         tracing::debug!(
             vote = display(vote),
-            prev_log_id = display(prev_log_id.display()),
-            entries = display(entries.display()),
             my_vote = display(self.state.vote_ref()),
             my_last_log_id = display(self.state.last_log_id().display()),
             "{}",
             func_name!()
         );
 
-        let res = self.append_entries(vote, prev_log_id, entries);
+        let res = self.append_entries(vote);
         let is_ok = res.is_ok();
 
         if let Some(tx) = tx {
@@ -416,19 +408,8 @@ where C: RaftTypeConfig
         is_ok
     }
 
-    pub(crate) fn append_entries(
-        &mut self,
-        vote: &Vote,
-        prev_log_id: Option<LogId>,
-        entries: Vec<C::Entry>,
-    ) -> Result<(), RejectAppendEntries> {
+    pub(crate) fn append_entries(&mut self, vote: &Vote) -> Result<(), RejectAppendEntries> {
         self.vote_handler().update_vote(vote)?;
-
-        // Vote is legal.
-
-        let mut fh = self.following_handler();
-        fh.ensure_log_consecutive(prev_log_id.as_ref())?;
-        fh.append_entries(prev_log_id, entries);
 
         Ok(())
     }

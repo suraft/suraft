@@ -1,9 +1,7 @@
 use std::fmt;
 
 use crate::display_ext::DisplayOptionExt;
-use crate::display_ext::DisplaySlice;
 use crate::LogId;
-use crate::RaftTypeConfig;
 use crate::Vote;
 
 /// An RPC sent by a cluster leader to replicate log entries (§5.3), and as a heartbeat (§5.2).
@@ -15,51 +13,32 @@ use crate::Vote;
 /// previous log entries.
 #[derive(Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize), serde(bound = ""))]
-pub struct AppendEntriesRequest<C: RaftTypeConfig> {
+pub struct AppendEntriesRequest {
     pub vote: Vote,
-
-    pub prev_log_id: Option<LogId>,
-
-    /// The new log entries to store.
-    ///
-    /// This may be empty when the leader is sending heartbeats. Entries
-    /// are batched for efficiency.
-    pub entries: Vec<C::Entry>,
 
     /// The leader's committed log id.
     pub leader_commit: Option<LogId>,
 }
 
-impl<C: RaftTypeConfig> fmt::Debug for AppendEntriesRequest<C> {
+impl fmt::Debug for AppendEntriesRequest {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("AppendEntriesRequest")
             .field("vote", &self.vote)
-            .field("prev_log_id", &self.prev_log_id)
-            .field("entries", &self.entries)
             .field("leader_commit", &self.leader_commit)
             .finish()
     }
 }
 
-impl<C> fmt::Display for AppendEntriesRequest<C>
-where C: RaftTypeConfig
-{
+impl fmt::Display for AppendEntriesRequest {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "vote={}, prev_log_id={}, leader_commit={}, entries={}",
-            self.vote,
-            self.prev_log_id.display(),
-            self.leader_commit.display(),
-            DisplaySlice::<_>(self.entries.as_slice())
-        )
+        write!(f, "vote={}, leader_commit={}", self.vote, self.leader_commit.display(),)
     }
 }
 
 /// The response to an `AppendEntriesRequest`.
 ///
 /// [`RaftNetwork::append_entries`] returns this type only when received an RPC reply.
-/// Otherwise it should return [`RPCError`].
+/// Otherwise, it should return [`RPCError`].
 ///
 /// [`RPCError`]: crate::error::RPCError
 /// [`RaftNetwork::append_entries`]: crate::network::RaftNetwork::append_entries

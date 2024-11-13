@@ -40,10 +40,8 @@ async fn append_entries_with_bigger_term() -> Result<()> {
     router.assert_storage_state(1, log_index, Some(s(0)), LogId::new(1, log_index), None).await?;
 
     // append entries with term 2 and leader_id, this MUST cause hard state changed in node 0
-    let req = AppendEntriesRequest::<suraft_memstore::TypeConfig> {
+    let req = AppendEntriesRequest {
         vote: Vote::new_committed(2, s(1)),
-        prev_log_id: Some(log_id(1, log_index)),
-        entries: vec![],
         leader_commit: Some(log_id(1, log_index)),
     };
 
