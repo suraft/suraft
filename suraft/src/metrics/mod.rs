@@ -29,7 +29,6 @@
 //! Because internally, `watch::channel()` only stores one last state.
 
 mod metric;
-mod metrics;
 mod wait;
 
 mod metric_display;
@@ -40,7 +39,7 @@ mod wait_condition;
 use std::collections::BTreeMap;
 
 pub use metric::Metric;
-pub use metrics::Metrics;
+pub use metric::Metrics;
 pub use serde_instant::SerdeInstant;
 pub use server_state::ServerState;
 pub use wait::Wait;

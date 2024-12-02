@@ -19,6 +19,7 @@ impl PathConfig {
         "/meta/last_log_path.json".to_string()
     }
 
+    #[allow(dead_code)]
     pub fn last_purged_log_path() -> String {
         "/meta/last_purged_log_path.json".to_string()
     }

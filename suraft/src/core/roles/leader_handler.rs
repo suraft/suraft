@@ -109,7 +109,7 @@ where
 
         let tx = self.tx_notification.clone();
 
-        let fu = async move {
+        let fut = C::spawn(async move {
             let res = C::timeout(timeout, connection.request_vote(heartbeat.clone())).await;
 
             debug!(
@@ -122,8 +122,7 @@ where
                 return;
             };
             let _ = tx.send(notification);
-        };
-
-        let _ = C::spawn(fu);
+        });
+        drop(fut);
     }
 }
