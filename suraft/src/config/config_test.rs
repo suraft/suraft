@@ -48,31 +48,6 @@ fn test_invalid_election_timeout_config_produces_expected_error() {
 }
 
 #[test]
-fn test_build() -> anyhow::Result<()> {
-    let config = Config::build(&[
-        "foo",
-        "--cluster-name=bar",
-        "--election-timeout-min=10",
-        "--election-timeout-max=20",
-        "--heartbeat-interval=5",
-        "--send-snapshot-timeout=199",
-        "--install-snapshot-timeout=200",
-        "--max-payload-entries=201",
-        "--snapshot-policy=since_last:202",
-        "--replication-lag-threshold=203",
-        "--snapshot-max-chunk-size=204",
-        "--max-in-snapshot-log-to-keep=205",
-        "--purge-batch-size=207",
-    ])?;
-
-    assert_eq!(10, config.election_timeout_min);
-    assert_eq!(20, config.election_timeout_max);
-    assert_eq!(5, config.heartbeat_interval);
-
-    Ok(())
-}
-
-#[test]
 fn test_config_enable_tick() -> anyhow::Result<()> {
     let config = Config::build(&["foo", "--enable-tick=false"])?;
     assert_eq!(false, config.enable_tick);
