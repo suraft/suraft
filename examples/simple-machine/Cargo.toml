@@ -1,16 +1,21 @@
 [package]
-name = "hello"
+name = "simple-machine"
+publish = false
 
 edition.workspace = true
 version.workspace = true
+
+[package.metadata.release]
+release = false
 
 [dependencies]
 maplit = { workspace = true }
 serde = { workspace = true }
 suraft = { workspace = true }
-memstore = { workspace = true }
-pseudonet = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-appender = { workspace = true }
 tracing-subscriber = { workspace = true }
+
+[lints]
+workspace = true
