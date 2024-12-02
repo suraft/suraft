@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 use std::io;
+
 use memstore::MemLogStore;
 use suraft::declare_suraft_types;
 use suraft::storage::log::entry::Entry;

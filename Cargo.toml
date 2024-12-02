@@ -1,5 +1,11 @@
 [workspace]
-members = ["suraft", "examples/simple-machine", "xtask", "internal/memstore", "internal/pseudonet"]
+members = [
+  "suraft",
+  "examples/simple-machine",
+  "xtask",
+  "internal/memstore",
+  "internal/pseudonet",
+]
 resolver = "2"
 
 [workspace.package]

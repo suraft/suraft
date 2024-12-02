@@ -94,6 +94,7 @@ impl Vote {
 #[allow(clippy::nonminimal_bool)]
 mod tests {
     use std::panic::UnwindSafe;
+
     use crate::storage::vote::Vote;
     use crate::testing::nid;
 
