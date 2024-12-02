@@ -12,7 +12,7 @@
 - [Data Storage](rfcs/0003-data-storage.md)
 - [Server State](rfcs/0004-server-state.md)
 - [Protocol](rfcs/0005-protocol.md)
-- [Implementaion API](rfcs/0006-implementation-api.md)
+- [Implementation API](rfcs/0006-implementation-api.md)
 
 
 Optionally Support:

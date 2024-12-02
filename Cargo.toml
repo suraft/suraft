@@ -1,44 +1,57 @@
-[workspace.package]
-version = "0.1.0"
-edition = "2021"
-authors = [
-    "Zhang Yanpo <drdr.xp@gmail.com",
-    "tisonkun <wander4096@gmail.com>",
+[workspace]
+members = [
+    "suraft",
+    "stores/memstore",
+    "network/pseudonet",
+    "examples/hello",
 ]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+version = "0.1.0"
+
 categories = ["algorithms", "asynchronous", "data-structures"]
 description = "Shared Unit Raft"
 documentation = "https://docs.rs/suraft"
 homepage = "https://github.com/suraft/suraft"
 keywords = ["raft", "consensus"]
 license = "MIT OR Apache-2.0"
+readme = "README.md"
 repository = "https://github.com/suraft/suraft"
 
-
 [workspace.dependencies]
+# Workspace dependencies
+suraft = { path = "suraft", version = "0.1.0" }
+
+memstore = { path = "stores/memstore", version = "0.1.0" }
+pseudonet = { path = "network/pseudonet", version = "0.1.0" }
+
+# Crates.io dependencies
 anyerror = { version = "0.1.10" }
-anyhow = "1.0.63"
-async-entry = "0.3.1"
-byte-unit = "5.1.4"
-bytes = "1.0"
-chrono = { version = "0.4" }
+anyhow = { version = "1.0.63" }
+async-entry = { version = "0.3.1" }
+byte-unit = { version = "5.1.4" }
+bytes = { version = "1.9.0" }
+chrono = { version = "0.4.38" }
 clap = { version = "4.1.11", features = ["derive", "env"] }
-derive_more = { version = "1.0", features = ["std", "from", "try_into", "display"] }
-futures = "0.3"
-lazy_static = "1.4.0"
-maplit = "1.0.2"
-openraft-macros = "0.9.17"
-pretty_assertions = "1.0.0"
-proc-macro2 = "1.0"
-quote = "1.0"
-rand = "0.8"
-semver = "1.0.14"
+derive_more = { version = "1.0.0", features = ["std", "from", "try_into", "display"] }
+futures = { version = "0.3.31" }
+lazy_static = { version = "1.5.0" }
+maplit = { version = "1.0.2" }
+openraft-macros = { version = "0.9.17" }
+pretty_assertions = { version = "1.4.1" }
+proc-macro2 = { version = "1.0.92" }
+quote = { version = "1.0.37" }
+rand = { version = "0.9.0-beta.1" }
+semver = { version = "1.0.23" }
 serde = { version = "1.0.114", features = ["derive", "rc"] }
-serde_json = "1.0.57"
-syn = "2.0"
+serde_json = { version = "1.0.133" }
+syn = { version = "2.0.90" }
 tempfile = { version = "3.4.0" }
-test-harness = "0.3.0"
-thiserror = "1.0.49"
-tokio = { version = "1.22", default-features = false, features = [
+test-harness = { version = "0.3.0" }
+thiserror = { version = "2.0.3" }
+tokio = { version = "1.41.1", default-features = false, features = [
     "io-util",
     "macros",
     "rt",
@@ -47,20 +60,7 @@ tokio = { version = "1.22", default-features = false, features = [
     "time",
 ] }
 tracing = { version = "0.1.40" }
-tracing-appender = "0.2.0"
-tracing-futures = "0.2.4"
+tracing-appender = { version = "0.2.3" }
+tracing-futures = { version = "0.2.5" }
 tracing-subscriber = { version = "0.3.3", features = ["env-filter"] }
 validit = { version = "0.2.2" }
-
-[workspace]
-
-resolver = "2"
-
-members = [
-    "suraft",
-    "stores/memstore",
-    "network/pseudonet",
-    "examples/hello",
-]
-exclude = [
-]

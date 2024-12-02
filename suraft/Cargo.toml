@@ -1,45 +1,43 @@
 [package]
 name = "suraft"
-readme = "../README.md"
 
-version       = { workspace = true }
-edition       = { workspace = true }
-authors       = { workspace = true }
-categories    = { workspace = true }
-description   = { workspace = true }
-documentation = { workspace = true }
-homepage      = { workspace = true }
-keywords      = { workspace = true }
-license       = { workspace = true }
-repository    = { workspace = true }
+edition.workspace = true
+version.workspace = true
 
+categories.workspace = true
+description.workspace = true
+documentation.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
 
 [dependencies]
-anyerror        = { workspace = true }
-anyhow          = { workspace = true, optional = true }
-byte-unit       = { workspace = true }
-chrono          = { workspace = true }
-clap            = { workspace = true }
-derive_more     = { workspace = true }
-futures         = { workspace = true }
+anyerror = { workspace = true }
+anyhow = { workspace = true, optional = true }
+byte-unit = { workspace = true }
+chrono = { workspace = true }
+clap = { workspace = true }
+derive_more = { workspace = true }
+futures = { workspace = true }
 openraft-macros = { workspace = true }
-maplit          = { workspace = true }
-rand            = { workspace = true }
-serde           = { workspace = true }
-serde_json      = { workspace = true }
-thiserror       = { workspace = true }
-tokio           = { workspace = true, optional = true }
-tracing         = { workspace = true }
+maplit = { workspace = true }
+rand = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, optional = true }
+tracing = { workspace = true }
 tracing-futures = { workspace = true }
-validit         = { workspace = true }
+validit = { workspace = true }
 
 
 [dev-dependencies]
-anyhow             = { workspace = true }
-async-entry        = { workspace = true }
-pretty_assertions  = { workspace = true }
-serde_json         = { workspace = true }
-
+anyhow = { workspace = true }
+async-entry = { workspace = true }
+pretty_assertions = { workspace = true }
+serde_json = { workspace = true }
 
 [features]
 default = ["tokio-rt"]
@@ -56,7 +54,7 @@ bench = []
 
 # Enable backtrace when generating an error.
 # Stable rust does not support backtrace.
-bt  = ["anyerror/backtrace", "anyhow/backtrace"]
+bt = ["anyerror/backtrace", "anyhow/backtrace"]
 
 # Turn on this feature it allows at most ONE quorum-granted leader for each term.
 # This is the way standard raft does, by making the LeaderId a partial order value.
@@ -95,7 +93,7 @@ loosen-follower-log-revert = []
 # Enables "log" feature in `tracing` crate, to let tracing events emit log
 # record.
 # See: https://docs.rs/tracing/latest/tracing/#emitting-log-records
-tracing-log = [ "tracing/log" ]
+tracing-log = ["tracing/log"]
 
 # default = ["single-term-leader"]
 
@@ -117,7 +115,7 @@ no-default-features = false
 # "singlethreaded" makes `Raft<C>` a `!Send`, which confuses users.
 # all-features = true
 
-# Disabled appearance order. It produce multiple `Trait`, `Struct` sections in a doc page.
+# Disabled appearance order. It produces multiple `Trait`, `Struct` sections in a doc page.
 #
 # Sort modules by appearance order for crate `docs`.
 # https://doc.rust-lang.org/rustdoc/unstable-features.html#--sort-modules-by-appearance-control-how-items-on-module-pages-are-sorted

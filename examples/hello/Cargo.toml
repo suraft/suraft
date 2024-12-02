@@ -1,26 +1,16 @@
 [package]
 name = "hello"
-version.workspace = true
+
 edition.workspace = true
-authors.workspace = true
-categories.workspace = true
-description.workspace = true
-documentation.workspace = true
-homepage.workspace = true
-keywords.workspace = true
-license.workspace = true
-repository.workspace = true
+version.workspace = true
 
 [dependencies]
-
 maplit = { workspace = true }
 serde = { workspace = true }
-suraft = { path= "../../suraft" }
-memstore = { path= "../../stores/memstore" }
-pseudonet = { path= "../../network/pseudonet" }
-
+suraft = { workspace = true }
+memstore = { workspace = true }
+pseudonet = { workspace = true }
 tokio = { workspace = true }
-
-tracing            = { workspace = true }
-tracing-appender   = { workspace = true }
+tracing = { workspace = true }
+tracing-appender = { workspace = true }
 tracing-subscriber = { workspace = true }
