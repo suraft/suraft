@@ -1,4 +1,6 @@
 mod logging;
+mod memstore;
+mod network;
 
 use std::collections::BTreeMap;
 use std::io;
@@ -7,7 +9,6 @@ use std::time::Duration;
 
 use maplit::btreemap;
 use memstore::MemLogStore;
-use pseudonet::DirectNetwork;
 use suraft::declare_suraft_types;
 use suraft::errors::ForwardToLeader;
 use suraft::storage::log::entry::Entry;
@@ -18,10 +19,10 @@ use suraft::type_config::TypeConfigExt;
 use suraft::Node;
 use suraft::SuRaft;
 
-use crate::logging::init_logging;
+use self::logging::init_logging;
+use self::network::DirectNetwork;
 
-#[derive(Debug)]
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct Cmd {
     pub key: String,
     pub value: Vec<u8>,
@@ -57,11 +58,7 @@ impl StateMachine {
         );
     }
 
-    async fn run(
-        mut self,
-        su: SuRaft<Types>,
-        mut log_store: MemLogStore,
-    ) -> Result<(), io::Error> {
+    async fn run(mut self, su: SuRaft<Types>, mut log_store: MemLogStore) -> Result<(), io::Error> {
         let mut watcher = su.metrics();
 
         loop {
@@ -78,8 +75,7 @@ impl StateMachine {
                 );
 
                 let next = self.applied.next_index();
-                let entry: Entry<Types> =
-                    log_store.read_log_entry(next).await?.unwrap();
+                let entry: Entry<Types> = log_store.read_log_entry(next).await?.unwrap();
 
                 for cmd in entry.payload {
                     self.apply(cmd);

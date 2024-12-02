@@ -56,13 +56,13 @@ where C: suraft::TypeConfig
         } else {
             store.range(prefix.to_string()..)
         }
-        .filter_map(|(k, _)| {
-            if k.as_str() > start_after {
-                Some(k.clone())
-            } else {
-                None
-            }
-        });
+            .filter_map(|(k, _)| {
+                if k.as_str() > start_after {
+                    Some(k.clone())
+                } else {
+                    None
+                }
+            });
 
         let keys = keys.collect();
         debug!(
