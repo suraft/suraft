@@ -27,6 +27,15 @@ impl PartialOrd for Vote {
             cmp => return cmp,
         };
 
+        if self.committed {
+            assert_eq!(
+                self.voted_for, other.voted_for,
+                "there is at most one committed leader within a term: {}, \
+                but got {} and {}",
+                self.term, self.voted_for, other.voted_for
+            );
+        }
+
         if self.voted_for == other.voted_for {
             Some(Ordering::Equal)
         } else {
