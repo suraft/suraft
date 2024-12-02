@@ -54,7 +54,7 @@ mod tests {
             .collect::<BTreeMap<_, _>>();
         let display = DisplayBTreeMapOptValue(&map);
 
-        assert_eq!(display.to_string(), "1:1,2:2,3:3");
+        assert_eq!(display.to_string(), "1 -> 1, 2 -> 2, 3 -> 3");
     }
 
     #[test]
@@ -72,7 +72,7 @@ mod tests {
             .collect::<BTreeMap<_, _>>();
         let display = DisplayBTreeMapOptValue(&map);
 
-        assert_eq!(display.to_string(), "1:1");
+        assert_eq!(display.to_string(), "1 -> 1");
     }
 
     #[test]
@@ -83,6 +83,6 @@ mod tests {
         map.insert(3, Some(3));
         let display = DisplayBTreeMapOptValue(&map);
 
-        assert_eq!(display.to_string(), "1:1,2:None,3:3");
+        assert_eq!(display.to_string(), "1 -> 1, 2 -> None, 3 -> 3");
     }
 }
