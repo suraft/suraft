@@ -15,8 +15,18 @@ pub use log_index_option_ext::LogIndexOptionExt;
 /// The log id serves as unique identifier for a log entry across the system. It
 /// is composed of two parts: a leader id, which refers to the leader that
 /// proposed this log, and an integer index.
-#[derive(Debug, Default, Clone, Copy, PartialOrd, Ord, PartialEq, Eq)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(
+    Debug,
+    Default,
+    Clone,
+    Copy,
+    PartialOrd,
+    Ord,
+    PartialEq,
+    Eq,
+    serde::Deserialize,
+    serde::Serialize,
+)]
 pub struct LogId {
     pub term: u64,
     /// The index of a log in the storage.

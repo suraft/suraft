@@ -159,11 +159,7 @@ where
         Err(err)
     }
 
-    fn write_entry(
-        &mut self,
-        app_cmd: C::AppData,
-        resp_tx: Option<ResponderOf<C>>,
-    ) {
+    fn write_entry(&mut self, app_cmd: C::AppData, resp_tx: Option<ResponderOf<C>>) {
         let Some((lh, tx)) = self.get_leader_handler_or_reject(resp_tx) else {
             return;
         };
@@ -179,21 +175,21 @@ where
         let log_index = lh.leader.last_log_id.next_index();
         let log_id = LogId::new(lh.leader.vote.term(), log_index);
 
-        lh.leader.last_log_id = Some(log_id.clone());
+        lh.leader.last_log_id = Some(log_id);
 
         let entry = Entry {
-            log_id: log_id.clone(),
+            log_id,
             payload: take(&mut lh.leader.app_cmd_buf),
         };
 
-        lh.leader.io_state.submit(log_id.clone());
+        lh.leader.io_state.submit(log_id);
 
         let responders = take(&mut lh.leader.tx_buf);
 
         debug!("AppendEntry: {}", log_id);
 
         let notify = Notification::<C>::IOCompleted {
-            log_id: log_id.clone(),
+            log_id,
             responders,
             done: false,
         };
@@ -215,9 +211,7 @@ where
             let heartbeat = Some(
                 clock_prog
                     .iter()
-                    .map(|(id, opt_t)| {
-                        (id.clone(), opt_t.map(SerdeInstant::new))
-                    })
+                    .map(|(id, opt_t)| (id.clone(), opt_t.map(SerdeInstant::new)))
                     .collect(),
             );
 
@@ -332,10 +326,8 @@ where
             // There is a message waking up the loop, process channels one by
             // one.
 
-            let api_messages_processed =
-                self.process_raft_msg(balancer.api_message()).await?;
-            let notify_processed =
-                self.process_notification(balancer.notification()).await?;
+            let api_messages_processed = self.process_raft_msg(balancer.api_message()).await?;
+            let notify_processed = self.process_notification(balancer.notification()).await?;
 
             // If one of the channel consumed all its budget, re-balance the
             // budget ratio.
@@ -378,8 +370,7 @@ where
 
         debug!(
             "id={} at_most({}) reached, there are more queued APIMessage to process",
-            self.id,
-            at_most
+            self.id, at_most
         );
 
         Ok(at_most)
@@ -389,10 +380,7 @@ where
     ///
     /// It returns the number of processed notifications.
     /// If the input channel is closed, it returns `Fatal::Stopped`.
-    async fn process_notification(
-        &mut self,
-        at_most: u64,
-    ) -> Result<u64, Fatal> {
+    async fn process_notification(&mut self, at_most: u64) -> Result<u64, Fatal> {
         for i in 0..at_most {
             let res = self.rx_notification.try_recv();
             let notify = match res {
@@ -438,8 +426,10 @@ where
                 continue;
             }
 
-            let mut client =
-                self.network.new_connection(target.clone(), target_node).await;
+            let mut client = self
+                .network
+                .new_connection(target.clone(), target_node)
+                .await;
 
             let req = req.clone();
             let sender_vote = vote.clone();
@@ -468,10 +458,7 @@ where
     }
 
     #[tracing::instrument(level = "debug", skip(self, msg), fields(id=display(&self.id)))]
-    pub(crate) async fn handle_api_msg(
-        &mut self,
-        msg: APIMessage<C>,
-    ) -> Result<(), io::Error> {
+    pub(crate) async fn handle_api_msg(&mut self, msg: APIMessage<C>) -> Result<(), io::Error> {
         debug!("RAFT_event id={:<2}  input: {}", self.id, msg);
 
         match msg {
@@ -501,10 +488,7 @@ where
                     lh.leader.membership = membership.clone();
                 }
 
-                let cb = ClientCallback::<C, _>::new(
-                    tx,
-                    self.tx_notification.downgrade(),
-                );
+                let cb = ClientCallback::<C, _>::new(tx, self.tx_notification.downgrade());
 
                 let mut sto = self.log_store.clone();
 
@@ -570,15 +554,12 @@ where
                         debug!("IOCompleted: flush IO: {}", log_id);
                         lh.leader.io_state.flush(log_id);
                     } else {
-                        info!(
-                            "IOCompleted: but no longer a Leader, ignore: {}",
-                            log_id
-                        );
+                        info!("IOCompleted: but no longer a Leader, ignore: {}", log_id);
                     };
 
                     for responder in responders {
                         if let Some(r) = responder {
-                            let _ = r.send(Ok(log_id));
+                            r.send(Ok(log_id));
                         }
                     }
                 } else {
@@ -615,19 +596,18 @@ where
 
         // Simulate sending RequestVote RPC to local node.
         // Safe unwrap(): it won't reject itself ˙–˙
-        self.vote_handler().update_vote(&new_vote, election_timeout).unwrap();
+        self.vote_handler()
+            .update_vote(&new_vote, election_timeout)
+            .unwrap();
 
-        let request_vote =
-            RequestVote::new(new_vote, last_log_id, Duration::default());
+        let request_vote = RequestVote::new(new_vote, last_log_id, Duration::default());
 
         self.broadcast_request_vote(&request_vote).await;
 
         Ok(())
     }
 
-    pub(crate) async fn new_candidate(
-        &mut self,
-    ) -> Result<&mut Candidate<C>, io::Error> {
+    pub(crate) async fn new_candidate(&mut self) -> Result<&mut Candidate<C>, io::Error> {
         let now = C::now();
 
         let last_log_id = self.refresh_committed().await?;
@@ -637,8 +617,8 @@ where
             let local_term_next = self.vote.next_term();
 
             let new_term = std::cmp::max(log_term_next, local_term_next);
-            let new_vote = Vote::new(new_term, self.id.clone());
-            new_vote
+
+            Vote::new(new_term, self.id.clone())
         };
 
         let membership = self.log_store.read_membership().await?;
@@ -650,8 +630,7 @@ where
             ));
         };
 
-        self.candidate =
-            Some(Candidate::new(now, new_vote, last_log_id, membership));
+        self.candidate = Some(Candidate::new(now, new_vote, last_log_id, membership));
 
         Ok(self.candidate.as_mut().unwrap())
     }
@@ -672,10 +651,7 @@ where
         lh.broadcast_heartbeat().await;
     }
 
-    async fn tick_election(
-        &mut self,
-        now: InstantOf<C>,
-    ) -> Result<(), io::Error> {
+    async fn tick_election(&mut self, now: InstantOf<C>) -> Result<(), io::Error> {
         // TODO: leader lease should be extended. Or it has to examine if it is
         // leader       before electing.
         if self.leader.is_some() {
@@ -712,10 +688,7 @@ where
         Ok(())
     }
 
-    async fn establish(
-        &mut self,
-        candidate: Candidate<C>,
-    ) -> Option<&'_ mut Leader<C>> {
+    async fn establish(&mut self, candidate: Candidate<C>) -> Option<&'_ mut Leader<C>> {
         let vote = candidate.vote_ref().clone();
 
         debug_assert_eq!(
@@ -740,14 +713,12 @@ where
             vote.commit()
         };
 
-        let leader = Leader::new(
-            vote.clone(),
-            candidate.membership,
-            candidate.last_log_id,
-        );
+        let leader = Leader::new(vote.clone(), candidate.membership, candidate.last_log_id);
         self.leader = Some(Box::new(leader));
 
-        self.vote_handler().update_vote(&vote, Duration::default()).unwrap();
+        self.vote_handler()
+            .update_vote(&vote, Duration::default())
+            .unwrap();
 
         self.leader.as_mut().map(|x| x.as_mut())
     }
@@ -776,16 +747,14 @@ where
         // Before sending any log, update the vote.
         // This could not fail because `internal_server_state` will be cleared
         // once `state.vote` is changed to a value of other node.
-        let _res =
-            self.vote_handler().update_vote(&vote.clone(), Duration::default());
+        let _res = self
+            .vote_handler()
+            .update_vote(&vote.clone(), Duration::default());
         debug_assert!(_res.is_ok(), "commit vote can not fail but: {:?}", _res);
     }
 
     #[tracing::instrument(level = "debug", skip_all)]
-    pub(crate) fn handle_request_vote(
-        &mut self,
-        req: RequestVote,
-    ) -> VoteReply {
+    pub(crate) fn handle_request_vote(&mut self, req: RequestVote) -> VoteReply {
         let now = C::now();
         let local_leased_vote = &self.vote;
         let my_vote = &**local_leased_vote;
@@ -800,7 +769,11 @@ where
             "handle_request_vote"
         );
 
-        if my_vote.as_ref().map(|x| x.is_committed()).unwrap_or_default() {
+        if my_vote
+            .as_ref()
+            .map(|x| x.is_committed())
+            .unwrap_or_default()
+        {
             // Current leader lease has not yet expired, reject voting request
             if !local_leased_vote.is_expired(now, Duration::from_millis(0)) {
                 info!(
@@ -808,11 +781,7 @@ where
                     local_leased_vote.display_lease_info(now)
                 );
 
-                return VoteReply::new(
-                    self.vote.deref().clone(),
-                    my_last_log_id,
-                    false,
-                );
+                return VoteReply::new(self.vote.deref().clone(), my_last_log_id, false);
             }
         }
 
@@ -831,11 +800,7 @@ where
             // Return the updated vote, this way the candidate knows which vote
             // is granted, in case the candidate's vote is changed
             // after sending the vote request.
-            return VoteReply::new(
-                self.vote.deref().clone(),
-                my_last_log_id,
-                false,
-            );
+            return VoteReply::new(self.vote.deref().clone(), my_last_log_id, false);
         }
 
         // Then check vote just as it does for every incoming event.
@@ -868,7 +833,7 @@ where
     }
 
     fn update_committed(&mut self, log_id: Option<LogId>) {
-        self.committed = std::cmp::max(self.committed, log_id.clone());
+        self.committed = std::cmp::max(self.committed, log_id);
     }
 
     fn get_committed(&self) -> Option<LogId> {
@@ -901,9 +866,7 @@ where
 
         // If resp.vote is different, it may be a delay response to previous
         // voting.
-        if reply.vote_granted
-            && reply.vote.as_ref() == Some(candidate.vote_ref())
-        {
+        if reply.vote_granted && reply.vote.as_ref() == Some(candidate.vote_ref()) {
             let quorum_granted = candidate.grant_by(&target);
             if quorum_granted {
                 info!("a quorum granted my vote");
@@ -917,8 +880,7 @@ where
         // Note that it is still possible seeing a smaller vote:
         // - The target has more logs than this node;
         // - Or leader lease on remote node is not expired;
-        // - It is a delayed response of previous voting(resp.vote_granted could
-        //   be true)
+        // - It is a delayed response of previous voting(resp.vote_granted could be true)
         // In any case, no need to proceed.
 
         // Update if resp.vote is greater.
@@ -945,7 +907,7 @@ where
         };
 
         if let Some(tx) = tx {
-            tx.send(Err(forward_err.into()));
+            tx.send(Err(forward_err));
         }
 
         None
@@ -966,9 +928,7 @@ where
         ForwardToLeader::empty()
     }
 
-    pub(crate) fn leader_handler(
-        &mut self,
-    ) -> Result<LeaderHandler<C, Net>, ForwardToLeader> {
+    pub(crate) fn leader_handler(&mut self) -> Result<LeaderHandler<C, Net>, ForwardToLeader> {
         if self.leader.is_none() {
             return Err(self.forward_to_leader());
         }

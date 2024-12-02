@@ -14,7 +14,8 @@ use crate::TypeConfig;
 ///
 /// [`LogStorage`]: `crate::storage::LogStorage`
 pub struct IOFlushed<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     /// To notify to send when the IO complete.
     notification: Notification<C>,
@@ -23,7 +24,8 @@ where C: TypeConfig
 }
 
 impl<C> IOFlushed<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     pub(crate) fn new(
         notify: Notification<C>,
@@ -41,9 +43,7 @@ where C: TypeConfig
     /// or an error occurs.
     pub fn io_completed(mut self, result: Result<bool, io::Error>) {
         let Some(tx) = self.tx.upgrade() else {
-            tracing::warn!(
-                "failed to upgrade tx, Core may have closed the receiver"
-            );
+            tracing::warn!("failed to upgrade tx, Core may have closed the receiver");
             return;
         };
 
@@ -102,9 +102,7 @@ where
     /// or an error occurs.
     pub fn io_completed(self, result: Result<T, io::Error>) {
         let Some(tx) = self.tx.upgrade() else {
-            tracing::warn!(
-                "failed to upgrade tx, Core may have closed the receiver"
-            );
+            tracing::warn!("failed to upgrade tx, Core may have closed the receiver");
             return;
         };
 

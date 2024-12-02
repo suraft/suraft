@@ -52,5 +52,4 @@ use crate::type_config::alias::SerdeInstantOf;
 
 /// Heartbeat metrics, a mapping between a node's ID and the time of the last
 /// acknowledged heartbeat or replication to this node.
-pub(crate) type HeartbeatMetrics<C> =
-    BTreeMap<NodeId, Option<SerdeInstantOf<C>>>;
+pub(crate) type HeartbeatMetrics<C> = BTreeMap<NodeId, Option<SerdeInstantOf<C>>>;

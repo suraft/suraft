@@ -14,8 +14,7 @@ use crate::type_config::alias::SerdeInstantOf;
 use crate::TypeConfig;
 
 /// A set of metrics describing the current state of a SuRaft node.
-#[derive(Clone, Debug, PartialEq, Eq)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 #[serde(bound = "")]
 pub struct Metrics<C: TypeConfig> {
     pub running_state: Result<(), Fatal>,
@@ -64,7 +63,8 @@ pub struct Metrics<C: TypeConfig> {
 }
 
 impl<C> fmt::Display for Metrics<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Metrics{{")?;
@@ -94,9 +94,7 @@ where C: TypeConfig
         write!(
             f,
             "heartbeat:{{{}}}",
-            DisplayOption(
-                &self.heartbeat.as_ref().map(DisplayBTreeMapOptValue)
-            ),
+            DisplayOption(&self.heartbeat.as_ref().map(DisplayBTreeMapOptValue)),
         )?;
 
         write!(f, "}}")?;
@@ -105,7 +103,8 @@ where C: TypeConfig
 }
 
 impl<C> Metrics<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     pub fn new_initial(id: NodeId) -> Self {
         #[allow(deprecated)]

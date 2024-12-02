@@ -76,7 +76,9 @@ pub trait TypeConfigExt: TypeConfig {
     /// This is just a wrapper of
     /// [`AsyncRuntime::Oneshot::channel()`](`crate::async_runtime::Oneshot::channel`).
     fn oneshot<T>() -> (OneshotSenderOf<Self, T>, OneshotReceiverOf<Self, T>)
-    where T: OptionalSend {
+    where
+        T: OptionalSend,
+    {
         OneshotOf::<Self>::channel()
     }
 
@@ -85,10 +87,10 @@ pub trait TypeConfigExt: TypeConfig {
     ///
     /// This is just a wrapper of
     /// [`AsyncRuntime::Mpsc::channel()`](`crate::async_runtime::Mpsc::channel`).
-    fn mpsc<T>(
-        buffer: usize,
-    ) -> (MpscSenderOf<Self, T>, MpscReceiverOf<Self, T>)
-    where T: OptionalSend {
+    fn mpsc<T>(buffer: usize) -> (MpscSenderOf<Self, T>, MpscReceiverOf<Self, T>)
+    where
+        T: OptionalSend,
+    {
         MpscOf::<Self>::channel(buffer)
     }
 
@@ -101,7 +103,9 @@ pub trait TypeConfigExt: TypeConfig {
         MpscUnboundedSenderOf<Self, T>,
         MpscUnboundedReceiverOf<Self, T>,
     )
-    where T: OptionalSend {
+    where
+        T: OptionalSend,
+    {
         MpscUnboundedOf::<Self>::channel()
     }
 
@@ -110,10 +114,10 @@ pub trait TypeConfigExt: TypeConfig {
     ///
     /// This is just a wrapper of
     /// [`AsyncRuntime::Watch::channel()`](`crate::async_runtime::Watch::channel`).
-    fn watch_channel<T>(
-        init: T,
-    ) -> (WatchSenderOf<Self, T>, WatchReceiverOf<Self, T>)
-    where T: OptionalSend + OptionalSync {
+    fn watch_channel<T>(init: T) -> (WatchSenderOf<Self, T>, WatchReceiverOf<Self, T>)
+    where
+        T: OptionalSend + OptionalSync,
+    {
         WatchOf::<Self>::channel(init)
     }
 
@@ -122,7 +126,9 @@ pub trait TypeConfigExt: TypeConfig {
     /// This is just a wrapper of
     /// [`AsyncRuntime::Mutex::new()`](`crate::async_runtime::Mutex::new`).
     fn mutex<T>(value: T) -> MutexOf<Self, T>
-    where T: OptionalSend {
+    where
+        T: OptionalSend,
+    {
         MutexOf::<Self, T>::new(value)
     }
 

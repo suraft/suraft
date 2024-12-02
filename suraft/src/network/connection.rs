@@ -20,11 +20,9 @@ use crate::TypeConfig;
 #[since(version = "0.10.0")]
 #[add_async_trait]
 pub trait Connection<C>: OptionalSend + OptionalSync + 'static
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     /// Send a RequestVote RPC to the target.
-    async fn request_vote(
-        &mut self,
-        rpc: RequestVote,
-    ) -> Result<VoteReply, NetworkError>;
+    async fn request_vote(&mut self, rpc: RequestVote) -> Result<VoteReply, NetworkError>;
 }

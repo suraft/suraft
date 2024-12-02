@@ -102,11 +102,11 @@ tracing-log = ["tracing/log"]
 # Enable these feature flags to show all types/mods,
 # including the feature enabled ones on docs.rs
 features = [
-    "bt",
-    "compat",
-    "loosen-follower-log-revert",
-    "serde",
-    "tracing-log",
+  "bt",
+  "compat",
+  "loosen-follower-log-revert",
+  "serde",
+  "tracing-log",
 ]
 
 no-default-features = false

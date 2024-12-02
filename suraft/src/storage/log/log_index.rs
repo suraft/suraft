@@ -1,7 +1,8 @@
 use std::num::ParseIntError;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Deserialize, serde::Serialize,
+)]
 pub struct LogIndex(pub u64);
 
 impl LogIndex {

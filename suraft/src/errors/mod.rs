@@ -19,8 +19,7 @@ pub(crate) fn to_any_error<E: fmt::Display + 'static>(e: E) -> AnyError {
 }
 
 /// Fatal is unrecoverable and shuts down raft at once.
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, serde::Deserialize, serde::Serialize)]
 pub enum Fatal {
     #[error(transparent)]
     StorageError(#[from] AnyError),
@@ -41,8 +40,7 @@ impl From<io::Error> for Fatal {
 
 /// The set of errors which may take place when requesting to propose a config
 /// change.
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, serde::Deserialize, serde::Serialize)]
 pub enum ChangeMembershipError {
     #[error(transparent)]
     EmptyMembership(#[from] EmptyMembership),
@@ -50,8 +48,16 @@ pub enum ChangeMembershipError {
 
 /// The set of errors which may take place when initializing a pristine SuRaft
 /// node.
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, derive_more::TryInto)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    thiserror::Error,
+    derive_more::TryInto,
+    serde::Deserialize,
+    serde::Serialize,
+)]
 pub enum InitializeError {
     #[error(transparent)]
     NotAllowed(#[from] NotAllowed),
@@ -80,8 +86,7 @@ impl NetworkError {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, serde::Deserialize, serde::Serialize)]
 #[error("has to forward request to: {leader_id:?}")]
 pub struct ForwardToLeader {
     pub leader_id: Option<NodeId>,
@@ -99,24 +104,23 @@ impl ForwardToLeader {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-#[derive(serde::Deserialize, serde::Serialize)]
-#[error("not allowed to initialize due to current state: last_log_id: {last_log_id:?} vote: {vote}")]
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, serde::Deserialize, serde::Serialize)]
+#[error(
+    "not allowed to initialize due to current state: last_log_id: {last_log_id:?} vote: {vote}"
+)]
 pub struct NotAllowed {
     pub last_log_id: Option<LogId>,
     pub vote: Vote,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, serde::Deserialize, serde::Serialize)]
 #[error("node {node_id} has to be a member. membership:{membership:?}")]
 pub struct NotInMembers {
     pub node_id: NodeId,
     pub membership: Membership,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, serde::Deserialize, serde::Serialize)]
 #[error("new membership can not be empty")]
 pub struct EmptyMembership {}
 

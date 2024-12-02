@@ -62,7 +62,7 @@ impl StateMachine {
         let mut watcher = su.metrics();
 
         loop {
-            let committed = watcher.borrow().committed.clone();
+            let committed = watcher.borrow().committed;
 
             if committed.is_none() {
                 continue;

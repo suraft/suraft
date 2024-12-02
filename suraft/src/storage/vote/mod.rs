@@ -6,8 +6,7 @@ use crate::storage::membership::NodeId;
 pub mod vote_ext;
 
 /// `Vote` represent the privilege of a node.
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub struct Vote {
     pub term: u64,
     pub committed: bool,
@@ -122,8 +121,7 @@ mod tests {
         let vote = |term, node_id: u64| Vote::new(term, nid(node_id));
 
         #[allow(clippy::redundant_closure)]
-        let committed =
-            |term, node_id: u64| Vote::new_committed(term, nid(node_id));
+        let committed = |term, node_id: u64| Vote::new_committed(term, nid(node_id));
 
         // Compare term first
         assert!(vote(2, 2) > vote(1, 2));

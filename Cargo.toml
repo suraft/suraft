@@ -1,9 +1,5 @@
 [workspace]
-members = [
-  "suraft",
-  "examples/simple-machine",
-  "xtask",
-]
+members = ["suraft", "examples/simple-machine", "xtask"]
 resolver = "2"
 
 [workspace.package]
@@ -31,7 +27,12 @@ byte-unit = { version = "5.1.4" }
 bytes = { version = "1.9.0" }
 chrono = { version = "0.4.38" }
 clap = { version = "4.1.11", features = ["derive", "env"] }
-derive_more = { version = "1.0.0", features = ["std", "from", "try_into", "display"] }
+derive_more = { version = "1.0.0", features = [
+  "std",
+  "from",
+  "try_into",
+  "display",
+] }
 futures = { version = "0.3.31" }
 lazy_static = { version = "1.5.0" }
 maplit = { version = "1.0.2" }

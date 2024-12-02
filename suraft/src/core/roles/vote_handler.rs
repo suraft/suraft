@@ -20,7 +20,8 @@ use crate::TypeConfig;
 /// A `vote` defines the state of a suraft node.
 /// See [`RaftState::calc_server_state`] .
 pub(crate) struct VoteHandler<'st, C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     pub(crate) id: NodeId,
     pub(crate) vote: &'st mut Leased<Option<Vote>, InstantOf<C>>,
@@ -28,8 +29,9 @@ where C: TypeConfig
     pub(crate) candidate: &'st mut CandidateState<C>,
 }
 
-impl<'st, C> VoteHandler<'st, C>
-where C: TypeConfig
+impl<C> VoteHandler<'_, C>
+where
+    C: TypeConfig,
 {
     /// Check and update the local vote and related state for every message
     /// received.
@@ -59,9 +61,7 @@ where C: TypeConfig
                 vote,
                 my_vote.display()
             );
-            return Err(RejectVoteRequest::ByVote(
-                self.vote_ref().unwrap().clone(),
-            ));
+            return Err(RejectVoteRequest::ByVote(self.vote_ref().unwrap().clone()));
         }
 
         debug!(

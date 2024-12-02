@@ -28,7 +28,8 @@ use crate::TypeConfig;
 /// raft) is seen. But instead it will be able to upgrade its `leader_id`
 /// without losing leadership.
 pub(crate) struct Leader<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     /// The vote this leader works in.
     ///
@@ -53,38 +54,29 @@ where C: TypeConfig
     /// See [`docs::leader_lease`] for more details.
     ///
     /// [`docs::leader_lease`]: `crate::docs::protocol::replication::leader_lease`
-    pub(crate) clock_progress: VecProgress<
-        NodeId,
-        Option<InstantOf<C>>,
-        Option<InstantOf<C>>,
-        Membership,
-    >,
+    pub(crate) clock_progress:
+        VecProgress<NodeId, Option<InstantOf<C>>, Option<InstantOf<C>>, Membership>,
 }
 
 impl<C> Leader<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     /// Create a new Leader.
     ///
     /// `last_leader_log_id` is the first and last log id proposed by the last
     /// leader.
-    pub(crate) fn new(
-        vote: Vote,
-        membership: Membership,
-        last_log_id: Option<LogId>,
-    ) -> Self {
-        let leader = Self {
-            vote: vote,
+    pub(crate) fn new(vote: Vote, membership: Membership, last_log_id: Option<LogId>) -> Self {
+        Self {
+            vote,
             app_cmd_buf: vec![],
             tx_buf: vec![],
             io_state: Default::default(),
             next_heartbeat: C::now(),
             membership: membership.clone(),
             clock_progress: VecProgress::new(membership, [], || None),
-            last_log_id: last_log_id,
-        };
-
-        leader
+            last_log_id,
+        }
     }
 
     pub(crate) fn committed_vote_ref(&self) -> &Vote {

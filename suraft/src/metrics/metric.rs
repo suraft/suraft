@@ -32,15 +32,14 @@ impl Metric {
 /// Metric can be compared with RaftMetrics by comparing the corresponding field
 /// of RaftMetrics.
 impl<C> PartialEq<Metric> for Metrics<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     fn eq(&self, other: &Metric) -> bool {
         match other {
             Metric::Term(v) => self.vote.as_ref().map(|x| x.term()) == Some(*v),
             Metric::Vote(v) => &self.vote == v,
-            Metric::LastLogIndex(v) => {
-                self.committed.as_ref().map(|x| x.index) == *v
-            }
+            Metric::LastLogIndex(v) => self.committed.as_ref().map(|x| x.index) == *v,
         }
     }
 }
@@ -48,17 +47,14 @@ where C: TypeConfig
 /// Metric can be compared with RaftMetrics by comparing the corresponding field
 /// of RaftMetrics.
 impl<C> PartialOrd<Metric> for Metrics<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     fn partial_cmp(&self, other: &Metric) -> Option<Ordering> {
         match other {
-            Metric::Term(v) => {
-                Some(self.vote.as_ref().map(|x| x.term()).cmp(&Some(*v)))
-            }
+            Metric::Term(v) => Some(self.vote.as_ref().map(|x| x.term()).cmp(&Some(*v))),
             Metric::Vote(v) => self.vote.partial_cmp(v),
-            Metric::LastLogIndex(v) => {
-                Some(self.committed.as_ref().map(|x| x.index).cmp(v))
-            }
+            Metric::LastLogIndex(v) => Some(self.committed.as_ref().map(|x| x.index).cmp(v)),
         }
     }
 }
