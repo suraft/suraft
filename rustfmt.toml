@@ -1,4 +1,5 @@
-comment_width = 120
+max_width = 100
+comment_width = 100
 format_code_in_doc_comments = true
 group_imports = "StdExternalCrate"
 imports_granularity = "Item"
