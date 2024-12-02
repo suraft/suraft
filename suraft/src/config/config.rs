@@ -132,7 +132,8 @@ impl Default for Config {
 impl Config {
     /// Generate a new random election timeout within the configured min & max.
     pub fn new_rand_election_timeout<RT: AsyncRuntime>(&self) -> Duration {
-        let ms = RT::thread_rng().gen_range(self.election_timeout_min..self.election_timeout_max);
+        let ms =
+            RT::thread_rng().random_range(self.election_timeout_min..self.election_timeout_max);
 
         Duration::from_millis(ms)
     }

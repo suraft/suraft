@@ -197,11 +197,11 @@ where
         let callback = IOFlushed::new(notify, self.tx_notification.downgrade());
 
         let mut sto = self.log_store.clone();
-        let fu = async move {
+        let fut = C::spawn(async move {
             let res = sto.write_log_entry(&entry).await;
             callback.io_completed(res);
-        };
-        let _ = C::spawn(fu);
+        });
+        drop(fut);
     }
 
     /// Report a metrics payload on the current state of the SuRaft node.
@@ -306,7 +306,7 @@ where
                     match notify_res {
                         Some(notify) => self.handle_notification(notify).await?,
                         None => {
-                            tracing::error!("all rx_notify senders are dropped");
+                            error!("all rx_notify senders are dropped");
                             return Err(Fatal::Stopped);
                         }
                     };
@@ -316,7 +316,7 @@ where
                     match msg_res {
                         Some(msg) => self.handle_api_msg(msg).await?,
                         None => {
-                            tracing::info!("all rx_api senders are dropped");
+                            info!("all rx_api senders are dropped");
                             return Err(Fatal::Stopped);
                         }
                     };
@@ -354,15 +354,15 @@ where
             let res = self.rx_api.try_recv();
             let msg = match res {
                 Ok(msg) => msg,
-                Err(e) => match e {
-                    TryRecvError::Empty => {
-                        return Ok(i + 1);
+                Err(err) => {
+                    return match err {
+                        TryRecvError::Empty => Ok(i + 1),
+                        TryRecvError::Disconnected => {
+                            info!("id={} rx_api is disconnected, quit", self.id);
+                            Err(Fatal::Stopped)
+                        }
                     }
-                    TryRecvError::Disconnected => {
-                        info!("id={} rx_api is disconnected, quit", self.id);
-                        return Err(Fatal::Stopped);
-                    }
-                },
+                }
             };
 
             self.handle_api_msg(msg).await?;
@@ -385,15 +385,15 @@ where
             let res = self.rx_notification.try_recv();
             let notify = match res {
                 Ok(msg) => msg,
-                Err(e) => match e {
-                    TryRecvError::Empty => {
-                        return Ok(i + 1);
+                Err(err) => {
+                    return match err {
+                        TryRecvError::Empty => Ok(i + 1),
+                        TryRecvError::Disconnected => {
+                            error!("rx_notify is disconnected, quit");
+                            Err(Fatal::Stopped)
+                        }
                     }
-                    TryRecvError::Disconnected => {
-                        error!("rx_notify is disconnected, quit");
-                        return Err(Fatal::Stopped);
-                    }
-                },
+                }
             };
 
             self.handle_notification(notify).await?;
@@ -437,7 +437,7 @@ where
             let ttl = Duration::from_millis(self.config.election_timeout_min);
             let tx = self.tx_notification.clone();
 
-            let fu = async move {
+            let fut = C::spawn(async move {
                 let res = C::timeout(ttl, client.request_vote(req)).await;
                 let reply = res.map_err(to_any_error)?.map_err(to_any_error)?;
 
@@ -449,11 +449,8 @@ where
 
                 let _ = tx.send(notification);
                 Ok::<(), AnyError>(())
-            };
-
-            // False positive lint warning(`non-binding `let` on a future`): https://github.com/rust-lang/rust-clippy/issues/9932
-            #[allow(clippy::let_underscore_future)]
-            let _ = C::spawn(fu);
+            });
+            drop(fut);
         }
     }
 
@@ -492,10 +489,11 @@ where
 
                 let mut sto = self.log_store.clone();
 
-                let _ = C::spawn(async move {
+                let fut = C::spawn(async move {
                     let res = sto.write_membership(&membership).await;
                     cb.io_completed(res);
                 });
+                drop(fut);
             }
             APIMessage::Elect => {
                 if self.leader_handler().is_ok() {
@@ -557,10 +555,8 @@ where
                         info!("IOCompleted: but no longer a Leader, ignore: {}", log_id);
                     };
 
-                    for responder in responders {
-                        if let Some(r) = responder {
-                            r.send(Ok(log_id));
-                        }
+                    for responder in responders.into_iter().flatten() {
+                        responder.send(Ok(log_id));
                     }
                 } else {
                     // TODO:

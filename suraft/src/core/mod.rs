@@ -6,7 +6,7 @@
 //! to apply raft state to underlying storage or forward messages to other raft
 //! nodes.
 
-pub(crate) mod core;
+pub(crate) mod core_impl;
 pub(crate) mod core_state;
 pub(crate) mod io;
 pub(crate) mod roles;

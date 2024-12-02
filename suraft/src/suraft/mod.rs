@@ -34,7 +34,7 @@ use crate::async_runtime::watch::WatchReceiver;
 use crate::base::leased::Leased;
 use crate::config::Config;
 use crate::config::RuntimeConfig;
-use crate::core::core::Core;
+use crate::core::core_impl::Core;
 use crate::core::core_state::CoreState;
 use crate::core::io::api_message::APIMessage;
 use crate::core::Tick;

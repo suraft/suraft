@@ -17,6 +17,7 @@ impl IOState {
         self.flushed = Some(log_id);
     }
 
+    #[allow(dead_code)]
     pub fn submitted(&self) -> Option<&LogId> {
         self.submitted.as_ref()
     }
