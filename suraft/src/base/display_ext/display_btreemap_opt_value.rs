@@ -14,9 +14,7 @@ pub(crate) struct DisplayBTreeMapOptValue<'a, K: fmt::Display, V: fmt::Display>(
     pub &'a BTreeMap<K, Option<V>>,
 );
 
-impl<'a, K: fmt::Display, V: fmt::Display> fmt::Display
-    for DisplayBTreeMapOptValue<'a, K, V>
-{
+impl<K: fmt::Display, V: fmt::Display> fmt::Display for DisplayBTreeMapOptValue<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let len = self.0.len();
         for (idx, (key, value)) in self.0.iter().enumerate() {
@@ -31,12 +29,7 @@ impl<'a, K: fmt::Display, V: fmt::Display> fmt::Display
 }
 
 #[allow(unused)]
-pub(crate) trait DisplayBtreeMapOptValueExt<
-    'a,
-    K: fmt::Display,
-    V: fmt::Display,
->
-{
+pub(crate) trait DisplayBtreeMapOptValueExt<'a, K: fmt::Display, V: fmt::Display> {
     fn display(&'a self) -> DisplayBTreeMapOptValue<'a, K, V>;
 }
 
@@ -56,8 +49,9 @@ mod tests {
 
     #[test]
     fn test_display_btreemap_opt_value() {
-        let map =
-            (1..=3).map(|num| (num, Some(num))).collect::<BTreeMap<_, _>>();
+        let map = (1..=3)
+            .map(|num| (num, Some(num)))
+            .collect::<BTreeMap<_, _>>();
         let display = DisplayBTreeMapOptValue(&map);
 
         assert_eq!(display.to_string(), "1:1,2:2,3:3");
@@ -73,8 +67,9 @@ mod tests {
 
     #[test]
     fn test_display_btreemap_opt_value_with_1_item() {
-        let map =
-            (1..=1).map(|num| (num, Some(num))).collect::<BTreeMap<_, _>>();
+        let map = (1..=1)
+            .map(|num| (num, Some(num)))
+            .collect::<BTreeMap<_, _>>();
         let display = DisplayBTreeMapOptValue(&map);
 
         assert_eq!(display.to_string(), "1:1");

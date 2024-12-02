@@ -1,8 +1,7 @@
 use anyerror::AnyError;
 
 /// Error variants related to configuration.
-#[derive(Debug, thiserror::Error)]
-#[derive(PartialEq, Eq)]
+#[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum ConfigError {
     #[error("ParseError: {source} while parsing ({args:?})")]
     ParseError { source: AnyError, args: Vec<String> },

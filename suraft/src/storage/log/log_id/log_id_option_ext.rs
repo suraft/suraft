@@ -28,7 +28,8 @@ impl LogIdOptionExt for LogId {
 }
 
 impl<T> LogIdOptionExt for &T
-where T: LogIdOptionExt
+where
+    T: LogIdOptionExt,
 {
     fn index(&self) -> Option<u64> {
         LogIdOptionExt::index(*self)
@@ -44,7 +45,8 @@ where T: LogIdOptionExt
 }
 
 impl<T> LogIdOptionExt for Option<T>
-where T: LogIdOptionExt
+where
+    T: LogIdOptionExt,
 {
     fn index(&self) -> Option<u64> {
         self.as_ref().and_then(|x| x.index())

@@ -12,8 +12,7 @@ use crate::Node;
 ///
 /// It could be a joint of one, two or more configs, i.e., a quorum is a node
 /// set that is superset of a majority of every config.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub struct Membership {
     /// Additional info of all nodes, e.g., the connecting host and port.
     ///
@@ -56,10 +55,12 @@ impl Membership {
     ///
     /// The `nodes` can be:
     /// - a simple `()`, if there are no learner nodes,
-    /// - `BTreeMap<NodeId, Node>` provides nodes for every node id. Node ids
-    ///   that are not in `configs` are learners.
+    /// - `BTreeMap<NodeId, Node>` provides nodes for every node id. Node ids that are not in
+    ///   `configs` are learners.
     pub fn new<T>(nodes: T) -> Self
-    where T: IntoNodes {
+    where
+        T: IntoNodes,
+    {
         let nodes = nodes.into_nodes();
 
         Membership { nodes }
@@ -98,9 +99,7 @@ impl Membership {
     }
 
     /// Ensures that none of the sub config in this joint config are empty.
-    pub(crate) fn ensure_non_empty_config(
-        &self,
-    ) -> Result<(), EmptyMembership> {
+    pub(crate) fn ensure_non_empty_config(&self) -> Result<(), EmptyMembership> {
         if self.nodes.is_empty() {
             return Err(EmptyMembership {});
         }
@@ -112,10 +111,7 @@ impl Membership {
 impl QuorumSet<NodeId> for Membership {
     type Iter = std::collections::btree_map::IntoKeys<NodeId, Node>;
 
-    fn is_quorum<'a, I: Iterator<Item = &'a NodeId> + Clone>(
-        &self,
-        ids: I,
-    ) -> bool {
+    fn is_quorum<'a, I: Iterator<Item = &'a NodeId> + Clone>(&self, ids: I) -> bool {
         self.nodes.is_quorum(ids)
     }
 

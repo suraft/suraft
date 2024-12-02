@@ -9,9 +9,7 @@ use crate::Node;
 
 #[test]
 fn test_membership_summary() -> anyhow::Result<()> {
-    let m = Membership::new(
-        btreemap! {nid(1)=>Node::new(""),nid(2)=>Node::new("")},
-    );
+    let m = Membership::new(btreemap! {nid(1)=>Node::new(""),nid(2)=>Node::new("")});
     assert_eq!("{1:(),2:()}", m.to_string());
 
     Ok(())

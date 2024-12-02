@@ -14,13 +14,15 @@ use crate::TypeConfig;
 ///
 /// [`SuRaft::client_write`]: `crate::suraft::SuRaft::client_write`
 pub struct OneshotResponder<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     tx: OneshotSenderOf<C, WriteResult>,
 }
 
 impl<C> OneshotResponder<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     /// Create a new instance from a [`AsyncRuntime::Oneshot::Sender`].
     ///
@@ -31,14 +33,15 @@ where C: TypeConfig
 }
 
 impl<C> Responder<C> for OneshotResponder<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     type Receiver = OneshotReceiverOf<C, WriteResult>;
 
-    fn from_app_data(
-        app_data: C::AppData,
-    ) -> (C::AppData, Self, Self::Receiver)
-    where Self: Sized {
+    fn from_app_data(app_data: C::AppData) -> (C::AppData, Self, Self::Receiver)
+    where
+        Self: Sized,
+    {
         let (tx, rx) = C::oneshot();
         (app_data, Self { tx }, rx)
     }

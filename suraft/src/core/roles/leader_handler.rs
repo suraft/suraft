@@ -35,7 +35,7 @@ where
     pub(crate) leader: &'x mut Leader<C>,
 }
 
-impl<'x, C, Net> LeaderHandler<'x, C, Net>
+impl<C, Net> LeaderHandler<'_, C, Net>
 where
     C: TypeConfig,
     Net: Network<C>,
@@ -43,11 +43,7 @@ where
     /// Update progress when replicated data(logs or snapshot) matches on
     /// follower/learner and is accepted.
     #[tracing::instrument(level = "debug", skip_all)]
-    pub(crate) fn update_leader_clock(
-        &mut self,
-        target: NodeId,
-        t: InstantOf<C>,
-    ) {
+    pub(crate) fn update_leader_clock(&mut self, target: NodeId, t: InstantOf<C>) {
         debug!(
             "id={} update leader clock: target={}; time={}",
             self.leader.vote.voted_for,
@@ -63,16 +59,9 @@ where
 
         debug!(
             granted = display(granted.as_ref().map(|x| x.display()).display()),
-            clock_progress = display(&self.leader.clock_progress.display_with(
-                |f, id, v| {
-                    write!(
-                        f,
-                        "{}: {}",
-                        id,
-                        v.as_ref().map(|x| x.display()).display()
-                    )
-                }
-            )),
+            clock_progress = display(&self.leader.clock_progress.display_with(|f, id, v| {
+                write!(f, "{}: {}", id, v.as_ref().map(|x| x.display()).display())
+            })),
             "granted leader vote clock after updating"
         );
     }
@@ -100,8 +89,7 @@ where
         let leader_vote = self.leader.vote.clone();
         let id = leader_vote.voted_for.clone();
 
-        let leader_lease =
-            Duration::from_millis(self.config.election_timeout_max);
+        let leader_lease = Duration::from_millis(self.config.election_timeout_max);
 
         let heartbeat = RequestVote::new(
             leader_vote.clone(),
@@ -117,15 +105,12 @@ where
 
         let timeout = Duration::from_millis(self.config.heartbeat_interval);
 
-        let mut connection =
-            self.network.new_connection(target.clone(), node).await;
+        let mut connection = self.network.new_connection(target.clone(), node).await;
 
         let tx = self.tx_notification.clone();
 
         let fu = async move {
-            let res =
-                C::timeout(timeout, connection.request_vote(heartbeat.clone()))
-                    .await;
+            let res = C::timeout(timeout, connection.request_vote(heartbeat.clone())).await;
 
             debug!(
                 "id={} sent a heartbeat: {}, result: {:?}",

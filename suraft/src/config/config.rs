@@ -45,8 +45,7 @@ use crate::AsyncRuntime;
 /// enough that the performance of your network will not cause election
 /// timeouts, but don't keep it so high that a real leader crash would cause
 /// prolonged downtime. See the SuRaft spec §5.6 for more details.
-#[derive(Clone, Debug, Parser)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, Parser, serde::Deserialize, serde::Serialize)]
 pub struct Config {
     /// The minimum election timeout in milliseconds
     #[clap(long, default_value = "150")]
@@ -133,8 +132,7 @@ impl Default for Config {
 impl Config {
     /// Generate a new random election timeout within the configured min & max.
     pub fn new_rand_election_timeout<RT: AsyncRuntime>(&self) -> Duration {
-        let ms = RT::thread_rng()
-            .gen_range(self.election_timeout_min..self.election_timeout_max);
+        let ms = RT::thread_rng().gen_range(self.election_timeout_min..self.election_timeout_max);
 
         Duration::from_millis(ms)
     }
@@ -143,12 +141,11 @@ impl Config {
     ///
     /// The first element in `args` must be the application name.
     pub fn build(args: &[&str]) -> Result<Config, ConfigError> {
-        let config = <Self as Parser>::try_parse_from(args).map_err(|e| {
-            ConfigError::ParseError {
+        let config =
+            <Self as Parser>::try_parse_from(args).map_err(|e| ConfigError::ParseError {
                 source: AnyError::from(&e),
                 args: args.iter().map(|x| x.to_string()).collect(),
-            }
-        })?;
+            })?;
         config.validate()
     }
 

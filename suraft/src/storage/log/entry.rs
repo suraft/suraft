@@ -8,11 +8,11 @@ use crate::TypeConfig;
 pub type EntryPayload<C> = Vec<<C as TypeConfig>::AppData>;
 
 /// A SuRaft log entry.
-#[derive(Default)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(bound = "")]
 pub struct Entry<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     pub log_id: LogId,
 
@@ -21,7 +21,8 @@ where C: TypeConfig
 }
 
 impl<C> Entry<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     pub fn new_blank(log_id: LogId) -> Self {
         Self {
@@ -35,7 +36,7 @@ where C: TypeConfig
     }
 
     pub fn set_log_id(&mut self, log_id: &LogId) {
-        self.log_id = log_id.clone();
+        self.log_id = *log_id;
     }
 }
 
@@ -46,14 +47,15 @@ where
 {
     fn clone(&self) -> Self {
         Self {
-            log_id: self.log_id.clone(),
+            log_id: self.log_id,
             payload: self.payload.clone(),
         }
     }
 }
 
 impl<C> Debug for Entry<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Entry")
@@ -74,7 +76,8 @@ where
 }
 
 impl<C> AsRef<Entry<C>> for Entry<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     fn as_ref(&self) -> &Entry<C> {
         self

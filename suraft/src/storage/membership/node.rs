@@ -12,8 +12,7 @@ pub type NodeId = String;
 ///
 /// Each node is uniquely identified by [`NodeId`] and contains necessary
 /// information for cluster coordination and communication.
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, Default)]
 pub struct Node {
     /// The network address (e.g., IP and port) of the node for communication.
     pub address: String,
@@ -33,10 +32,7 @@ impl Node {
         }
     }
 
-    pub fn new_with_meta(
-        address: impl ToString,
-        metadata: BTreeMap<String, String>,
-    ) -> Self {
+    pub fn new_with_meta(address: impl ToString, metadata: BTreeMap<String, String>) -> Self {
         Node {
             address: address.to_string(),
             metadata,
@@ -54,15 +50,5 @@ impl Display for Node {
             write!(f, "{}:{}", k, v)?;
         }
         Ok(())
-    }
-}
-
-impl Default for Node {
-    // TODO: remove this.
-    fn default() -> Self {
-        Node {
-            address: String::new(),
-            metadata: BTreeMap::new(),
-        }
     }
 }

@@ -8,8 +8,7 @@ use crate::base::display_ext::DisplayInstantExt;
 
 /// Stores an object along with its last update time and lease duration.
 /// The lease duration specifies how long the object remains valid.
-#[derive(Debug, Clone)]
-#[derive(PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Leased<T, I: Instant> {
     data: T,
     last_modified: Option<I>,
@@ -91,8 +90,9 @@ impl<T, I: Instant> Leased<T, I> {
             leased: &'a Leased<T, I>,
         }
 
-        impl<'a, T, I> fmt::Display for DisplayLeaseInfo<'a, T, I>
-        where I: Instant
+        impl<T, I> fmt::Display for DisplayLeaseInfo<'_, T, I>
+        where
+            I: Instant,
         {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 match &self.leased.last_modified {

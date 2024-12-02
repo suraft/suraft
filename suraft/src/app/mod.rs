@@ -19,10 +19,6 @@ use crate::Serde;
 ///
 /// The trait is automatically implemented for all types which satisfy its
 /// super traits.
-pub trait AppData:
-    fmt::Debug + OptionalSend + OptionalSync + 'static + Serde
-{
-}
+pub trait AppData: fmt::Debug + OptionalSend + OptionalSync + 'static + Serde {}
 
-impl<T> AppData for T where T: fmt::Debug + OptionalSend + OptionalSync + 'static + Serde
-{}
+impl<T> AppData for T where T: fmt::Debug + OptionalSend + OptionalSync + 'static + Serde {}

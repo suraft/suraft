@@ -12,7 +12,7 @@ impl VoteExt for Option<Vote> {
     }
 
     fn is_committed(&self) -> bool {
-        self.as_ref().map_or(false, |v| v.committed)
+        self.as_ref().is_some_and(|v| v.committed)
     }
 }
 
@@ -22,6 +22,6 @@ impl VoteExt for Option<&Vote> {
     }
 
     fn is_committed(&self) -> bool {
-        self.as_ref().map_or(false, |v| v.committed)
+        self.as_ref().is_some_and(|v| v.committed)
     }
 }

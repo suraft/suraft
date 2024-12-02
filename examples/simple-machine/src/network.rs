@@ -46,11 +46,7 @@ where
 {
     type Connection = Conn<C>;
 
-    async fn new_connection(
-        &mut self,
-        target: NodeId,
-        _node: &Node,
-    ) -> Self::Connection {
+    async fn new_connection(&mut self, target: NodeId, _node: &Node) -> Self::Connection {
         let peers = self.peers.lock().unwrap();
         let su = peers.get(&target).unwrap().clone();
         Conn {
@@ -72,10 +68,7 @@ impl<C> Connection<C> for Conn<C>
 where
     C: TypeConfig,
 {
-    async fn request_vote(
-        &mut self,
-        rpc: RequestVote,
-    ) -> Result<VoteReply, NetworkError> {
+    async fn request_vote(&mut self, rpc: RequestVote) -> Result<VoteReply, NetworkError> {
         self.su_raft
             .handle_request_vote(rpc)
             .await

@@ -12,7 +12,8 @@ use crate::TypeConfig;
 
 /// A message coming from the internal components.
 pub(crate) enum Notification<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     RequestVoteReply {
         target: NodeId,
@@ -49,7 +50,8 @@ where C: TypeConfig
 }
 
 impl<C> Notification<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     pub(crate) fn set_io_result(&mut self, done: bool) {
         match self {
@@ -66,7 +68,8 @@ where C: TypeConfig
 }
 
 impl<C> fmt::Display for Notification<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

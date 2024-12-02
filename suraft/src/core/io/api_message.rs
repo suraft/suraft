@@ -11,7 +11,8 @@ use crate::TypeConfig;
 ///
 /// [`Core`]: crate::core::Core
 pub(crate) enum APIMessage<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     RequestVote {
         rpc: RequestVote,
@@ -34,7 +35,8 @@ where C: TypeConfig
 }
 
 impl<C> fmt::Display for APIMessage<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

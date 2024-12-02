@@ -9,7 +9,8 @@ use crate::TypeConfig;
 /// Implement blocking mode write operations those reply on oneshot channel for
 /// communication between SuRaft core and client.
 impl<C> SuRaft<C>
-where C: TypeConfig<Responder = OneshotResponder<C>>
+where
+    C: TypeConfig<Responder = OneshotResponder<C>>,
 {
     // TODO:
     /// Propose a cluster configuration change.
@@ -34,9 +35,9 @@ where C: TypeConfig<Responder = OneshotResponder<C>>
     ///    - If `retain` is `true`, the committed new membership is
     ///     `{"voters":{2,3,4}, "nodes":{1,2,3,4,5}}`, node `1` is turned into a
     /// learner.
-    ///    - Otherwise if `retain` is `false`, then the new membership is
-    ///      `{"voters":{2,3,4}, "nodes":{2,3,4,5}}`, in which the removed
-    ///      voters `1` are removed from the cluster. `5` is not affected.
+    ///    - Otherwise if `retain` is `false`, then the new membership is `{"voters":{2,3,4},
+    ///      "nodes":{2,3,4,5}}`, in which the removed voters `1` are removed from the cluster. `5`
+    ///      is not affected.
     ///
     /// If it loses leadership or crashed before committing the second
     /// **uniform** config log, the cluster is left in the **joint** config.
@@ -64,8 +65,8 @@ where C: TypeConfig<Responder = OneshotResponder<C>>
         if let Err(e) = &res {
             tracing::error!("the first step error: {}", e);
         }
-        let res = res?;
+        res?;
 
-        Ok(res)
+        Ok(())
     }
 }

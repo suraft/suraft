@@ -23,10 +23,8 @@ mod threaded {
     pub trait OptionalSync: Sync {}
     impl<T: Sync + ?Sized> OptionalSync for T {}
 
-    pub type BoxFuture<'a, T = ()> =
-        Pin<Box<dyn Future<Output = T> + Send + 'a>>;
-    pub type BoxAsyncOnceMut<'a, A, T = ()> =
-        Box<dyn FnOnce(&mut A) -> BoxFuture<T> + Send + 'a>;
+    pub type BoxFuture<'a, T = ()> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
+    pub type BoxAsyncOnceMut<'a, A, T = ()> = Box<dyn FnOnce(&mut A) -> BoxFuture<T> + Send + 'a>;
     pub type BoxOnce<'a, A, T = ()> = Box<dyn FnOnce(&A) -> T + Send + 'a>;
     pub type BoxAny = Box<dyn Any + Send>;
 }
@@ -44,8 +42,7 @@ mod threaded {
     impl<T: ?Sized> OptionalSync for T {}
 
     pub type BoxFuture<'a, T = ()> = Pin<Box<dyn Future<Output = T> + 'a>>;
-    pub type BoxAsyncOnceMut<'a, A, T = ()> =
-        Box<dyn FnOnce(&mut A) -> BoxFuture<T> + 'a>;
+    pub type BoxAsyncOnceMut<'a, A, T = ()> = Box<dyn FnOnce(&mut A) -> BoxFuture<T> + 'a>;
     pub type BoxOnce<'a, A, T = ()> = Box<dyn FnOnce(&A) -> T + 'a>;
     pub type BoxAny = Box<dyn Any>;
 }

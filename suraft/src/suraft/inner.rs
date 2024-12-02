@@ -29,7 +29,8 @@ use crate::TypeConfig;
 /// SuRaftInner is the internal handle and provides internally used APIs to
 /// communicate with `Core`.
 pub(in crate::suraft) struct SuRaftInner<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     #[allow(dead_code)]
     pub(in crate::suraft) id: NodeId,
@@ -42,21 +43,16 @@ where C: TypeConfig
 }
 
 impl<C> SuRaftInner<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     /// Send a [`APIMessage`] to Core
-    pub(crate) async fn send_msg(
-        &self,
-        mes: APIMessage<C>,
-    ) -> Result<(), Fatal> {
+    pub(crate) async fn send_msg(&self, mes: APIMessage<C>) -> Result<(), Fatal> {
         let send_res = self.tx_api.send(mes);
 
         if let Err(e) = send_res {
             let fatal = self
-                .get_core_stopped_error(
-                    "sending APIMessage to Core",
-                    Some(e.0.to_string()),
-                )
+                .get_core_stopped_error("sending APIMessage to Core", Some(e.0.to_string()))
                 .await;
             return Err(fatal);
         }
@@ -83,16 +79,9 @@ where C: TypeConfig
             Ok(x) => Ok(x),
             Err(_) => {
                 let fatal = self
-                    .get_core_stopped_error(
-                        "receiving rx from Core",
-                        None::<&'static str>,
-                    )
+                    .get_core_stopped_error("receiving rx from Core", None::<&'static str>)
                     .await;
-                tracing::error!(
-                    error = debug(&fatal),
-                    "error when {}",
-                    func_name!()
-                );
+                tracing::error!(error = debug(&fatal), "error when {}", func_name!());
                 Err(fatal)
             }
         }
@@ -184,8 +173,7 @@ where C: TypeConfig
                 CoreState::Running(_) => {
                     let (tx, rx) = C::watch_channel::<bool>(false);
 
-                    let prev =
-                        std::mem::replace(&mut *state, CoreState::Joining(rx));
+                    let prev = std::mem::replace(&mut *state, CoreState::Joining(rx));
 
                     let CoreState::Running(join_handle) = prev else {
                         unreachable!()

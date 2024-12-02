@@ -10,11 +10,10 @@ use crate::TypeConfig;
 
 #[add_async_trait]
 pub trait LogStorageExt<C>: LogStorage<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
-    async fn read_last_log_entry(
-        &mut self,
-    ) -> Result<Option<Entry<C>>, io::Error> {
+    async fn read_last_log_entry(&mut self) -> Result<Option<Entry<C>>, io::Error> {
         let last_log_path = PathConfig::last_log_path();
         let data = self.read(&last_log_path).await?;
 
@@ -42,10 +41,7 @@ where C: TypeConfig
         Ok(Some(entry))
     }
 
-    async fn read_log_entry(
-        &mut self,
-        index: u64,
-    ) -> Result<Option<Entry<C>>, io::Error> {
+    async fn read_log_entry(&mut self, index: u64) -> Result<Option<Entry<C>>, io::Error> {
         let path = PathConfig::log_entry(index);
         let data = self.read(&path).await?;
 
@@ -58,10 +54,7 @@ where C: TypeConfig
         }
     }
 
-    async fn write_log_entry(
-        &mut self,
-        entry: &Entry<C>,
-    ) -> Result<bool, io::Error> {
+    async fn write_log_entry(&mut self, entry: &Entry<C>) -> Result<bool, io::Error> {
         let log_id = &entry.log_id;
         let path = PathConfig::log_entry(log_id.index);
 
@@ -71,9 +64,7 @@ where C: TypeConfig
         self.write(&path, &buf, true).await
     }
 
-    async fn read_membership(
-        &mut self,
-    ) -> Result<Option<Membership>, io::Error> {
+    async fn read_membership(&mut self) -> Result<Option<Membership>, io::Error> {
         let path = PathConfig::membership_config();
         let data = self.read(&path).await?;
 
@@ -86,10 +77,7 @@ where C: TypeConfig
         }
     }
 
-    async fn write_membership(
-        &mut self,
-        membership: &Membership,
-    ) -> Result<(), io::Error> {
+    async fn write_membership(&mut self, membership: &Membership) -> Result<(), io::Error> {
         let path = PathConfig::membership_config();
 
         let buf = serde_json::to_vec(membership)
