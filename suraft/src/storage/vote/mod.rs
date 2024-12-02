@@ -93,6 +93,7 @@ impl Vote {
 #[cfg(test)]
 #[allow(clippy::nonminimal_bool)]
 mod tests {
+    use std::panic::UnwindSafe;
     use crate::storage::vote::Vote;
     use crate::testing::nid;
 
@@ -150,18 +151,17 @@ mod tests {
         assert!(!(vote(2, 2) <= vote(2, 3)));
         assert!(!(vote(2, 2) == vote(2, 3)));
 
-        // TODO: review these tests
-        // // Incomparable committed
-        // {
-        //     fn assert_panic<T, F: FnOnce() -> T + UnwindSafe>(f: F) {
-        //         let res = std::panic::catch_unwind(f);
-        //         assert!(res.is_err());
-        //     }
-        //     assert_panic(|| committed(2, 2) > committed(2, 3));
-        //     assert_panic(|| committed(2, 2) >= committed(2, 3));
-        //     assert_panic(|| committed(2, 2) < committed(2, 3));
-        //     assert_panic(|| committed(2, 2) <= committed(2, 3));
-        // }
+        // Incomparable committed
+        {
+            fn assert_panic<T, F: FnOnce() -> T + UnwindSafe>(f: F) {
+                let res = std::panic::catch_unwind(f);
+                assert!(res.is_err());
+            }
+            assert_panic(|| committed(2, 2) > committed(2, 3));
+            assert_panic(|| committed(2, 2) >= committed(2, 3));
+            assert_panic(|| committed(2, 2) < committed(2, 3));
+            assert_panic(|| committed(2, 2) <= committed(2, 3));
+        }
 
         Ok(())
     }
