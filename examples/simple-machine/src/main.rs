@@ -2,8 +2,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use maplit::btreemap;
-use simple_machine::memstore::MemLogStore;
-use simple_machine::network::DirectNetwork;
+use memstore::MemLogStore;
+use pseudonet::DirectNetwork;
 use simple_machine::Cmd;
 use simple_machine::StateMachine;
 use simple_machine::Types;

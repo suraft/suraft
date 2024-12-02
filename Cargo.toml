@@ -1,5 +1,5 @@
 [workspace]
-members = ["suraft", "examples/simple-machine", "xtask"]
+members = ["suraft", "examples/simple-machine", "xtask", "internal/memstore", "internal/pseudonet"]
 resolver = "2"
 
 [workspace.package]
@@ -18,6 +18,10 @@ repository = "https://github.com/suraft/suraft"
 [workspace.dependencies]
 # Workspace dependencies
 suraft = { path = "suraft", version = "0.1.0" }
+
+# Internal dependencies
+memstore = { path = "internal/memstore" }
+pseudonet = { path = "internal/pseudonet" }
 
 # Crates.io dependencies
 anyerror = { version = "0.1.10" }

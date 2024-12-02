@@ -1,0 +1,19 @@
+[package]
+name = "memstore"
+publish = false
+
+edition.workspace = true
+version.workspace = true
+
+[package.metadata.release]
+release = false
+
+[dependencies]
+suraft = { workspace = true, features = ["type-alias"] }
+tracing = { workspace = true }
+
+[features]
+bt = ["suraft/bt"]
+
+[lints]
+workspace = true

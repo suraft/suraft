@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 use std::io;
-
+use memstore::MemLogStore;
 use suraft::declare_suraft_types;
 use suraft::storage::log::entry::Entry;
 use suraft::storage::log::log_id::LogId;
@@ -8,11 +8,7 @@ use suraft::storage::log::log_id::LogIdOptionExt;
 use suraft::storage::LogStorageExt;
 use suraft::SuRaft;
 
-use crate::memstore::MemLogStore;
-
 pub mod logging;
-pub mod memstore;
-pub mod network;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct Cmd {

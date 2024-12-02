@@ -10,6 +10,8 @@ release = false
 
 [dependencies]
 maplit = { workspace = true }
+memstore = { workspace = true }
+pseudonet = { workspace = true }
 serde = { workspace = true }
 suraft = { workspace = true }
 tokio = { workspace = true }
