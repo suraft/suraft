@@ -6,8 +6,7 @@ use crate::storage::membership::NodeId;
 pub mod vote_ext;
 
 /// `Vote` represent the privilege of a node.
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub struct Vote {
     pub term: u64,
     pub committed: bool,
@@ -94,7 +93,6 @@ impl Vote {
 #[cfg(test)]
 #[allow(clippy::nonminimal_bool)]
 mod tests {
-
     use std::panic::UnwindSafe;
 
     use crate::storage::vote::Vote;
@@ -104,10 +102,7 @@ mod tests {
     fn test_vote_serde() -> anyhow::Result<()> {
         let v = Vote::new(1, nid(2));
         let s = serde_json::to_string(&v)?;
-        assert_eq!(
-            r#"{"leader_id":{"term":1,"voted_for":2},"committed":false}"#,
-            s
-        );
+        assert_eq!(s, "{\"term\":1,\"committed\":false,\"voted_for\":\"2\"}");
 
         let v2: Vote = serde_json::from_str(&s)?;
         assert_eq!(v, v2);
@@ -122,8 +117,7 @@ mod tests {
         let vote = |term, node_id: u64| Vote::new(term, nid(node_id));
 
         #[allow(clippy::redundant_closure)]
-        let committed =
-            |term, node_id: u64| Vote::new_committed(term, nid(node_id));
+        let committed = |term, node_id: u64| Vote::new_committed(term, nid(node_id));
 
         // Compare term first
         assert!(vote(2, 2) > vote(1, 2));
@@ -164,10 +158,10 @@ mod tests {
                 let res = std::panic::catch_unwind(f);
                 assert!(res.is_err());
             }
-            assert_panic(|| (committed(2, 2) > committed(2, 3)));
-            assert_panic(|| (committed(2, 2) >= committed(2, 3)));
-            assert_panic(|| (committed(2, 2) < committed(2, 3)));
-            assert_panic(|| (committed(2, 2) <= committed(2, 3)));
+            assert_panic(|| committed(2, 2) > committed(2, 3));
+            assert_panic(|| committed(2, 2) >= committed(2, 3));
+            assert_panic(|| committed(2, 2) < committed(2, 3));
+            assert_panic(|| committed(2, 2) <= committed(2, 3));
         }
 
         Ok(())

@@ -22,11 +22,13 @@ pub trait Oneshot {
     ///
     /// Each handle can be used on separate tasks.
     fn channel<T>() -> (Self::Sender<T>, Self::Receiver<T>)
-    where T: OptionalSend;
+    where
+        T: OptionalSend;
 }
 
 pub trait OneshotSender<T>: OptionalSend + OptionalSync + Sized
-where T: OptionalSend
+where
+    T: OptionalSend,
 {
     /// Attempts to send a value on this channel, returning it back if it could
     /// not be sent.

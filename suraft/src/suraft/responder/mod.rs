@@ -21,7 +21,8 @@ use crate::TypeConfig;
 ///
 /// [`AppData`]: `crate::app::AppData`
 pub trait Responder<C>: OptionalSend + 'static
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     /// An optional receiver to receive the result sent by `Core`.
     ///
@@ -30,10 +31,9 @@ where C: TypeConfig
     type Receiver;
 
     /// Build a new instance from the application request.
-    fn from_app_data(
-        app_data: C::AppData,
-    ) -> (C::AppData, Self, Self::Receiver)
-    where Self: Sized;
+    fn from_app_data(app_data: C::AppData) -> (C::AppData, Self, Self::Receiver)
+    where
+        Self: Sized;
 
     /// Send result when the request has been completed.
     ///

@@ -14,7 +14,8 @@ pub struct MemLogStore {
 }
 
 impl<C> LogStorage<C> for MemLogStore
-where C: suraft::TypeConfig
+where
+    C: suraft::TypeConfig,
 {
     async fn read(&mut self, path: &str) -> Result<Option<Vec<u8>>, Error> {
         let store = self.store.lock().unwrap();
@@ -24,30 +25,19 @@ where C: suraft::TypeConfig
         Ok(got)
     }
 
-    async fn write(
-        &mut self,
-        path: &str,
-        buf: &[u8],
-        exclusive: bool,
-    ) -> Result<bool, Error> {
+    async fn write(&mut self, path: &str, buf: &[u8], exclusive: bool) -> Result<bool, Error> {
         debug!("MemLogStore::write: path={}, exclusive={}", path, exclusive);
 
         let mut store = self.store.lock().unwrap();
-        if store.contains_key(path) {
-            if exclusive {
-                return Ok(false);
-            }
+        if store.contains_key(path) && exclusive {
+            return Ok(false);
         }
 
         store.insert(path.to_string(), buf.to_vec());
         Ok(true)
     }
 
-    async fn list(
-        &mut self,
-        prefix: &str,
-        start_after: &str,
-    ) -> Result<Vec<String>, Error> {
+    async fn list(&mut self, prefix: &str, start_after: &str) -> Result<Vec<String>, Error> {
         let right = prefix_right_bound(prefix);
 
         let store = self.store.lock().unwrap();

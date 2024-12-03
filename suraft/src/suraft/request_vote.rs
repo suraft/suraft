@@ -7,8 +7,7 @@ use crate::storage::log::log_id::LogId;
 use crate::storage::vote::Vote;
 
 /// An RPC sent by candidates to gather votes (§5.2).
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub struct RequestVote {
     pub vote: Vote,
     pub last_log_id: Option<LogId>,
@@ -28,11 +27,7 @@ impl fmt::Display for RequestVote {
 }
 
 impl RequestVote {
-    pub fn new(
-        vote: Vote,
-        last_log_id: Option<LogId>,
-        lease: Duration,
-    ) -> Self {
+    pub fn new(vote: Vote, last_log_id: Option<LogId>, lease: Duration) -> Self {
         Self {
             vote,
             last_log_id,
@@ -42,8 +37,7 @@ impl RequestVote {
 }
 
 /// The response to a [`RequestVote`].
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub struct VoteReply {
     /// vote after a node handling vote-request.
     /// Thus, `resp.vote >= req.vote` always holds.
@@ -61,15 +55,11 @@ pub struct VoteReply {
 }
 
 impl VoteReply {
-    pub fn new(
-        vote: Option<Vote>,
-        last_log_id: Option<LogId>,
-        granted: bool,
-    ) -> Self {
+    pub fn new(vote: Option<Vote>, last_log_id: Option<LogId>, granted: bool) -> Self {
         Self {
             vote,
             vote_granted: granted,
-            last_log_id: last_log_id.map(|x| x.borrow().clone()),
+            last_log_id: last_log_id.map(|x| *x.borrow()),
         }
     }
 

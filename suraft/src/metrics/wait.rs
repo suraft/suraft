@@ -32,15 +32,12 @@ pub struct Wait<C: TypeConfig> {
 }
 
 impl<C> Wait<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     /// Wait for metrics to satisfy some condition or timeout.
     #[tracing::instrument(level = "trace", skip(self, func), fields(msg=%msg.to_string()))]
-    pub async fn metrics<T>(
-        &self,
-        func: T,
-        msg: impl ToString,
-    ) -> Result<Metrics<C>, WaitError>
+    pub async fn metrics<T>(&self, func: T, msg: impl ToString) -> Result<Metrics<C>, WaitError>
     where
         T: Fn(&Metrics<C>) -> bool + OptionalSend,
     {
@@ -108,11 +105,7 @@ where C: TypeConfig
 
     /// Wait for `vote` to become `want` or timeout.
     #[tracing::instrument(level = "trace", skip(self), fields(msg=msg.to_string().as_str()))]
-    pub async fn vote(
-        &self,
-        want: Vote,
-        msg: impl ToString,
-    ) -> Result<Metrics<C>, WaitError> {
+    pub async fn vote(&self, want: Vote, msg: impl ToString) -> Result<Metrics<C>, WaitError> {
         self.eq(Metric::Vote(Some(want)), msg).await
     }
 
@@ -141,7 +134,8 @@ where C: TypeConfig
         want_log_index: Option<u64>,
         msg: impl ToString,
     ) -> Result<Metrics<C>, WaitError> {
-        self.eq(Metric::LastLogIndex(want_log_index), msg.to_string()).await
+        self.eq(Metric::LastLogIndex(want_log_index), msg.to_string())
+            .await
     }
 
     /// Wait until applied at least `want_log`(inclusive) logs or timeout.
@@ -155,7 +149,8 @@ where C: TypeConfig
         want_log: Option<u64>,
         msg: impl ToString,
     ) -> Result<Metrics<C>, WaitError> {
-        self.ge(Metric::LastLogIndex(want_log), msg.to_string()).await
+        self.ge(Metric::LastLogIndex(want_log), msg.to_string())
+            .await
     }
 
     /// Block until the last log index becomes exactly `index`(inclusive) or
@@ -201,11 +196,7 @@ where C: TypeConfig
     /// ```ignore
     /// my_raft.wait(None).ge(Metric::Term(2), "become term 2").await?;
     /// ```
-    pub async fn ge(
-        &self,
-        metric: Metric,
-        msg: impl ToString,
-    ) -> Result<Metrics<C>, WaitError> {
+    pub async fn ge(&self, metric: Metric, msg: impl ToString) -> Result<Metrics<C>, WaitError> {
         self.until(Condition::ge(metric), msg).await
     }
 
@@ -215,11 +206,7 @@ where C: TypeConfig
     /// ```ignore
     /// my_raft.wait(None).eq(Metric::Term(2), "become term 2").await?;
     /// ```
-    pub async fn eq(
-        &self,
-        metric: Metric,
-        msg: impl ToString,
-    ) -> Result<Metrics<C>, WaitError> {
+    pub async fn eq(&self, metric: Metric, msg: impl ToString) -> Result<Metrics<C>, WaitError> {
         self.until(Condition::eq(metric), msg).await
     }
 

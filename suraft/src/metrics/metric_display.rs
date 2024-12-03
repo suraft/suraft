@@ -10,7 +10,7 @@ pub(crate) struct MetricDisplay<'a> {
     pub(crate) metric: &'a Metric,
 }
 
-impl<'a> fmt::Display for MetricDisplay<'a> {
+impl fmt::Display for MetricDisplay<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self.metric {
             Metric::Term(v) => write!(f, "{}", v),

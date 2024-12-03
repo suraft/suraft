@@ -14,13 +14,15 @@ use suraft::TypeConfig;
 
 #[derive(Default, Clone)]
 pub struct DirectNetwork<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     peers: Arc<Mutex<BTreeMap<NodeId, SuRaft<C>>>>,
 }
 
 impl<C> DirectNetwork<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     pub fn add_peer(&self, node_id: NodeId, su_raft: SuRaft<C>) {
         let mut peers = self.peers.lock().unwrap();
@@ -39,15 +41,12 @@ where C: TypeConfig
 }
 
 impl<C> Network<C> for DirectNetwork<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     type Connection = Conn<C>;
 
-    async fn new_connection(
-        &mut self,
-        target: NodeId,
-        _node: &Node,
-    ) -> Self::Connection {
+    async fn new_connection(&mut self, target: NodeId, _node: &Node) -> Self::Connection {
         let peers = self.peers.lock().unwrap();
         let su = peers.get(&target).unwrap().clone();
         Conn {
@@ -58,19 +57,18 @@ where C: TypeConfig
 }
 
 pub struct Conn<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     _node_id: NodeId,
     su_raft: SuRaft<C>,
 }
 
 impl<C> Connection<C> for Conn<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
-    async fn request_vote(
-        &mut self,
-        rpc: RequestVote,
-    ) -> Result<VoteReply, NetworkError> {
+    async fn request_vote(&mut self, rpc: RequestVote) -> Result<VoteReply, NetworkError> {
         self.su_raft
             .handle_request_vote(rpc)
             .await

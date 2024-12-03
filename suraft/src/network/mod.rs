@@ -23,7 +23,8 @@ pub mod connection;
 /// `Arc<T>`.
 #[add_async_trait]
 pub trait Network<C>: OptionalSend + OptionalSync + 'static
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     /// Actual type of the network handling a single connection.
     type Connection: Connection<C>;
@@ -39,9 +40,5 @@ where C: TypeConfig
     /// The method is intentionally async to give the implementation a chance to
     /// use asynchronous sync primitives to serialize access to the common
     /// internal object, if needed.
-    async fn new_connection(
-        &mut self,
-        target: NodeId,
-        node: &Node,
-    ) -> Self::Connection;
+    async fn new_connection(&mut self, target: NodeId, node: &Node) -> Self::Connection;
 }

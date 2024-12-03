@@ -96,8 +96,7 @@ pub mod alias {
     pub type AppDataOf<C> = <C as TypeConfig>::AppData;
     pub type AsyncRuntimeOf<C> = <C as TypeConfig>::AsyncRuntime;
     pub type ResponderOf<C> = <C as TypeConfig>::Responder;
-    pub type ResponderReceiverOf<C> =
-        <ResponderOf<C> as Responder<C>>::Receiver;
+    pub type ResponderReceiverOf<C> = <ResponderOf<C> as Responder<C>>::Receiver;
 
     type Rt<C> = AsyncRuntimeOf<C>;
 
@@ -110,8 +109,7 @@ pub mod alias {
 
     pub type OneshotOf<C> = <Rt<C> as AsyncRuntime>::Oneshot;
     pub type OneshotSenderOf<C, T> = <OneshotOf<C> as Oneshot>::Sender<T>;
-    pub type OneshotReceiverErrorOf<C> =
-        <OneshotOf<C> as Oneshot>::ReceiverError;
+    pub type OneshotReceiverErrorOf<C> = <OneshotOf<C> as Oneshot>::ReceiverError;
     pub type OneshotReceiverOf<C, T> = <OneshotOf<C> as Oneshot>::Receiver<T>;
 
     pub type MpscOf<C> = <Rt<C> as AsyncRuntime>::Mpsc;
@@ -128,12 +126,9 @@ pub mod alias {
     // MPSC unbounded
     type MpscUB<C> = MpscUnboundedOf<C>;
 
-    pub type MpscUnboundedSenderOf<C, T> =
-        <MpscUB<C> as MpscUnbounded>::Sender<T>;
-    pub type MpscUnboundedReceiverOf<C, T> =
-        <MpscUB<C> as MpscUnbounded>::Receiver<T>;
-    pub type MpscUnboundedWeakSenderOf<C, T> =
-        <MpscUB<C> as MpscUnbounded>::WeakSender<T>;
+    pub type MpscUnboundedSenderOf<C, T> = <MpscUB<C> as MpscUnbounded>::Sender<T>;
+    pub type MpscUnboundedReceiverOf<C, T> = <MpscUB<C> as MpscUnbounded>::Receiver<T>;
+    pub type MpscUnboundedWeakSenderOf<C, T> = <MpscUB<C> as MpscUnbounded>::WeakSender<T>;
 
     pub type WatchOf<C> = <Rt<C> as AsyncRuntime>::Watch;
     pub type WatchSenderOf<C, T> = <WatchOf<C> as watch::Watch>::Sender<T>;

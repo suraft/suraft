@@ -1,9 +1,10 @@
 [workspace]
 members = [
-    "suraft",
-    "stores/memstore",
-    "network/pseudonet",
-    "examples/hello",
+  "suraft",
+  "examples/simple-machine",
+  "xtask",
+  "internal/memstore",
+  "internal/pseudonet",
 ]
 resolver = "2"
 
@@ -24,8 +25,9 @@ repository = "https://github.com/suraft/suraft"
 # Workspace dependencies
 suraft = { path = "suraft", version = "0.1.0" }
 
-memstore = { path = "stores/memstore", version = "0.1.0" }
-pseudonet = { path = "network/pseudonet", version = "0.1.0" }
+# Internal dependencies
+memstore = { path = "internal/memstore" }
+pseudonet = { path = "internal/pseudonet" }
 
 # Crates.io dependencies
 anyerror = { version = "0.1.10" }
@@ -35,7 +37,12 @@ byte-unit = { version = "5.1.4" }
 bytes = { version = "1.9.0" }
 chrono = { version = "0.4.38" }
 clap = { version = "4.1.11", features = ["derive", "env"] }
-derive_more = { version = "1.0.0", features = ["std", "from", "try_into", "display"] }
+derive_more = { version = "1.0.0", features = [
+  "std",
+  "from",
+  "try_into",
+  "display",
+] }
 futures = { version = "0.3.31" }
 lazy_static = { version = "1.5.0" }
 maplit = { version = "1.0.2" }
@@ -52,15 +59,21 @@ tempfile = { version = "3.4.0" }
 test-harness = { version = "0.3.0" }
 thiserror = { version = "2.0.3" }
 tokio = { version = "1.41.1", default-features = false, features = [
-    "io-util",
-    "macros",
-    "rt",
-    "rt-multi-thread",
-    "sync",
-    "time",
+  "io-util",
+  "macros",
+  "rt",
+  "rt-multi-thread",
+  "sync",
+  "time",
 ] }
 tracing = { version = "0.1.40" }
 tracing-appender = { version = "0.2.3" }
 tracing-futures = { version = "0.2.5" }
 tracing-subscriber = { version = "0.3.3", features = ["env-filter"] }
 validit = { version = "0.2.2" }
+
+[workspace.lints.rust]
+unknown_lints = "deny"
+
+[workspace.lints.clippy]
+dbg_macro = "deny"

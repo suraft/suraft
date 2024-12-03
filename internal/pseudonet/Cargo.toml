@@ -1,0 +1,15 @@
+[package]
+name = "pseudonet"
+publish = false
+
+edition.workspace = true
+version.workspace = true
+
+[package.metadata.release]
+release = false
+
+[dependencies]
+suraft = { workspace = true }
+
+[lints]
+workspace = true

@@ -23,8 +23,7 @@ pub fn init_logging(app_name: &str, dir: &str, level: &str) -> WorkerGuard {
     set_panic_hook();
 
     let (g, sub) = init_file_logging(app_name, dir, level);
-    tracing::subscriber::set_global_default(sub)
-        .expect("error setting global tracing subscriber");
+    tracing::subscriber::set_global_default(sub).expect("error setting global tracing subscriber");
 
     tracing::info!(
         "initialized global tracing: in {}/{} at {}",
@@ -57,11 +56,7 @@ pub fn log_panic(panic: &PanicHookInfo) {
     }
 }
 
-pub fn init_file_logging(
-    app_name: &str,
-    dir: &str,
-    level: &str,
-) -> (WorkerGuard, impl Subscriber) {
+pub fn init_file_logging(app_name: &str, dir: &str, level: &str) -> (WorkerGuard, impl Subscriber) {
     // open log file
 
     let f = RollingFileAppender::new(Rotation::HOURLY, dir, app_name);
@@ -78,8 +73,7 @@ pub fn init_file_logging(
 
     // Use env RUST_LOG to initialize log if present.
     // Otherwise, use the specified level.
-    let directives =
-        env::var(EnvFilter::DEFAULT_ENV).unwrap_or_else(|_x| level.to_string());
+    let directives = env::var(EnvFilter::DEFAULT_ENV).unwrap_or_else(|_x| level.to_string());
     let env_filter = EnvFilter::new(directives);
 
     let subscriber = Registry::default().with(env_filter).with(f_layer);

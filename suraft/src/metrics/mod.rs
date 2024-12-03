@@ -29,7 +29,6 @@
 //! Because internally, `watch::channel()` only stores one last state.
 
 mod metric;
-mod metrics;
 mod wait;
 
 mod metric_display;
@@ -40,7 +39,7 @@ mod wait_condition;
 use std::collections::BTreeMap;
 
 pub use metric::Metric;
-pub use metrics::Metrics;
+pub use metric::Metrics;
 pub use serde_instant::SerdeInstant;
 pub use server_state::ServerState;
 pub use wait::Wait;
@@ -52,5 +51,4 @@ use crate::type_config::alias::SerdeInstantOf;
 
 /// Heartbeat metrics, a mapping between a node's ID and the time of the last
 /// acknowledged heartbeat or replication to this node.
-pub(crate) type HeartbeatMetrics<C> =
-    BTreeMap<NodeId, Option<SerdeInstantOf<C>>>;
+pub(crate) type HeartbeatMetrics<C> = BTreeMap<NodeId, Option<SerdeInstantOf<C>>>;

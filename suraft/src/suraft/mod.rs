@@ -34,7 +34,7 @@ use crate::async_runtime::watch::WatchReceiver;
 use crate::base::leased::Leased;
 use crate::config::Config;
 use crate::config::RuntimeConfig;
-use crate::core::core::Core;
+use crate::core::core_impl::Core;
 use crate::core::core_state::CoreState;
 use crate::core::io::api_message::APIMessage;
 use crate::core::Tick;
@@ -75,13 +75,15 @@ pub use crate::TypeConfig;
 /// trick.
 #[derive(Clone)]
 pub struct SuRaft<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     inner: Arc<SuRaftInner<C>>,
 }
 
 impl<C> SuRaft<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     pub async fn initialize<Log>(
         log_store: &mut Log,
@@ -126,20 +128,14 @@ where C: TypeConfig
     /// An implementation of the [`LogStorage`] and [`RaftStateMachine`]
     /// trait which will be used by SuRaft for data storage.
     #[tracing::instrument(level = "debug", skip_all)]
-    pub fn new<Log, Net>(
-        id: NodeId,
-        config: Arc<Config>,
-        network: Net,
-        log_store: Log,
-    ) -> Self
+    pub fn new<Log, Net>(id: NodeId, config: Arc<Config>, network: Net, log_store: Log) -> Self
     where
         Net: Network<C>,
         Log: LogStorage<C>,
     {
         let (tx_api, rx_api) = C::mpsc_unbounded();
         let (tx_notify, rx_notify) = C::mpsc_unbounded();
-        let (tx_metrics, rx_metrics) =
-            C::watch_channel(Metrics::new_initial(id.clone()));
+        let (tx_metrics, rx_metrics) = C::watch_channel(Metrics::new_initial(id.clone()));
 
         let tick_handle = Tick::spawn(
             Duration::from_millis(config.heartbeat_interval * 3 / 2),
@@ -159,8 +155,7 @@ where C: TypeConfig
         let core: Core<C, Net, Log> = Core {
             id: id.clone(),
             config: config.clone(),
-            election_timeout: config
-                .new_rand_election_timeout::<AsyncRuntimeOf<C>>(),
+            election_timeout: config.new_rand_election_timeout::<AsyncRuntimeOf<C>>(),
             runtime_config: runtime_config.clone(),
             network,
             log_store,
@@ -181,8 +176,7 @@ where C: TypeConfig
             span: core_span,
         };
 
-        let core_handle =
-            C::spawn(core.main().instrument(trace_span!("spawn").or_current()));
+        let core_handle = C::spawn(core.main().instrument(trace_span!("spawn").or_current()));
 
         let inner = SuRaftInner {
             id,
@@ -245,14 +239,13 @@ where C: TypeConfig
     ///
     /// These RPCs are sent by cluster peers which are in candidate state
     /// attempting to gather votes (§5.2).
-    pub async fn handle_request_vote(
-        &self,
-        rpc: RequestVote,
-    ) -> Result<VoteReply, Fatal> {
+    pub async fn handle_request_vote(&self, rpc: RequestVote) -> Result<VoteReply, Fatal> {
         tracing::info!(rpc = display(&rpc), "handle_request_vote()");
 
         let (tx, rx) = C::oneshot();
-        self.inner.call_core(APIMessage::RequestVote { rpc, tx }, rx).await
+        self.inner
+            .call_core(APIMessage::RequestVote { rpc, tx }, rx)
+            .await
     }
 
     /// Get the ID of the current leader from this SuRaft node.
@@ -314,13 +307,12 @@ where C: TypeConfig
     /// It is same as [`SuRaft::client_write`] but does not wait for the
     /// response.
     #[tracing::instrument(level = "debug", skip(self, app_data))]
-    pub async fn write_ff(
-        &self,
-        app_data: C::AppData,
-    ) -> Result<ResponderReceiverOf<C>, Fatal> {
+    pub async fn write_ff(&self, app_data: C::AppData) -> Result<ResponderReceiverOf<C>, Fatal> {
         let (app_data, tx, rx) = ResponderOf::<C>::from_app_data(app_data);
 
-        self.inner.send_msg(APIMessage::Write { app_data, tx }).await?;
+        self.inner
+            .send_msg(APIMessage::Write { app_data, tx })
+            .await?;
 
         Ok(rx)
     }

@@ -6,7 +6,8 @@ use crate::TypeConfig;
 
 /// The running state of Core
 pub(crate) enum CoreState<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     /// The Core task is still running.
     Running(JoinHandleOf<C, Result<Infallible, Fatal>>),
@@ -19,7 +20,8 @@ where C: TypeConfig
 }
 
 impl<C> CoreState<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     /// Returns `true` if the Core task is still running.
     pub(crate) fn is_running(&self) -> bool {

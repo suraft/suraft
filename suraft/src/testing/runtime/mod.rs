@@ -56,8 +56,7 @@ impl<Rt: AsyncRuntime> Suite<Rt> {
 
         Self::test_unbounded_mpsc_recv_empty().await;
         Self::test_unbounded_mpsc_recv_channel_closed().await;
-        Self::test_unbounded_mpsc_weak_sender_wont_prevent_channel_close()
-            .await;
+        Self::test_unbounded_mpsc_weak_sender_wont_prevent_channel_close().await;
         Self::test_unbounded_mpsc_weak_sender_upgrade().await;
         Self::test_unbounded_mpsc_send().await;
 
@@ -111,8 +110,9 @@ impl<Rt: AsyncRuntime> Suite<Rt> {
 
         // Won't time out
         let dur_10ms = std::time::Duration::from_millis(10);
-        let ret_value =
-            Rt::timeout(dur_10ms, async move { ret_number }).await.unwrap();
+        let ret_value = Rt::timeout(dur_10ms, async move { ret_number })
+            .await
+            .unwrap();
         assert_eq!(ret_value, ret_number);
 
         // Will time out
@@ -131,8 +131,9 @@ impl<Rt: AsyncRuntime> Suite<Rt> {
         // Won't time out
         let dur_10ms = std::time::Duration::from_millis(10);
         let ddl = Rt::Instant::now() + dur_10ms;
-        let ret_value =
-            Rt::timeout_at(ddl, async move { ret_number }).await.unwrap();
+        let ret_value = Rt::timeout_at(ddl, async move { ret_number })
+            .await
+            .unwrap();
         assert_eq!(ret_value, ret_number);
 
         // Will time out
@@ -325,10 +326,7 @@ impl<Rt: AsyncRuntime> Suite<Rt> {
                 Poll::Pending
             ));
             tx.send(overwrite).unwrap();
-            assert!(matches!(
-                poll_in_place(pinned_changed_fut),
-                Poll::Ready(_)
-            ));
+            assert!(matches!(poll_in_place(pinned_changed_fut), Poll::Ready(_)));
         }
 
         let value_from_rx = rx.borrow_watched();

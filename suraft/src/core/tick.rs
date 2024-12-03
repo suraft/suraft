@@ -23,7 +23,8 @@ use crate::TypeConfig;
 
 /// Emit APIMessage::Tick event at regular `interval`.
 pub(crate) struct Tick<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     interval: Duration,
 
@@ -34,7 +35,8 @@ where C: TypeConfig
 }
 
 pub(crate) struct TickHandle<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     enabled: Arc<AtomicBool>,
     shutdown: Mutex<Option<OneshotSenderOf<C, ()>>>,
@@ -42,7 +44,8 @@ where C: TypeConfig
 }
 
 impl<C> Drop for TickHandle<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     /// Signal the tick loop to stop, without waiting for it to stop.
     fn drop(&mut self) {
@@ -54,7 +57,8 @@ where C: TypeConfig
 }
 
 impl<C> Tick<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     pub(crate) fn spawn(
         interval: Duration,
@@ -72,12 +76,11 @@ where C: TypeConfig
 
         let shutdown = Mutex::new(Some(shutdown));
 
-        let join_handle =
-            C::spawn(this.tick_loop(shutdown_rx).instrument(tracing::span!(
-                parent: &Span::current(),
-                Level::DEBUG,
-                "tick"
-            )));
+        let join_handle = C::spawn(this.tick_loop(shutdown_rx).instrument(tracing::span!(
+            parent: &Span::current(),
+            Level::DEBUG,
+            "tick"
+        )));
 
         TickHandle {
             enabled,
@@ -86,10 +89,7 @@ where C: TypeConfig
         }
     }
 
-    pub(crate) async fn tick_loop(
-        self,
-        mut cancel_rx: OneshotReceiverOf<C, ()>,
-    ) {
+    pub(crate) async fn tick_loop(self, mut cancel_rx: OneshotReceiverOf<C, ()>) {
         let mut i = 0;
 
         let mut cancel = std::pin::pin!(cancel_rx);
@@ -126,7 +126,8 @@ where C: TypeConfig
 }
 
 impl<C> TickHandle<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     pub(crate) fn enable(&self, enabled: bool) {
         self.enabled.store(enabled, Ordering::Relaxed);
@@ -173,8 +174,18 @@ mod tests {
     use crate::type_config::TypeConfigExt;
     use crate::TypeConfig;
 
-    #[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Ord, PartialOrd)]
-    #[derive(serde::Deserialize, serde::Serialize)]
+    #[derive(
+        Debug,
+        Clone,
+        Copy,
+        Default,
+        Eq,
+        PartialEq,
+        Ord,
+        PartialOrd,
+        serde::Deserialize,
+        serde::Serialize,
+    )]
     pub(crate) struct TickUTConfig {}
     impl TypeConfig for TickUTConfig {
         type AppData = ();
@@ -185,8 +196,7 @@ mod tests {
     #[tokio::test]
     async fn test_shutdown() -> anyhow::Result<()> {
         let (tx, mut rx) = TickUTConfig::mpsc_unbounded();
-        let th =
-            Tick::<TickUTConfig>::spawn(Duration::from_millis(100), tx, true);
+        let th = Tick::<TickUTConfig>::spawn(Duration::from_millis(100), tx, true);
 
         TickUTConfig::sleep(Duration::from_millis(500)).await;
         let _ = th.shutdown().unwrap().await;

@@ -13,10 +13,10 @@ use crate::type_config::alias::InstantOf;
 use crate::TypeConfig;
 
 /// Candidate: voting state.
-#[derive(Clone, Debug)]
-#[derive(PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Candidate<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     /// When the voting is started.
     starting_time: InstantOf<C>,
@@ -33,7 +33,8 @@ where C: TypeConfig
 }
 
 impl<C> fmt::Display for Candidate<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
@@ -47,7 +48,8 @@ where C: TypeConfig
 }
 
 impl<C> Candidate<C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     pub(crate) fn new(
         starting_time: InstantOf<C>,

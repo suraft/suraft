@@ -10,13 +10,15 @@ use crate::TypeConfig;
 /// These config are mainly designed for testing purpose and special use cases.
 /// Usually you don't need to change runtime config.
 pub struct RuntimeConfigHandle<'r, C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     suraft_inner: &'r SuRaftInner<C>,
 }
 
 impl<'r, C> RuntimeConfigHandle<'r, C>
-where C: TypeConfig
+where
+    C: TypeConfig,
 {
     pub(in crate::suraft) fn new(raft_inner: &'r SuRaftInner<C>) -> Self {
         Self {

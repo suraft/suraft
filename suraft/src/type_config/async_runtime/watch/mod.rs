@@ -53,9 +53,7 @@ pub trait Watch: Sized + OptionalSend {
     /// [`WatchReceiver`] handles. Only the last value sent should be made
     /// available to the [`WatchReceiver`] half. All intermediate values
     /// should be dropped.
-    fn channel<T: OptionalSend + OptionalSync>(
-        init: T,
-    ) -> (Self::Sender<T>, Self::Receiver<T>);
+    fn channel<T: OptionalSend + OptionalSync>(init: T) -> (Self::Sender<T>, Self::Receiver<T>);
 }
 
 /// Sends values to the associated Receiver.
@@ -84,7 +82,8 @@ where
     /// in subsequent calls to `borrow_watched`, but receivers will not receive
     /// a change notification.
     fn send_if_modified<F>(&self, modify: F) -> bool
-    where F: FnOnce(&mut T) -> bool;
+    where
+        F: FnOnce(&mut T) -> bool;
 
     /// Returns a reference to the most recently sent value
     ///
@@ -103,13 +102,11 @@ where
 {
     /// Waits for a change notification, then marks the newest value as seen.
     ///
-    /// - If the newest value in the channel has not yet been marked seen when
-    ///   this method is called, the method marks that value seen and returns
-    ///   immediately.
+    /// - If the newest value in the channel has not yet been marked seen when this method is
+    ///   called, the method marks that value seen and returns immediately.
     ///
-    /// - If the newest value has already been marked seen, then the method
-    ///   sleeps until a new message is sent by the [`WatchSender`], or until
-    ///   the [`WatchSender`] is dropped.
+    /// - If the newest value has already been marked seen, then the method sleeps until a new
+    ///   message is sent by the [`WatchSender`], or until the [`WatchSender`] is dropped.
     ///
     /// This method returns an error if and only if the [`WatchSender`] is
     /// dropped.

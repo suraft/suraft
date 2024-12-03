@@ -6,7 +6,7 @@ use std::fmt;
 /// implementation for T.
 pub(crate) struct DisplayOption<'a, T: fmt::Display>(pub &'a Option<T>);
 
-impl<'a, T: fmt::Display> fmt::Display for DisplayOption<'a, T> {
+impl<T: fmt::Display> fmt::Display for DisplayOption<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.0 {
             None => {
@@ -22,7 +22,8 @@ pub(crate) trait DisplayOptionExt<'a, T: fmt::Display> {
 }
 
 impl<T> DisplayOptionExt<'_, T> for Option<T>
-where T: fmt::Display
+where
+    T: fmt::Display,
 {
     fn display(&self) -> DisplayOption<T> {
         DisplayOption(self)

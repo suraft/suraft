@@ -1,4 +1,0 @@
-semantic_version
-toml
-jinja2
-PyYAML

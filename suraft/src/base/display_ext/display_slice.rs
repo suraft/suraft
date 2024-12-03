@@ -5,13 +5,9 @@ use std::fmt;
 /// It outputs at most `MAX` elements, excluding those from the 5th to the
 /// second-to-last one:
 /// - `DisplaySlice(&[1,2,3,4,5,6])` outputs: `"[1,2,3,4,...,6]"`.
-pub(crate) struct DisplaySlice<'a, T: fmt::Display, const MAX: usize = 5>(
-    pub &'a [T],
-);
+pub(crate) struct DisplaySlice<'a, T: fmt::Display, const MAX: usize = 5>(pub &'a [T]);
 
-impl<'a, T: fmt::Display, const MAX: usize> fmt::Display
-    for DisplaySlice<'a, T, MAX>
-{
+impl<T: fmt::Display, const MAX: usize> fmt::Display for DisplaySlice<'_, T, MAX> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let slice = self.0;
         let len = slice.len();
@@ -52,7 +48,8 @@ pub(crate) trait DisplaySliceExt<'a, T: fmt::Display> {
 }
 
 impl<T> DisplaySliceExt<'_, T> for [T]
-where T: fmt::Display
+where
+    T: fmt::Display,
 {
     fn display(&self) -> DisplaySlice<T> {
         DisplaySlice(self)
