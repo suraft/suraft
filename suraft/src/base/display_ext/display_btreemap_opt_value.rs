@@ -38,7 +38,7 @@ where
     K: fmt::Display,
     V: fmt::Display,
 {
-    fn display(&self) -> DisplayBTreeMapOptValue<K, V> {
+    fn display(&self) -> DisplayBTreeMapOptValue<'_, K, V> {
         DisplayBTreeMapOptValue(self)
     }
 }

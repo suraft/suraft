@@ -1,5 +1,7 @@
 //! Test the `declare_suraft_types` macro with default values
 
+#![allow(dead_code)]
+
 use crate::declare_suraft_types;
 use crate::impls::TokioRuntime;
 

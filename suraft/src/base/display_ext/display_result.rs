@@ -33,7 +33,7 @@ where
     T: fmt::Display,
     E: fmt::Display,
 {
-    fn display(&self) -> DisplayResult<T, E> {
+    fn display(&self) -> DisplayResult<'_, T, E> {
         DisplayResult(self)
     }
 }

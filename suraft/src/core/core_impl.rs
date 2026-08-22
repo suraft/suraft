@@ -719,7 +719,7 @@ where
         self.leader.as_mut().map(|x| x.as_mut())
     }
 
-    pub(crate) fn vote_handler(&mut self) -> VoteHandler<C> {
+    pub(crate) fn vote_handler(&mut self) -> VoteHandler<'_, C> {
         VoteHandler {
             id: self.id.clone(),
             vote: &mut self.vote,
@@ -892,7 +892,7 @@ where
     pub(crate) fn get_leader_handler_or_reject(
         &mut self,
         tx: Option<ResponderOf<C>>,
-    ) -> Option<(LeaderHandler<C, Net>, Option<ResponderOf<C>>)> {
+    ) -> Option<(LeaderHandler<'_, C, Net>, Option<ResponderOf<C>>)> {
         let res = self.leader_handler();
         let forward_err = match res {
             Ok(lh) => {
@@ -924,7 +924,7 @@ where
         ForwardToLeader::empty()
     }
 
-    pub(crate) fn leader_handler(&mut self) -> Result<LeaderHandler<C, Net>, ForwardToLeader> {
+    pub(crate) fn leader_handler(&mut self) -> Result<LeaderHandler<'_, C, Net>, ForwardToLeader> {
         if self.leader.is_none() {
             return Err(self.forward_to_leader());
         }

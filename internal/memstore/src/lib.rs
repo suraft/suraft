@@ -71,14 +71,12 @@ pub fn prefix_right_bound(p: &str) -> Option<String> {
     for i in (0..chars.len()).rev() {
         if chars[i] as u32 != 0x10FFFF {
             // Try to increment the character
-            if let Some(next_char) = char::from_u32(chars[i] as u32 + 1) {
+            {
+                let next_char = char::from_u32(chars[i] as u32 + 1)?;
                 chars[i] = next_char;
                 // Remove all characters after the incremented one
                 chars.truncate(i + 1);
                 return Some(chars.iter().collect());
-            } else {
-                // If incrementing results in an invalid character, return None
-                return None;
             }
         }
     }
