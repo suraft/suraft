@@ -1,6 +1,4 @@
 #![doc = include_str!("lib_readme.md")]
-#![cfg_attr(feature = "bt", feature(error_generic_member_access))]
-#![cfg_attr(feature = "bench", feature(test))]
 #![allow(clippy::bool_assert_comparison)]
 #![allow(clippy::bool_comparison)]
 #![allow(clippy::result_large_err)]

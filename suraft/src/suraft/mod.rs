@@ -204,7 +204,7 @@ where
     /// raft.runtime_config().tick(true);
     /// raft.runtime_config().elect(true);
     /// ```
-    pub fn runtime_config(&self) -> RuntimeConfigHandle<C> {
+    pub fn runtime_config(&self) -> RuntimeConfigHandle<'_, C> {
         RuntimeConfigHandle::new(self.inner.as_ref())
     }
 
