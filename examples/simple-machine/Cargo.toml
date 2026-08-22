@@ -3,6 +3,7 @@ name = "simple-machine"
 publish = false
 
 edition.workspace = true
+rust-version.workspace = true
 version.workspace = true
 
 [package.metadata.release]

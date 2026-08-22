@@ -10,6 +10,7 @@ resolver = "2"
 
 [workspace.package]
 edition = "2021"
+rust-version = "1.85"
 version = "0.1.0"
 
 categories = ["algorithms", "asynchronous", "data-structures"]
@@ -70,7 +71,8 @@ tracing = { version = "0.1.40" }
 tracing-appender = { version = "0.2.3" }
 tracing-futures = { version = "0.2.5" }
 tracing-subscriber = { version = "0.3.3", features = ["env-filter"] }
-validit = { version = "0.2.2" }
+# validit 0.2.5 uses let chains without declaring its newer Rust requirement.
+validit = { version = "=0.2.4" }
 
 [workspace.lints.rust]
 unknown_lints = "deny"
